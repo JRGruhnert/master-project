@@ -24,13 +24,6 @@ class StateDistance(Enum):
     Boolean = "Bool"
     Flip = "Flip"  # Special boolean type for flipping the distance
 
-
-class StateSuccess(Enum):
-    Area = "Area"  # Has to be in the same area
-    Precise = "Precise"  # Has to be precise (with threshold)
-    Ignore = "Ignore"  # Is not used in Success calculation
-
-
 class State(ABC):
     @classmethod
     def _create_state_by_type(
@@ -129,8 +122,26 @@ class State(ABC):
         """Returns the StateSuccess of the state."""
         return self._success_mode
 
+    def value(self, x: torch.Tensor) -> torch.Tensor:
+        """Returns the value of the state as a tensor."""
+        raise NotImplementedError("Must be implemented by subclasses.")
 
+    def tp_distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+        tp: torch.Tensor,
+    ) -> float:
+        """Returns the distance of the state to a target point."""
+        raise NotImplementedError("Must be implemented by subclasses.")
 
+    def goal_distance(
+        self,
+        current: np.ndarray,
+        goal: np.ndarray,
+    ) -> float:
+        """Returns the distance of the state to the goal."""
+        return self.tp_distance(current, goal, goal)
 
 class State(ABC):
     @classmethod
