@@ -6,7 +6,7 @@ from loguru import logger
 import numpy as np
 import torch
 from master_project.code.common.observation import MasterObservation
-from master_project.code.common.state import State
+from master_project.code.state.state import State
 from tapas_gmm.policy.policy import Policy
 from tapas_gmm.utils.select_gpu import device
 from tapas_gmm.policy import import_policy
@@ -19,16 +19,16 @@ from tapas_gmm.policy.models.tpgmm import (
 )
 
 
-class TaskSpace(Enum):
+class SkillSpace(Enum):
     Minimal = "Minimal"
     Normal = "Normal"
     Full = "Full"
     Debug = "Debug"
 
 
-class Task:
+class Skill:
     @classmethod
-    def from_json(cls, name: str, json_data: dict) -> "Task":
+    def from_json(cls, name: str, json_data: dict) -> "Skill":
         """Create a Task instance from JSON data"""
         if (
             "reversed" not in json_data
@@ -55,7 +55,7 @@ class Task:
         )
 
     @classmethod
-    def from_json_list(cls, task_space: TaskSpace) -> list["Task"]:
+    def from_json_list(cls, task_space: SkillSpace) -> list["Skill"]:
         """Convert a StateSpace to a list of State objects by reading from tasks.json"""
         # Load the tasks.json file
         tasks_json_path = pathlib.Path(__file__).parent / "data" / "tasks.json"

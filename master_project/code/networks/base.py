@@ -11,8 +11,8 @@ from master_project.code.networks.layers.encoder import (
     PositionEncoder,
 )
 from master_project.code.common.observation import MasterObservation
-from master_project.code.common.state import State, StateType
-from master_project.code.common.task import Task
+from master_project.code.state.state import State, StateType
+from master_project.code.skill.skill import Skill
 from tapas_gmm.utils.select_gpu import device
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -29,7 +29,7 @@ class ActorCriticBase(nn.Module, ABC):
     def __init__(
         self,
         states: list[State],
-        tasks: list[Task],
+        tasks: list[Skill],
     ):
         super().__init__()
         self.states = states

@@ -1,5 +1,5 @@
-from master_project.code.common.state import State, StateSpace
-from master_project.code.common.task import Task, TaskSpace
+from master_project.code.state.state import State, StateSpace
+from master_project.code.skill.skill import Skill, SkillSpace
 
 
 class DataLoader:
@@ -8,12 +8,12 @@ class DataLoader:
     def __init__(
         self,
         state_space: StateSpace,
-        task_space: TaskSpace,
+        task_space: SkillSpace,
         verbose: bool = False,
     ):
         self._states = State.from_json_list(state_space)
         self._states.sort(key=lambda s: s.id)
-        self._tasks = Task.from_json_list(task_space)
+        self._tasks = Skill.from_json_list(task_space)
         self._tasks.sort(key=lambda t: t.id)
         for task in self._tasks:
             task.initialize_task_parameters(self._states, verbose)
@@ -24,5 +24,5 @@ class DataLoader:
         return self._states
 
     @property
-    def tasks(self) -> list[Task]:
+    def tasks(self) -> list[Skill]:
         return self._tasks

@@ -5,7 +5,7 @@ from master_project.code.dloader import DataLoader
 from master_project.code.env.environment import MasterEnv, MasterEnvConfig
 from master_project.code.agent import AgentConfig
 from master_project.code.networks import NetworkType
-from master_project.code.common.state import StateSpace
+from master_project.code.state.state import StateSpace
 from tapas_gmm.utils.argparse import parse_and_build_config
 
 

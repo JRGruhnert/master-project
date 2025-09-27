@@ -1,0 +1,121 @@
+// Complete state configuration for your existing system
+amends "base_config.pkl"
+
+// Define all the state types from your StateDistance enum
+ee_position_config: StateConfig = new {
+  name = "ee_position"
+  type = "Euler_Angle"  // Maps to your StateDistance.Euler_Angle
+  success_mode = "Area"
+  lower_bound = List(-0.5, -0.5, 0.0)
+  upper_bound = List(0.5, 0.5, 1.0)
+  threshold = 0.02
+  space = List("Minimal", "Normal", "Full")
+}
+
+ee_rotation_config: StateConfig = new {
+  name = "ee_rotation"
+  type = "Quaternion"   // Maps to your StateDistance.Quaternion
+  success_mode = "Precise"
+  lower_bound = List(-1.0, -1.0, -1.0, -1.0)
+  upper_bound = List(1.0, 1.0, 1.0, 1.0)
+  threshold = 0.05
+  space = List("Normal", "Full")
+}
+
+drawer_position_config: StateConfig = new {
+  name = "drawer_position"
+  type = "Range"        // Maps to your StateDistance.Range
+  success_mode = "Precise"
+  lower_bound = List(0.0)
+  upper_bound = List(0.4)
+  threshold = 0.01
+  space = List("Minimal", "Normal", "Full", "Debug")
+}
+
+object_state_config: StateConfig = new {
+  name = "object_state"
+  type = "Boolean"      // Maps to your StateDistance.Boolean
+  success_mode = "Ignore"
+  lower_bound = List(0.0)
+  upper_bound = List(1.0)
+  threshold = 0.5
+  space = List("Minimal", "Normal", "Full")
+}
+
+button_state_config: StateConfig = new {
+  name = "button_state"
+  type = "Flip"         // Maps to your StateDistance.Flip
+  success_mode = "Precise"
+  lower_bound = List(0.0)
+  upper_bound = List(1.0)
+  threshold = 0.1
+  space = List("Debug")
+}
+
+// Task configurations matching your data folder structure
+open_drawer_task: TaskConfig = new {
+  name = "OpenDrawer"
+  description = "Open the drawer to a specific position"
+  states = Map(
+    "ee_position", ee_position_config,
+    "ee_rotation", ee_rotation_config,
+    "drawer_position", drawer_position_config
+  )
+  success_conditions = List("drawer_position > 0.35")
+}
+
+close_drawer_task: TaskConfig = new {
+  name = "CloseDrawer"
+  description = "Close the drawer completely"
+  states = Map(
+    "ee_position", ee_position_config,
+    "drawer_position", drawer_position_config
+  )
+  success_conditions = List("drawer_position < 0.05")
+}
+
+grab_blue_task: TaskConfig = new {
+  name = "GrabBlueDrawer"
+  description = "Grab the blue block from the drawer"
+  states = Map(
+    "ee_position", ee_position_config,
+    "ee_rotation", ee_rotation_config,
+    "object_state", object_state_config
+  )
+  success_conditions = List("object_state == 1")
+}
+
+press_button_task: TaskConfig = new {
+  name = "PressButton"
+  description = "Press the button"
+  states = Map(
+    "ee_position", ee_position_config,
+    "button_state", button_state_config
+  )
+  success_conditions = List("button_state == 1")
+}
+
+// Export all configurations
+output {
+  states = Map(
+    "ee_position", ee_position_config,
+    "ee_rotation", ee_rotation_config,
+    "drawer_position", drawer_position_config,
+    "object_state", object_state_config,
+    "button_state", button_state_config
+  )
+  tasks = Map(
+    "OpenDrawer", open_drawer_task,
+    "CloseDrawer", close_drawer_task,
+    "GrabBlueDrawer", grab_blue_task,
+    "PressButton", press_button_task
+  )
+  
+  // State spaces mapping
+  state_spaces = Map(
+    "Minimal", List("ee_position", "drawer_position", "object_state"),
+    "Normal", List("ee_position", "ee_rotation", "drawer_position", "object_state"),
+    "Full", List("ee_position", "ee_rotation", "drawer_position", "object_state", "button_state"),
+    "Debug", List("ee_position", "ee_rotation", "drawer_position", "object_state", "button_state")
+  )
+}

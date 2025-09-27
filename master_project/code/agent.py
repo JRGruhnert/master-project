@@ -8,8 +8,8 @@ from master_project.code.networks import NetworkType, import_network
 from tapas_gmm.utils.select_gpu import device
 from master_project.code.common.observation import MasterObservation
 from master_project.code.networks.base import ActorCriticBase
-from master_project.code.common.state import State
-from master_project.code.common.task import Task
+from master_project.code.state.state import State
+from master_project.code.skill.skill import Skill
 from ptflops import get_model_complexity_info
 from torchinfo import summary
 from torch_geometric.data import Batch
@@ -49,7 +49,7 @@ class MasterAgent:
         nt: NetworkType,
         tag: str,
         states: list[State],
-        tasks: list[Task],
+        tasks: list[Skill],
     ):
         # Hyperparameters
         self.config = config
@@ -58,7 +58,7 @@ class MasterAgent:
         print("Using network:", nt)
         ### Initialize the agent
         self.states: list[State] = states
-        self.tasks: list[Task] = tasks
+        self.tasks: list[Skill] = tasks
         self.mse_loss = nn.MSELoss()
         self.buffer = RolloutBuffer()
         self.policy_new: ActorCriticBase = Net(states, tasks).to(device)
@@ -98,7 +98,7 @@ class MasterAgent:
         obs: MasterObservation,
         goal: MasterObservation,
         eval: bool = False,
-    ) -> Task:
+    ) -> Skill:
         if self.waiting_feedback:
             raise UserWarning(
                 "The agent hasn't recieved any feedback of previous action yet. "

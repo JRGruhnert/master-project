@@ -2,21 +2,19 @@ from dataclasses import dataclass
 from datetime import datetime
 from omegaconf import OmegaConf, SCMode
 
-from conf.shared import experiment1
 from conf.shared.experiment import ExperimentConfig
 from master_project.code.dloader import DataLoader
-from master_project.code.common.state import StateSpace
-from master_project.code.common.task import TaskSpace
-from master_project.code.env.environment import MasterEnv, MasterEnvConfig
-from master_project.code.agent import MasterAgent, AgentConfig
-from master_project.code.networks import NetworkType
+from master_project.code.state.state import StateSpace
+from master_project.code.skill.skill import SkillSpace
+from master_project.code.env.environment import MasterEnv
+from master_project.code.agent import MasterAgent
 from tapas_gmm.utils.argparse import parse_and_build_config
 
 
 @dataclass
 class TrainConfig:
     state_space: StateSpace
-    task_space: TaskSpace
+    task_space: SkillSpace
     tag: str
     experiment: ExperimentConfig
 

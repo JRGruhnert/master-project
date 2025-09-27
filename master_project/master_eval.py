@@ -6,8 +6,8 @@ from conf.shared.experiment import Exp1Config, ExperimentConfig
 from master_project.code.agent import MasterAgent
 from master_project.code.dloader import DataLoader
 from master_project.code.networks import NetworkType
-from master_project.code.common.state import StateSpace
-from master_project.code.common.task import TaskSpace
+from master_project.code.state.state import StateSpace
+from master_project.code.skill.skill import SkillSpace
 from master_project.code.env.environment import MasterEnv
 from tapas_gmm.utils.argparse import parse_and_build_config
 
@@ -15,7 +15,7 @@ from tapas_gmm.utils.argparse import parse_and_build_config
 @dataclass
 class EvalConfig:
     state_space: StateSpace
-    task_space: TaskSpace
+    task_space: SkillSpace
     tag: str
     experiment: ExperimentConfig
     checkpoint: str = ""

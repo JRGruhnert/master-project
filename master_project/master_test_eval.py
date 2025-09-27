@@ -10,8 +10,8 @@ from master_project.code.agent import MasterAgent
 from master_project.code.buffer import RolloutBuffer
 from master_project.code.dloader import DataLoader
 from master_project.code.networks import NetworkType
-from master_project.code.common.state import StateSpace
-from master_project.code.common.task import TaskSpace
+from master_project.code.state.state import StateSpace
+from master_project.code.skill.skill import SkillSpace
 from master_project.code.env.environment import MasterEnv
 from tapas_gmm.utils.argparse import parse_and_build_config
 
@@ -19,7 +19,7 @@ from tapas_gmm.utils.argparse import parse_and_build_config
 @dataclass
 class EvalConfig:
     state_space: StateSpace
-    task_space: TaskSpace
+    task_space: SkillSpace
     tag: str
     experiment: ExperimentConfig
     checkpoint: str = ""
@@ -93,7 +93,7 @@ def entry_point():
         # This will submit tasks as workers become free
         for origin, goal in t_evals:
             state_space = StateSpace.Minimal if origin in [1] else StateSpace.Normal
-            task_space = TaskSpace.Minimal if goal in [1, 3] else TaskSpace.Normal
+            task_space = SkillSpace.Minimal if goal in [1, 3] else SkillSpace.Normal
             eval_config = EvalConfig(
                 state_space=state_space,
                 task_space=task_space,
