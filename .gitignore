@@ -138,12 +138,11 @@ celerybeat.pid
 .env
 .envrc
 .venv
-env/
 venv/
 ENV/
 env.bak/
 venv.bak/
-
+data/calvin/tapas/
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -205,5 +204,3 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
-
-data/
