@@ -1,0 +1,198 @@
+{
+  "CloseDrawer": {
+    "space": ["Debug", "Minimal", "Normal"],
+    "id": 0,
+    "reversed": false,
+    "conditional": false,
+    "overrides": []
+  },
+  "CloseDrawerBack": {
+    "space": ["Debug", "Minimal", "Normal"],
+    "id": 1,
+    "reversed": true,
+    "conditional": false,
+    "overrides": ["ee_scalar", "ee_rotation", "ee_position"]
+  },
+  "OpenDrawer": {
+    "space": ["Debug", "Minimal", "Normal"],
+    "id": 2,
+    "reversed": false,
+    "conditional": false,
+    "overrides": []
+  },
+  "OpenDrawerBack": {
+    "space": ["Debug", "Minimal", "Normal"],
+    "id": 3,
+    "reversed": true,
+    "conditional": false,
+    "overrides": ["ee_scalar", "ee_rotation", "ee_position"]
+  },
+  "PressButton": {
+    "space": ["Debug", "Minimal", "Normal"],
+    "id": 4,
+    "reversed": false,
+    "conditional": false,
+    "overrides": []
+  },
+  "PressButtonBack": {
+    "space": ["Debug", "Minimal", "Normal"],
+    "id": 5,
+    "reversed": true,
+    "conditional": false,
+    "overrides": ["ee_scalar", "ee_position", "ee_rotation"]
+  },
+  "OpenSlide": {
+    "space": ["Debug", "Minimal", "Normal"],
+    "id": 6,
+    "reversed": false,
+    "conditional": false,
+    "overrides": []
+  },
+  "CloseSlide": {
+    "space": ["Debug", "Minimal", "Normal"],
+    "id": 7,
+    "reversed": false,
+    "conditional": false,
+    "overrides": []
+  },
+  "OpenSlideBack": {
+    "space": ["Debug", "Minimal", "Normal"],
+    "id": 8,
+    "reversed": true,
+    "conditional": false,
+    "overrides": ["ee_scalar", "ee_rotation", "ee_position"]
+  },
+  "CloseSlideBack": {
+    "space": ["Debug", "Minimal", "Normal"],
+    "id": 9,
+    "reversed": true,
+    "conditional": false,
+    "overrides": ["ee_scalar", "ee_rotation", "ee_position"]
+  },
+  "GrabRedTable": {
+    "space": ["Debug", "Normal"],
+    "id": 10,
+    "reversed": false,
+    "conditional": false,
+    "overrides": []
+  },
+  "GrabPinkTable": {
+    "space": ["Debug", "Normal"],
+    "id": 11,
+    "reversed": false,
+    "conditional": false,
+    "overrides": []
+  },
+  "GrabBlueTable": {
+    "space": ["Debug", "Normal"],
+    "id": 12,
+    "reversed": false,
+    "conditional": false,
+    "overrides": []
+  },
+  "GrabRedDrawer": {
+    "space": ["Debug", "Normal"],
+    "id": 13,
+    "reversed": false,
+    "conditional": true,
+    "overrides": []
+  },
+  "GrabPinkDrawer": {
+    "space": ["Debug", "Normal"],
+    "id": 14,
+    "reversed": false,
+    "conditional": true,
+    "overrides": []
+  },
+  "GrabBlueDrawer": {
+    "space": ["Debug", "Normal"],
+    "id": 15,
+    "reversed": false,
+    "conditional": true,
+    "overrides": []
+  },
+  "PlaceRedTable": {
+    "space": ["Normal"],
+    "id": 16,
+    "reversed": true,
+    "conditional": false,
+    "overrides": [
+      "ee_scalar",
+      "ee_rotation",
+      "ee_position",
+      "block_red_rotation",
+      "block_red_position",
+      "block_red_scalar"
+    ]
+  },
+  "PlacePinkTable": {
+    "space": ["Normal"],
+    "id": 17,
+    "reversed": true,
+    "conditional": false,
+    "overrides": [
+      "ee_scalar",
+      "ee_rotation",
+      "ee_position",
+      "block_pink_rotation",
+      "block_pink_position",
+      "block_pink_scalar"
+    ]
+  },
+  "PlaceBlueTable": {
+    "space": ["Normal"],
+    "id": 18,
+    "reversed": true,
+    "conditional": false,
+    "overrides": [
+      "ee_scalar",
+      "ee_rotation",
+      "ee_position",
+      "block_blue_rotation",
+      "block_blue_position",
+      "block_blue_scalar"
+    ]
+  },
+  "PlaceRedDrawer": {
+    "space": ["Normal"],
+    "id": 19,
+    "reversed": true,
+    "conditional": true,
+    "overrides": [
+      "ee_scalar",
+      "ee_rotation",
+      "ee_position",
+      "block_red_rotation",
+      "block_red_position",
+      "block_red_scalar"
+    ]
+  },
+  "PlacePinkDrawer": {
+    "space": ["Normal"],
+    "id": 20,
+    "reversed": true,
+    "conditional": true,
+    "overrides": [
+      "ee_scalar",
+      "ee_rotation",
+      "ee_position",
+      "block_pink_rotation",
+      "block_pink_position",
+      "block_pink_scalar"
+    ]
+  },
+  "PlaceBlueDrawer": {
+    "space": ["Normal"],
+    "id": 21,
+    "reversed": true,
+    "conditional": true,
+    "overrides": [
+      "ee_scalar",
+      "ee_rotation",
+      "ee_position",
+      "block_blue_rotation",
+      "block_blue_position",
+      "block_blue_scalar"
+    ]
+  }
+}

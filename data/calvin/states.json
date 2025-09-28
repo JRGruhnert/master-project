@@ -1,0 +1,410 @@
+{
+  "ee_position": {
+    "space": [
+      "Debug",
+      "Minimal",
+      "Normal"
+    ],
+    "id": 0,
+    "type": "Euler",
+    "success": "Precise",
+    "lower_bound": [
+      -1.0,
+      -1.0,
+      -1.0
+    ],
+    "upper_bound": [
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "base__slide_position": {
+    "space": [
+      "Debug",
+      "Minimal",
+      "Normal"
+    ],
+    "id": 1,
+    "type": "Euler",
+    "success": "Precise",
+    "lower_bound": [
+      -1.0,
+      -1.0,
+      -1.0
+    ],
+    "upper_bound": [
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "base__drawer_position": {
+    "space": [
+      "Debug",
+      "Minimal",
+      "Normal"
+    ],
+    "id": 2,
+    "type": "Euler",
+    "success": "Precise",
+    "lower_bound": [
+      -1.0,
+      -1.0,
+      -1.0
+    ],
+    "upper_bound": [
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "base__button_position": {
+    "space": [
+      "Debug",
+      "Minimal",
+      "Normal"
+    ],
+    "id": 3,
+    "type": "Euler",
+    "success": "Precise",
+    "lower_bound": [
+      -1.0,
+      -1.0,
+      -1.0
+    ],
+    "upper_bound": [
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "base__switch_position": {
+    "space": [],
+    "type": "Euler",
+    "success": "Ignore",
+    "lower_bound": [
+      -1.0,
+      -1.0,
+      -1.0
+    ],
+    "upper_bound": [
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "lightbulb_position": {
+    "space": [],
+    "type": "Euler",
+    "success": "Ignore",
+    "lower_bound": [
+      -1.0,
+      -1.0,
+      -1.0
+    ],
+    "upper_bound": [
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "led_position": {
+    "space": [
+      "Debug",
+      "Minimal",
+      "Normal"
+    ],
+    "id": 4,
+    "type": "Euler",
+    "success": "Precise",
+    "lower_bound": [
+      -1.0,
+      -1.0,
+      -1.0
+    ],
+    "upper_bound": [
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "block_red_position": {
+    "space": [
+      "Debug",
+      "Normal"
+    ],
+    "id": 14,
+    "type": "Euler",
+    "success": "Area",
+    "lower_bound": [
+      -1.0,
+      -1.0,
+      -1.0
+    ],
+    "upper_bound": [
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "block_blue_position": {
+    "space": [
+      "Debug",
+      "Normal"
+    ],
+    "id": 15,
+    "type": "Euler",
+    "success": "Area",
+    "lower_bound": [
+      -1.0,
+      -1.0,
+      -1.0
+    ],
+    "upper_bound": [
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "block_pink_position": {
+    "space": [
+      "Debug",
+      "Normal"
+    ],
+    "id": 16,
+    "type": "Euler",
+    "success": "Area",
+    "lower_bound": [
+      -1.0,
+      -1.0,
+      -1.0
+    ],
+    "upper_bound": [
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "ee_rotation": {
+    "space": [
+      "Debug",
+      "Minimal",
+      "Normal"
+    ],
+    "id": 5,
+    "type": "Quat",
+    "success": "Precise",
+    "lower_bound": [],
+    "upper_bound": []
+  },
+  "base__slide_rotation": {
+    "space": [
+      "Debug",
+      "Minimal",
+      "Normal"
+    ],
+    "id": 6,
+    "type": "Quat",
+    "success": "Precise",
+    "lower_bound": [],
+    "upper_bound": []
+  },
+  "base__drawer_rotation": {
+    "space": [
+      "Debug",
+      "Minimal",
+      "Normal"
+    ],
+    "id": 7,
+    "type": "Quat",
+    "success": "Precise",
+    "lower_bound": [],
+    "upper_bound": []
+  },
+  "base__button_rotation": {
+    "space": [
+      "Debug",
+      "Minimal",
+      "Normal"
+    ],
+    "id": 8,
+    "type": "Quat",
+    "success": "Precise",
+    "lower_bound": [],
+    "upper_bound": []
+  },
+  "base__switch_rotation": {
+    "space": [],
+    "type": "Quat",
+    "success": "Precise",
+    "lower_bound": [],
+    "upper_bound": []
+  },
+  "lightbulb_rotation": {
+    "space": [],
+    "type": "Quat",
+    "success": "Precise",
+    "lower_bound": [],
+    "upper_bound": []
+  },
+  "led_rotation": {
+    "space": [
+      "Debug",
+      "Minimal",
+      "Normal"
+    ],
+    "id": 9,
+    "type": "Quat",
+    "success": "Precise",
+    "lower_bound": [],
+    "upper_bound": []
+  },
+  "block_red_rotation": {
+    "space": [
+      "Debug",
+      "Normal"
+    ],
+    "id": 17,
+    "type": "Quat",
+    "success": "Ignore",
+    "lower_bound": [],
+    "upper_bound": []
+  },
+  "block_blue_rotation": {
+    "space": [
+      "Debug",
+      "Normal"
+    ],
+    "id": 18,
+    "type": "Quat",
+    "success": "Ignore",
+    "lower_bound": [],
+    "upper_bound": []
+  },
+  "block_pink_rotation": {
+    "space": [
+      "Debug",
+      "Normal"
+    ],
+    "id": 19,
+    "type": "Quat",
+    "success": "Ignore",
+    "lower_bound": [],
+    "upper_bound": []
+  },
+  "ee_scalar": {
+    "space": [
+      "Debug",
+      "Minimal",
+      "Normal"
+    ],
+    "id": 10,
+    "type": "Bool",
+    "success": "Precise",
+    "lower_bound": [],
+    "upper_bound": []
+  },
+  "base__slide_scalar": {
+    "space": [
+      "Debug",
+      "Minimal",
+      "Normal"
+    ],
+    "id": 11,
+    "type": "Range",
+    "success": "Precise",
+    "lower_bound": [
+      0.0
+    ],
+    "upper_bound": [
+      0.28
+    ]
+  },
+  "base__drawer_scalar": {
+    "space": [
+      "Debug",
+      "Minimal",
+      "Normal"
+    ],
+    "id": 12,
+    "type": "Range",
+    "success": "Precise",
+    "lower_bound": [
+      0.0
+    ],
+    "upper_bound": [
+      0.22
+    ]
+  },
+  "base__button_scalar": {
+    "space": [
+      "Debug",
+      "Minimal",
+      "Normal"
+    ],
+    "id": 13,
+    "type": "Flip",
+    "success": "Precise",
+    "lower_bound": [],
+    "upper_bound": []
+  },
+  "base__switch_scalar": {
+    "space": [],
+    "type": "Range",
+    "success": "Precise",
+    "lower_bound": [
+      0.0
+    ],
+    "upper_bound": [
+      0.088
+    ]
+  },
+  "lightbulb_scalar": {
+    "space": [],
+    "type": "Flip",
+    "success": "Precise",
+    "lower_bound": [],
+    "upper_bound": []
+  },
+  "led_scalar": {
+    "space": [],
+    "type": "Flip",
+    "success": "Precise",
+    "lower_bound": [],
+    "upper_bound": []
+  },
+  "block_red_scalar": {
+    "space": [
+      "Debug",
+      "Normal"
+    ],
+    "id": 20,
+    "type": "Bool",
+    "success": "Precise",
+    "lower_bound": [],
+    "upper_bound": []
+  },
+  "block_blue_scalar": {
+    "space": [
+      "Debug",
+      "Normal"
+    ],
+    "id": 21,
+    "type": "Bool",
+    "success": "Precise",
+    "lower_bound": [],
+    "upper_bound": []
+  },
+  "block_pink_scalar": {
+    "space": [
+      "Debug",
+      "Normal"
+    ],
+    "id": 22,
+    "type": "Bool",
+    "success": "Precise",
+    "lower_bound": [],
+    "upper_bound": []
+  }
+}
