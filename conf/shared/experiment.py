@@ -14,6 +14,8 @@ class ExperimentConfig:
     agent: AgentConfig
     env: MasterEnvConfig
     verbose: bool
+    p_empty: float = 0.0  # Probability of empty skill
+    p_rand: float = 0.0  # Probability of random skill
 
 
 @dataclass

@@ -12,7 +12,7 @@ from hrl.common.experiment_loader import ExperimentLoader
 from hrl.networks import NetworkType
 from hrl.state.state import StateSpace
 from hrl.skill.skill import SkillSpace
-from hrl.env.environment import MasterEnv
+from hrl.env.environment import BaseEnvironment
 from tapas_gmm.utils.argparse import parse_and_build_config
 
 
@@ -30,7 +30,7 @@ def eval_task(config: EvalConfig):
     dloader = ExperimentLoader(
         config.state_space, config.task_space, config.experiment.verbose
     )
-    env = MasterEnv(config.experiment.env, dloader.states, dloader.skills)
+    env = BaseEnvironment(config.experiment.env, dloader.states, dloader.skills)
     buffer = RolloutBuffer()
     os.makedirs("results/tasks", exist_ok=True)
     # track total training time

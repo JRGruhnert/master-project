@@ -28,7 +28,7 @@ class GoalCondition(ABC):
         return self.threshold * (self.upper_bound - self.lower_bound)
 
 
-class DefaultGoalCondition(GoalCondition):
+class IgnoreGoalCondition(GoalCondition):
     """Default goal condition based on Euclidean distance."""
 
     def distance(
@@ -37,5 +37,4 @@ class DefaultGoalCondition(GoalCondition):
         goal: torch.Tensor,
         reset: bool = False,
     ) -> bool:
-        distance = torch.norm(obs - goal).item()
-        return distance < self.relative_threshold
+        return

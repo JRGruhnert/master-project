@@ -1,8 +1,6 @@
 from abc import ABC, abstractmethod
-import json
-import pathlib
 import torch
-from hrl.observation.observation import MPObservation
+from hrl.observation.observation import EnvironmentObservation
 from hrl.state.state import State
 
 
@@ -42,8 +40,8 @@ class Skill(ABC):
 
     def distances(
         self,
-        obs: MPObservation,
-        goal: MPObservation,
+        obs: EnvironmentObservation,
+        goal: EnvironmentObservation,
         states: list[State],
         pad: bool = False,
         sparse: bool = False,
@@ -73,18 +71,28 @@ class Skill(ABC):
         """Prepare the skill for execution. Before each use."""
         self.control_duration = control_duration
         self.predict_as_batch = predict_as_batch
-        self.current_step = 0
+        self.current_step = -1  # Will be increased at first prediction
+        self.predictions = None
 
     @abstractmethod
     def predict(
         self,
-        obs: MPObservation,
-        goal: MPObservation,
-        states: list[State],
-        buffer_batch=None,
-        device: torch.device = torch.device("cpu"),
+        current: EnvironmentObservation,
+        goal: EnvironmentObservation,
     ) -> torch.Tensor | None:
         """
         Get the action for the skill.
         """
         raise NotImplementedError("Subclasses must implement predict method.")
+
+    @abstractmethod
+    def to_skill_format(
+        self,
+        current: EnvironmentObservation,
+        goal: EnvironmentObservation,
+        states: list[State],
+    ) -> dict:
+        """
+        Serialize the skill to a dictionary format.
+        """
+        raise NotImplementedError("Subclasses must implement to_format method.")

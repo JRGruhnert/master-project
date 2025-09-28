@@ -6,7 +6,7 @@ import torch
 from hrl.common.buffer import RolloutBuffer
 from hrl.networks import NetworkType, import_network
 from tapas_gmm.utils.select_gpu import device
-from hrl.observation.observation import MPObservation
+from hrl.observation.observation import EnvironmentObservation
 from hrl.networks.actor_critic import ActorCriticBase
 from hrl.state.state import State
 from hrl.skill.skill import Skill
@@ -68,15 +68,16 @@ class MasterAgent:
             lr=self.config.lr_actor,
         )
 
-        param_count = sum(p.numel() for p in self.policy_new.parameters())
-        print(f"Total {self.nt.value} parameters: {param_count}")
-        if self.nt is NetworkType.GNN_V4:
-            dummy_batch = Batch.from_data_list([obs, dummy_graph2])
-            summary(self.policy_old, input_data=(dummy_batch, goal))
-        else:
-            dummy_obs = torch.zeros(batch_size, obs_dim)
-            dummy_goal = torch.zeros(batch_size, goal_dim)
-            summary(self.policy_old, input_data=(dummy_obs, dummy_goal))
+        # param_count = sum(p.numel() for p in self.policy_new.parameters())
+        # print(f"Total {self.nt.value} parameters: {param_count}")
+        # if self.nt is NetworkType.GNN_V4:
+        #    dummy_batch = Batch.from_data_list([obs, dummy_graph2])
+        #    summary(self.policy_old, input_data=(dummy_batch, goal))
+        # else:
+        #    dummy_obs = torch.zeros(batch_size, obs_dim)
+        #    dummy_goal = torch.zeros(batch_size, goal_dim)
+        #    summary(self.policy_old, input_data=(dummy_obs, dummy_goal))
+
         ### Internal flags and counter
         self.waiting_feedback: bool = False
         self.current_epoch: int = 0
@@ -95,8 +96,8 @@ class MasterAgent:
 
     def act(
         self,
-        obs: MPObservation,
-        goal: MPObservation,
+        obs: EnvironmentObservation,
+        goal: EnvironmentObservation,
         eval: bool = False,
     ) -> Skill:
         if self.waiting_feedback:

@@ -8,7 +8,7 @@ from hrl.common.experiment_loader import ExperimentLoader
 from hrl.networks import NetworkType
 from hrl.state.state import StateSpace
 from hrl.skill.skill import SkillSpace
-from hrl.env.environment import MasterEnv
+from hrl.env.environment import BaseEnvironment
 from tapas_gmm.utils.argparse import parse_and_build_config
 
 
@@ -29,7 +29,7 @@ def eval_agent(config: EvalConfig):
     pe = config.experiment.pe
     pr = config.experiment.pr
     max_steps = int(len(dl.skills) * pe + len(dl.skills) * pr + len(dl.skills))
-    env = MasterEnv(
+    env = BaseEnvironment(
         config.experiment.env,
         dl.states,
         dl.skills,

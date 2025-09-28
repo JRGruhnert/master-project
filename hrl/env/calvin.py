@@ -2,22 +2,12 @@ from dataclasses import dataclass
 from enum import Enum
 import random
 from loguru import logger
-import numpy as np
-import re
-import torch
 
-from calvin_env.envs.observation import CalvinObservation
 from tapas_gmm.env.calvin import Calvin, CalvinConfig
-from tapas_gmm.utils.observation import (
-    CameraOrder,
-    SceneObservation,
-    SingleCamObservation,
-    dict_to_tensordict,
-    empty_batchsize,
-)
+
+from hrl.observation.calvin_tapas import MasterCalvinObs
 from hrl.state.state import State
 from hrl.skill.skill import Skill
-from hrl.observation.observation import MPObservation
 
 
 class RewardMode(Enum):
@@ -28,7 +18,6 @@ class RewardMode(Enum):
 
 @dataclass
 class MasterEnvConfig:
-    calvin_config: CalvinConfig
     debug_vis: bool
     # Reward Settings
     reward_mode: RewardMode = RewardMode.SPARSE
@@ -36,71 +25,74 @@ class MasterEnvConfig:
     min_reward: float = -1.0
 
 
-class MasterEnv:
+class CalvinEnvironment:
     def __init__(
         self,
         config: MasterEnvConfig,
-        states: list[State],
-        tasks: list[Skill],
         max_steps: int,
     ):
         self.config = config
-        self.states = states
-        self.tasks = tasks
-        self.env = Calvin(config=config.calvin_config)
-
-        self.last_gripper_action = [1.0]  # open
+        c_config = CalvinConfig(
+            task="Undefined",
+            cameras=("wrist", "front"),
+            camera_pose={},
+            image_size=(256, 256),
+            static=False,
+            headless=False,
+            scale_action=False,
+            delay_gripper=False,
+            gripper_plot=False,
+            postprocess_actions=False,
+            eval_mode=True,
+            pybullet_vis=False,
+            real_time=False,
+        )
+        self.env = Calvin(c_config)
+        self.skill: Skill = None
         self.max_steps, self.steps_left = max_steps, max_steps  # Cached property
         self.terminal = False
-        self.task: Skill = None
 
-    def reset(self, task: Skill = None) -> tuple[MPObservation, MPObservation]:
+    def reset(self, skill: Skill = None) -> tuple[MasterCalvinObs, MasterCalvinObs]:
 
         goal_calvin, _, _, _ = self.env.reset(settle_time=50)
-        self.goal = MPObservation(goal_calvin)
+        self.goal = MasterCalvinObs(goal_calvin)
 
         self.current_env, _, _, _ = self.env.reset(settle_time=50)
-        self.current = MPObservation(self.current_env)
-        if task:
-            self.task = task
-            while not self.startposition_check(task):
+        self.current = MasterCalvinObs(self.current_env)
+        if skill:
+            while not self.startposition_check(skill):
                 self.current_env, _, _, _ = self.env.reset(settle_time=50)
-                self.current = MPObservation(self.current_env)
+                self.current = MasterCalvinObs(self.current_env)
         else:
             while self.completion_check():  # Ensure that they are not the same
                 self.current_env, _, _, _ = self.env.reset(settle_time=50)
-                self.current = MPObservation(self.current_env)
+                self.current = MasterCalvinObs(self.current_env)
 
         self.steps_left = self.max_steps
         self.terminal = False
         return self.current, self.goal
 
-    def wrapped_reset(self) -> SceneObservation:  # type: ignore
-        """Resets the environment for data collection"""
-        self.reset()
-        return self.make_tapas_format(self.current_env)
-
     def step_exp1(
         self,
-        task: Skill,
-        verbose: bool = False,
+        skill: Skill,
+        skills: list[Skill],
         p_empty: float = 0.0,
         p_rand: float = 0.0,
-    ) -> tuple[float, bool, MPObservation]:
+    ) -> tuple[float, bool, MasterCalvinObs]:
         sample = random.random()
         if sample < p_empty:  # 0-p_empty>
             logger.warning("Taking Empty Step")
             pass
         elif sample < p_empty + p_rand:  # 0-p_empty + p_rand>
             logger.warning("Taking Random Step")
-            self.give_control(random.choice(self.tasks), verbose=verbose)
+            self.step(random.choice(skills))
         else:  # The rest
-            self.give_control(task, verbose=verbose)
+            self.step(skill)
         self.steps_left -= 1
         reward, done = self.evaluate()
         return reward, done, self.current
 
-    def give_control(
+    def step(
         self,
         skill: Skill,
         predict_at_once: bool = False,
@@ -113,50 +105,29 @@ class MasterEnv:
             control_duration=control_duration,
         )
         try:
-            while (
-                action := skill.predict(self.current, self.goal, self.states)
-            ) is None:
+            while (action := skill.predict(self.current, self.goal)) is not None:
                 self.current_env, _, _, _ = self.env.step(action, self.config.debug_vis)
-                self.current = MPObservation(self.current_env)
+                self.current = MasterCalvinObs(self.current_env)
         except Exception as e:
             # At some point the model crashes.
             # Have to debug if its because of bad input but seems to be not relevant for training
             logger.error(f"Error happened during step: {e}")
 
-    def wrapped_direct_step(
-        self, action: np.ndarray, verbose: bool = False
-    ) -> SceneObservation:  # type: ignore
-        """Directly step the environment with an action."""
-        logger.warning(
-            "Direct stepping the environment can break internal states and is just for tapas purposes."
-        )
-        next_calvin, step_reward, _, _ = self.env.step(action, self.config.debug_vis)
-        ee_delta = self.env.compute_ee_delta(self.current_env, next_calvin)
-        self.current_env.action = torch.Tensor(ee_delta)
-        self.current_env.reward = torch.Tensor([step_reward])
-        if verbose:
-            print(self.current_env.ee_pose)
-            print(self.current_env.ee_state)
-        tapas_obs = self.make_tapas_format(self.current_env)
-        self.current_env = next_calvin
-        self.current = MPObservation(self.current_env)
-        return tapas_obs
-
     def close(self):
         self.env.close()
 
-    def evaluate(self) -> tuple[float, bool]:
+    def evaluate(self, states: list[State], skill: Skill = None) -> tuple[float, bool]:
         if self.terminal:
             raise UserWarning(
                 "Episode already ended. Please reset the evaluator with the new goal and state."
             )
         if self.config.reward_mode is RewardMode.SPARSE:
-            if self.task:
-                if self.endposition_check(self.task):
+            if skill:
+                if self.endposition_check(skill, states):
                     return self.config.max_reward, True
                 else:
                     return self.config.min_reward, False
-            if self.completion_check():
+            if self.completion_check(states):
                 return self.config.max_reward, True
             else:
                 return self.config.min_reward, False if self.steps_left > 0 else True
@@ -165,48 +136,26 @@ class MasterEnv:
         if self.config.reward_mode is RewardMode.RANGE:
             raise NotImplementedError("Reward Mode not implemented.")
 
-    def startposition_check(self, task: Skill) -> bool:
-        ##### Checking if start position is reached
-        for state in self.states:
-            if state.name in task.task_parameters_keys:
-                if task.reversed:
-                    value = task.anti_task_parameters[state.name]
-                else:
-                    value = task.task_parameters[state.name]
-                start_reached = state.evaluate(
-                    self.current.states[state.name],
-                    value,
-                    self.eval_surfaces,
-                )
-            if not start_reached:
-                return False  # Early exit if start position is not reached
+    def _check_states(
+        self, target_states: dict, current_states: dict, states: list[State]
+    ) -> bool:
+        """Generic method to check if states match target conditions."""
+        for state in states:
+            if state.name in target_states:
+                if not state.evaluate(
+                    current_states[state.name], target_states[state.name]
+                ):
+                    return False
         return True
 
-    def endposition_check(self, task: Skill) -> bool:
-        ##### Checking if end position is reached
-        for state in self.states:
-            if state.name in task.task_parameters_keys:
-                if task.reversed:
-                    value = task.anti_task_parameters[state.name]
-                else:
-                    value = task.anti_task_parameters[state.name]
-                end_reached = state.evaluate(
-                    self.current.states[state.name],
-                    value,
-                    self.eval_surfaces,
-                )
-            if not end_reached:
-                return False  # Early exit if end position is not reached
+    def startposition_check(self, skill: Skill, states: list[State]) -> bool:
+        """Checking if skill start position is reached"""
+        return self._check_states(skill.precons, self.current.states, states)
 
-    def completion_check(self) -> bool:
-        ##### Checking if goal is reached
-        for state in self.states:
-            goal_reached = state.evaluate(
-                self.current.states[state.name],
-                self.goal.states[state.name],
-                self.eval_surfaces,
-            )
-            # print(f"State {state.name} is {goal_reached}")
-            if not goal_reached:
-                return False  # Early exit if goal is already not reached
-        return True
+    def endposition_check(self, skill: Skill, states: list[State]) -> bool:
+        """Checking if skill end position is reached"""
+        return self._check_states(skill.postcons, self.current.states, states)
+
+    def completion_check(self, states: list[State]) -> bool:
+        """Checking if goal is reached"""
+        return self._check_states(self.goal.states, self.current.states, states)

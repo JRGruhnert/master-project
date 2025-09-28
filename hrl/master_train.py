@@ -4,27 +4,23 @@ from omegaconf import OmegaConf, SCMode
 
 from conf.shared.experiment import ExperimentConfig
 from hrl.common.experiment_loader import ExperimentLoader
-from hrl.state.state import StateSpace
-from hrl.skill.skill import SkillSpace
-from hrl.env.environment import MasterEnv
+from hrl.env.calvin import CalvinEnvironment
 from hrl.common.agent import MasterAgent
 from tapas_gmm.utils.argparse import parse_and_build_config
 
 
 @dataclass
 class TrainConfig:
-    state_space: StateSpace
-    task_space: SkillSpace
+    state_space: str
+    task_space: str
     tag: str
     experiment: ExperimentConfig
 
 
 def train_agent(config: TrainConfig):
     # Initialize the environment and agent
-    dloader = ExperimentLoader(
-        config.state_space, config.task_space, config.experiment.verbose
-    )
-    env = MasterEnv(config.experiment.env, dloader.states, dloader.skills)
+    dloader = ExperimentLoader(config.state_space, config.task_space, "results/")
+    env = CalvinEnvironment(config.experiment.env)
     agent = MasterAgent(
         config.experiment.agent,
         config.experiment.nt,
@@ -42,9 +38,12 @@ def train_agent(config: TrainConfig):
         batch_rdy = False
         obs, goal = env.reset()
         while not terminal and not batch_rdy:
-            task = agent.act(obs, goal)
-            reward, terminal, obs = env.give_control(
-                task, verbose=config.experiment.verbose
+            skill = agent.act(obs, goal)
+            reward, terminal, obs = env.step_exp1(
+                skill,
+                dloader.skills,
+                p_empty=config.experiment.p_empty,
+                p_rand=config.experiment.p_rand,
             )
             batch_rdy = agent.feedback(reward, terminal)
         if batch_rdy:

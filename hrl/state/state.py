@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from hrl.state.logic.goal_condition import (
-    DefaultGoalCondition,
+    IgnoreGoalCondition,
     GoalCondition,
 )
 from hrl.state.logic.precon_converter import (
@@ -102,7 +102,7 @@ class State:
         type_str: str,
         value_converter: ValueConverter = DefaultValueConverter(),
         skill_condition: SkillCondition = DefaultSkillCondition(),
-        goal_condition: GoalCondition = DefaultGoalCondition(),
+        goal_condition: GoalCondition = IgnoreGoalCondition(),
         precon_converter: PreconConverter = DefaultPreconConverter(),
         success_condition: SuccessCondition = DefaultSuccessCondition(),
     ):

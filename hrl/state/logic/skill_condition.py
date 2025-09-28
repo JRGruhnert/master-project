@@ -12,7 +12,7 @@ class SkillCondition(ABC):
     """Abstract base class for skill evaluation strategies."""
 
     @abstractmethod
-    def evaluate(
+    def distance(
         self,
         obs: torch.Tensor,
         goal: torch.Tensor,
@@ -35,7 +35,7 @@ class SkillCondition(ABC):
 class DefaultSkillCondition(SkillCondition):
     """Default skill condition based on Euclidean distance."""
 
-    def evaluate(
+    def distance(
         self,
         obs: torch.Tensor,
         goal: torch.Tensor,
@@ -51,7 +51,7 @@ class AreaSkillCondition(SkillCondition):
     def __init__(self, surfaces: dict[str, np.ndarray]):
         self.surfaces = surfaces
 
-    def evaluate(
+    def distance(
         self,
         obs: torch.Tensor,
         goal: torch.Tensor,

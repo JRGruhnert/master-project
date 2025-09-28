@@ -23,5 +23,5 @@ class ExperimentLoader:
         return self._states
 
     @property
-    def skills(self) -> list[Skill]:
+    def skills(self) -> list[Tapas]:
         return self._skills

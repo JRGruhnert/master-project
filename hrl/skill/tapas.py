@@ -1,15 +1,13 @@
-from enum import Enum
 import json
 import pathlib
-import pprint
+import re
 from loguru import logger
 import numpy as np
 import torch
-from hrl.observation.observation import MPObservation
-from hrl.skill import skill
+from calvin_env.envs.observation import CalvinObservation
+from hrl.observation.calvin_tapas import MasterCalvinObs
 from hrl.skill.skill import Skill
 from hrl.state.state import State
-from tapas_gmm.policy.policy import Policy
 from tapas_gmm.utils.select_gpu import device
 from tapas_gmm.policy import import_policy
 from tapas_gmm.policy.gmm import GMMPolicy, GMMPolicyConfig
@@ -18,6 +16,13 @@ from tapas_gmm.policy.models.tpgmm import (
     AutoTPGMMConfig,
     ModelType,
     TPGMMConfig,
+)
+from tapas_gmm.utils.observation import (
+    CameraOrder,
+    SceneObservation,
+    SingleCamObservation,
+    dict_to_tensordict,
+    empty_batchsize,
 )
 
 
@@ -51,6 +56,7 @@ class Tapas(Skill):
     def __init__(
         self,
         name: str,
+        policy_name: str,
         id: int,
         states: list[State],
         reversed: bool,
@@ -59,11 +65,13 @@ class Tapas(Skill):
         super().__init__(name, id)
         self._reversed = reversed
         self._override_keys = override_keys
+        self.policy_name = policy_name
+        self._states = states
         self._overrides: dict[str, np.ndarray] = {}
         self._policy: GMMPolicy = self._load_policy()
-        self.initialize_conditions(states)
-        self.initialize_overrides(states)
-
+        self._initialize_conditions()
+        self._initialize_overrides()
+        self.prepare()
 
     def _policy_checkpoint_name(self) -> pathlib.Path:
         return (
@@ -128,7 +136,7 @@ class Tapas(Skill):
         policy.eval()
         return policy
 
-    def initialize_conditions(self, states: list[State], verbose: bool = False):
+    def _initialize_conditions(self):
         """
         Initialize the task parameters based on the active states.
         """
@@ -142,38 +150,32 @@ class Tapas(Skill):
                 tapas_tp.add(rot_str)
         # TODO: Currently assumes tapas tps are euler and quaternion
         # My whole code does not generalize to other Task Parameterized models and state types
-        for state in states:
-            value = state.retrieve_precon(
+        for state in self._states:
+            pre_value = state.retrieve_precon(
                 tpgmm.start_values[state.name],
                 tpgmm.end_values[state.name],
                 self._reversed,
                 True if state.name in tapas_tp else False,
             )
-            anti_value = state.retrieve_precon(
+            post_value = state.retrieve_precon(
                 tpgmm.start_values[state.name],
                 tpgmm.end_values[state.name],
                 not self._reversed,
                 True if state.name in tapas_tp else False,
             )
-            if value is not None:
-                self.precons[state.name] = value
-                self.postcons[state.name] = anti_value
+            if pre_value is not None:
+                self.precons[state.name] = pre_value
+            if post_value is not None:
+                self.postcons[state.name] = post_value
 
-        self.prepare()
-        if verbose:
-            logger.info(f"Initialized task parameters for {self.name}:")
-            logger.info(
-                "\n" + pprint.pformat(dict(self.precons), indent=2, width=80)
-            )
-
-    def initialize_overrides(self, states: list[State], verbose: bool = False):
+    def _initialize_overrides(self):
         """
         Initialize the task parameters based on the active states.
         """
         # TODO: Its a copy of initialize_task_parameters but only override states get loaded and also in reverse
         # So basically normal since reversed is True
         tpgmm: AutoTPGMM = self._policy.model
-        for state in states:
+        for state in self._states:
             if state.name in self._override_keys:
                 value = state.retrieve_precon(
                     tpgmm.start_values[state.name],
@@ -186,36 +188,161 @@ class Tapas(Skill):
                         f"Failed to create override for state {state.name}. This should not happen."
                     )
                 self._overrides[state.name] = value.numpy()
-        if verbose:
-            logger.info(f"Initialized overrides for {self.name}:")
-            logger.info(
-                "\n" + pprint.pformat(dict(self._overrides), indent=2, width=80)
-            )
 
     def prepare(self, predict_as_batch: bool = True, control_duration: int = -1):
         super().__init__(predict_as_batch, control_duration)
         self._policy.reset_episode()
 
-    def predict(self, current, states):
-        if self._predict_as_batch:
-            if self._current_step == 0:
+    def predict(
+        self,
+        current: MasterCalvinObs,
+        goal: MasterCalvinObs,
+    ) -> np.ndarray:
+        self.current_step += 1
+        if self.predict_as_batch:  # We currently only support batch prediction
+            if self.current_step == 0:
                 # Batch prediction for the given observation
+                # NOTE: Could use control_duration later to enforce certain length
                 try:
-                    predictions, _ = self.policy.predict(
-                        self.make_tapas_format(self.current_calvin, skill, self.goal)
+                    self.predictions, _ = self._policy.predict(
+                        self.to_skill_format(current, goal)
                     )
-            except Exception as e:
-                logger.error(f"Error during batch prediction: {e}")
+                except Exception as e:
+                    logger.error(f"Error during batch prediction: {e}")
+                    return None
+            if len(self.predictions) == 0 or self.current_step >= len(self.predictions):
                 return None
+            return self._to_action(self.predictions[self.current_step])
         else:
+            # TODO: DID NOT TEST YET
+            raise NotImplementedError("Non-batch prediction not implemented yet.")
+            # prediction, _ = self._policy.predict(self.to_format(current, goal))
+            # return self._to_action(prediction)
 
-        prediction, _ = self.policy.predict(
-            self.make_tapas_format(self.current_calvin, skill, self.goal)
-        )
-        #TODO Gripper state
+    def _to_action(self, prediction) -> np.ndarray:
         return np.concatenate(
-                (
-                    prediction.ee,
-                    prediction.gripper,
-                )
+            (
+                prediction.ee,
+                prediction.gripper,
             )
+        )
+
+    def to_skill_format(self, obs: CalvinObservation, goal: MasterCalvinObs = None) -> SceneObservation:  # type: ignore
+        """
+        Convert the observation from the environment to a SceneObservation. This format is used for TAPAS.
+
+        Returns
+        -------
+        SceneObservation
+            The observation in common format as SceneObservation.
+        """
+        if obs.action is None:
+            action = None
+        else:
+            action = torch.Tensor(obs.action)
+
+        if obs.reward is None:
+            reward = torch.Tensor([0.0])
+        else:
+            reward = torch.Tensor([obs.reward])
+        joint_pos = torch.Tensor(obs.joint_pos)
+        joint_vel = torch.Tensor(obs.joint_vel)
+        ee_pose = torch.Tensor(obs.ee_pose)
+        ee_state = torch.Tensor([obs.ee_state])
+        camera_obs = {}
+        for cam in obs.camera_names:
+            rgb = obs.rgb[cam].transpose((2, 0, 1)) / 255
+            mask = obs.mask[cam].astype(int)
+
+            camera_obs[cam] = SingleCamObservation(
+                **{
+                    "rgb": torch.Tensor(rgb),
+                    "depth": torch.Tensor(obs.depth[cam]),
+                    "mask": torch.Tensor(mask).to(torch.uint8),
+                    "extr": torch.Tensor(obs.extr[cam]),
+                    "intr": torch.Tensor(obs.intr[cam]),
+                },
+                batch_size=empty_batchsize,
+            )
+
+        multicam_obs = dict_to_tensordict(
+            {"_order": CameraOrder._create(obs.camera_names)} | camera_obs
+        )
+        object_poses_dict = obs.object_poses
+        object_states_dict = obs.object_states
+        if goal is not None and self._reversed:
+            # NOTE: This is only a hack to make reversed tapas models work
+            # TODO: Update this when possible
+            # logger.debug(f"Overriding Tapas Task {task.name}")
+            for state_name, state_value in self._overrides.items():
+                match_position = re.search(r"(.+?)_(?:position)", state_name)
+                match_rotation = re.search(r"(.+?)_(?:rotation)", state_name)
+                match_scalar = re.search(r"(.+?)_(?:scalar)", state_name)
+                if state_name == "ee_position":
+                    ee_pose = torch.cat(
+                        [
+                            torch.Tensor(state_value),
+                            ee_pose[3:],
+                        ]
+                    )
+                elif state_name == "ee_rotation":
+                    ee_pose = torch.cat(
+                        [
+                            ee_pose[:3],
+                            torch.Tensor(state_value),
+                        ]
+                    )
+                elif state_name == "ee_scalar":
+                    ee_state = torch.Tensor(state_value)
+
+                # TODO: Evaluate if goal state is correct here
+                elif match_position:
+                    temp_pos = self.states[0].area_tapas_override(
+                        goal.states[f"{match_position.group(1)}_position"],
+                        self.spawn_surfaces,
+                    )
+                    object_poses_dict[match_position.group(1)] = np.concatenate(
+                        [
+                            temp_pos.numpy(),
+                            object_poses_dict[match_position.group(1)][3:],
+                        ]
+                    )
+                elif match_rotation:
+                    object_poses_dict[match_rotation.group(1)] = np.concatenate(
+                        [
+                            object_poses_dict[match_rotation.group(1)][:3],
+                            goal.states[f"{match_rotation.group(1)}_rotation"].numpy(),
+                        ]
+                    )
+                elif match_scalar:
+                    object_states_dict[match_scalar.group(1)] = goal.states[
+                        f"{match_scalar.group(1)}_scalar"
+                    ].numpy()
+                else:
+                    raise ValueError(f"Unknown state name: {state_name}")
+
+        object_poses = dict_to_tensordict(
+            {
+                name: torch.Tensor(pose)
+                for name, pose in sorted(object_poses_dict.items())
+            },
+        )
+        object_states = dict_to_tensordict(
+            {
+                name: torch.Tensor([state])
+                for name, state in sorted(object_states_dict.items())
+            },
+        )
+
+        return SceneObservation(
+            feedback=reward,
+            action=action,
+            cameras=multicam_obs,
+            ee_pose=ee_pose,
+            gripper_state=ee_state,
+            object_poses=object_poses,
+            object_states=object_states,
+            joint_pos=joint_pos,
+            joint_vel=joint_vel,
+            batch_size=empty_batchsize,
+        )
