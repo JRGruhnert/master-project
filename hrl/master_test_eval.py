@@ -6,13 +6,13 @@ from omegaconf import OmegaConf, SCMode
 import concurrent.futures
 
 from conf.shared.experiment import ExperimentConfig
-from master_project.code.agent import MasterAgent
-from master_project.code.buffer import RolloutBuffer
-from master_project.code.dloader import DataLoader
-from master_project.code.networks import NetworkType
-from master_project.code.state.state import StateSpace
-from master_project.code.skill.skill import SkillSpace
-from master_project.code.env.environment import MasterEnv
+from hrl.common.agent import MasterAgent
+from hrl.common.buffer import RolloutBuffer
+from hrl.common.experiment_loader import ExperimentLoader
+from hrl.networks import NetworkType
+from hrl.state.state import StateSpace
+from hrl.skill.skill import SkillSpace
+from hrl.env.environment import MasterEnv
 from tapas_gmm.utils.argparse import parse_and_build_config
 
 
@@ -27,16 +27,16 @@ class EvalConfig:
 
 def eval_task(config: EvalConfig):
     # Initialize the environment and agent
-    dloader = DataLoader(
+    dloader = ExperimentLoader(
         config.state_space, config.task_space, config.experiment.verbose
     )
-    env = MasterEnv(config.experiment.env, dloader.states, dloader.tasks)
+    env = MasterEnv(config.experiment.env, dloader.states, dloader.skills)
     buffer = RolloutBuffer()
     os.makedirs("results/tasks", exist_ok=True)
     # track total training time
     start_time = datetime.now().replace(microsecond=0)
     task_stats: dict["str", dict[str, float]] = {}
-    for task in dloader.tasks:
+    for task in dloader.skills:
         start_time_batch = datetime.now().replace(microsecond=0)
         task_stats[task.name] = {"reward": [], "terminal": []}
         for _ in range(config.num_samples):

@@ -1,13 +1,13 @@
 import torch
 
-from master_project.code.common.observation import MasterObservation
+from hrl.observation.observation import MPObservation
 
 
 class RolloutBuffer:
     def __init__(self):
         self.actions: list[torch.Tensor] = []
-        self.obs: list[MasterObservation] = []
-        self.goal: list[MasterObservation] = []
+        self.obs: list[MPObservation] = []
+        self.goal: list[MPObservation] = []
         self.logprobs: list[torch.Tensor] = []
         self.rewards: list[float] = []
         self.values: list[torch.Tensor] = []

@@ -2,12 +2,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from omegaconf import OmegaConf, SCMode
 
-from master_project.code.dloader import DataLoader
-from master_project.code.state.state import StateSpace
-from master_project.code.skill.skill import SkillSpace
-from master_project.code.env.environment import MasterEnv, MasterEnvConfig
-from master_project.code.agent import MasterAgent, AgentConfig
-from master_project.code.networks import NetworkType
+from hrl.common.experiment_loader import ExperimentLoader
+from hrl.state.state import StateSpace
+from hrl.skill.skill import SkillSpace
+from hrl.env.environment import MasterEnv, MasterEnvConfig
+from hrl.common.agent import MasterAgent, AgentConfig
+from hrl.networks import NetworkType
 from tapas_gmm.utils.argparse import parse_and_build_config
 
 
@@ -26,14 +26,14 @@ class RetrainConfig:
 
 def train_agent(config: RetrainConfig):
     # Initialize the environment and agent
-    dloader = DataLoader(config.state_space, config.task_space, config.verbose)
-    env = MasterEnv(config.env, dloader.states, dloader.tasks)
+    dloader = ExperimentLoader(config.state_space, config.task_space, config.verbose)
+    env = MasterEnv(config.env, dloader.states, dloader.skills)
     agent = MasterAgent(
         config.agent,
         config.nt,
         config.tag,
         dloader.states,
-        dloader.tasks,
+        dloader.skills,
     )
     agent.load(config.checkpoint)
 

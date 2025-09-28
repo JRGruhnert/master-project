@@ -3,12 +3,12 @@ from omegaconf import OmegaConf, SCMode
 import concurrent.futures
 
 from conf.shared.experiment import Exp1Config, ExperimentConfig
-from master_project.code.agent import MasterAgent
-from master_project.code.dloader import DataLoader
-from master_project.code.networks import NetworkType
-from master_project.code.state.state import StateSpace
-from master_project.code.skill.skill import SkillSpace
-from master_project.code.env.environment import MasterEnv
+from hrl.common.agent import MasterAgent
+from hrl.common.experiment_loader import ExperimentLoader
+from hrl.networks import NetworkType
+from hrl.state.state import StateSpace
+from hrl.skill.skill import SkillSpace
+from hrl.env.environment import MasterEnv
 from tapas_gmm.utils.argparse import parse_and_build_config
 
 
@@ -23,14 +23,16 @@ class EvalConfig:
 
 def eval_agent(config: EvalConfig):
     # Initialize the environment and agent
-    dl = DataLoader(config.state_space, config.task_space, config.experiment.verbose)
+    dl = ExperimentLoader(
+        config.state_space, config.task_space, config.experiment.verbose
+    )
     pe = config.experiment.pe
     pr = config.experiment.pr
-    max_steps = int(len(dl.tasks) * pe + len(dl.tasks) * pr + len(dl.tasks))
+    max_steps = int(len(dl.skills) * pe + len(dl.skills) * pr + len(dl.skills))
     env = MasterEnv(
         config.experiment.env,
         dl.states,
-        dl.tasks,
+        dl.skills,
         max_steps,
     )
     agent = MasterAgent(
@@ -38,7 +40,7 @@ def eval_agent(config: EvalConfig):
         config.experiment.nt,
         config.tag,
         dl.states,
-        dl.tasks,
+        dl.skills,
     )
 
     agent.load(config.checkpoint)

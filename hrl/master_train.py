@@ -3,11 +3,11 @@ from datetime import datetime
 from omegaconf import OmegaConf, SCMode
 
 from conf.shared.experiment import ExperimentConfig
-from master_project.code.dloader import DataLoader
-from master_project.code.state.state import StateSpace
-from master_project.code.skill.skill import SkillSpace
-from master_project.code.env.environment import MasterEnv
-from master_project.code.agent import MasterAgent
+from hrl.common.experiment_loader import ExperimentLoader
+from hrl.state.state import StateSpace
+from hrl.skill.skill import SkillSpace
+from hrl.env.environment import MasterEnv
+from hrl.common.agent import MasterAgent
 from tapas_gmm.utils.argparse import parse_and_build_config
 
 
@@ -21,16 +21,16 @@ class TrainConfig:
 
 def train_agent(config: TrainConfig):
     # Initialize the environment and agent
-    dloader = DataLoader(
+    dloader = ExperimentLoader(
         config.state_space, config.task_space, config.experiment.verbose
     )
-    env = MasterEnv(config.experiment.env, dloader.states, dloader.tasks)
+    env = MasterEnv(config.experiment.env, dloader.states, dloader.skills)
     agent = MasterAgent(
         config.experiment.agent,
         config.experiment.nt,
         config.tag,
         dloader.states,
-        dloader.tasks,
+        dloader.skills,
     )
 
     # track total training time
@@ -43,7 +43,7 @@ def train_agent(config: TrainConfig):
         obs, goal = env.reset()
         while not terminal and not batch_rdy:
             task = agent.act(obs, goal)
-            reward, terminal, obs = env.step_exp1(
+            reward, terminal, obs = env.give_control(
                 task, verbose=config.experiment.verbose
             )
             batch_rdy = agent.feedback(reward, terminal)

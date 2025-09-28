@@ -3,13 +3,13 @@ import os
 import torch
 from torch import nn
 import torch
-from master_project.code.buffer import RolloutBuffer
-from master_project.code.networks import NetworkType, import_network
+from hrl.common.buffer import RolloutBuffer
+from hrl.networks import NetworkType, import_network
 from tapas_gmm.utils.select_gpu import device
-from master_project.code.common.observation import MasterObservation
-from master_project.code.networks.base import ActorCriticBase
-from master_project.code.state.state import State
-from master_project.code.skill.skill import Skill
+from hrl.observation.observation import MPObservation
+from hrl.networks.actor_critic import ActorCriticBase
+from hrl.state.state import State
+from hrl.skill.skill import Skill
 from ptflops import get_model_complexity_info
 from torchinfo import summary
 from torch_geometric.data import Batch
@@ -95,8 +95,8 @@ class MasterAgent:
 
     def act(
         self,
-        obs: MasterObservation,
-        goal: MasterObservation,
+        obs: MPObservation,
+        goal: MPObservation,
         eval: bool = False,
     ) -> Skill:
         if self.waiting_feedback:

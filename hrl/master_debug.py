@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 from omegaconf import OmegaConf, SCMode
 
-from master_project.code.dloader import DataLoader
-from master_project.code.env.environment import MasterEnv, MasterEnvConfig
-from master_project.code.agent import AgentConfig
-from master_project.code.networks import NetworkType
-from master_project.code.state.state import StateSpace
+from hrl.common.experiment_loader import ExperimentLoader
+from hrl.env.environment import MasterEnv, MasterEnvConfig
+from hrl.common.agent import AgentConfig
+from hrl.networks import NetworkType
+from hrl.state.state import StateSpace
 from tapas_gmm.utils.argparse import parse_and_build_config
 
 
@@ -33,12 +33,12 @@ class MasterConfig:
 
 
 def train_agent(config: MasterConfig):
-    dloader = DataLoader(config.state_space, config.task_space, config.verbose)
-    env = MasterEnv(config.env, dloader.states, dloader.tasks)
+    dloader = ExperimentLoader(config.state_space, config.task_space, config.verbose)
+    env = MasterEnv(config.env, dloader.states, dloader.skills)
     env.reset()
     while True:
         print(f"{0}: Reset")
-        for i, task in enumerate(dloader.tasks, start=1):
+        for i, task in enumerate(dloader.skills, start=1):
             print(f"{i}: {task.name}")
         choice = input("Enter the Task id: ")
         task_id = int(choice)
@@ -47,7 +47,7 @@ def train_agent(config: MasterConfig):
             env.reset()
         else:
             task_id -= 1  # Adjust for zero-based index
-            env.step(dloader.tasks[task_id], verbose=True)
+            env.give_control(dloader.skills[task_id], verbose=True)
 
 
 def entry_point():

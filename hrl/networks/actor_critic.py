@@ -5,14 +5,14 @@ import torch.nn as nn
 from torch.distributions import Categorical
 from abc import ABC, abstractmethod
 from torch_geometric.data import Batch, HeteroData
-from master_project.code.networks.layers.encoder import (
+from hrl.networks.layers.encoder import (
     QuaternionEncoder,
     ScalarEncoder,
     PositionEncoder,
 )
-from master_project.code.common.observation import MasterObservation
-from master_project.code.state.state import State, StateType
-from master_project.code.skill.skill import Skill
+from hrl.observation.observation import MPObservation
+from hrl.state.state import State, StateType
+from hrl.skill.skill import Skill
 from tapas_gmm.utils.select_gpu import device
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -60,23 +60,23 @@ class ActorCriticBase(nn.Module, ABC):
     @abstractmethod
     def forward(
         self,
-        obs: list[MasterObservation],
-        goal: list[MasterObservation],
+        obs: list[MPObservation],
+        goal: list[MPObservation],
     ) -> tuple[torch.Tensor, torch.Tensor]:
         pass
 
     @abstractmethod
     def to_batch(
         self,
-        obs: list[MasterObservation],
-        goal: list[MasterObservation],
+        obs: list[MPObservation],
+        goal: list[MPObservation],
     ):
         pass
 
     def act(
         self,
-        obs: MasterObservation,
-        goal: MasterObservation,
+        obs: MPObservation,
+        goal: MPObservation,
         eval_mode: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         logits, value = self.forward([obs], [goal])
@@ -96,8 +96,8 @@ class ActorCriticBase(nn.Module, ABC):
 
     def evaluate(
         self,
-        obs: list[MasterObservation],
-        goal: list[MasterObservation],
+        obs: list[MPObservation],
+        goal: list[MPObservation],
         action: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         assert len(obs) == len(goal), "Observation and Goal lists have different sizes."
@@ -117,7 +117,7 @@ class ActorCriticBase(nn.Module, ABC):
 
     def state_type_dict_values(
         self,
-        x: MasterObservation,
+        x: MPObservation,
     ) -> dict[StateType, torch.Tensor]:
         grouped = {t: [] for t in StateType}
         for state in self.states:
@@ -133,8 +133,8 @@ class ActorCriticBase(nn.Module, ABC):
 class BaselineBase(ActorCriticBase):
     def to_batch(
         self,
-        obs: list[MasterObservation],
-        goal: list[MasterObservation],
+        obs: list[MPObservation],
+        goal: list[MPObservation],
     ):
         obs_dicts = [self.state_type_dict_values(o) for o in obs]
         goal_dicts = [self.state_type_dict_values(g) for g in goal]
@@ -153,13 +153,13 @@ class BaselineBase(ActorCriticBase):
 
 class GnnBase(ActorCriticBase, ABC):
     @abstractmethod
-    def to_data(self, obs: MasterObservation, goal: MasterObservation) -> HeteroData:
+    def to_data(self, obs: MPObservation, goal: MPObservation) -> HeteroData:
         pass
 
     def to_batch(
         self,
-        obs: list[MasterObservation],
-        goal: list[MasterObservation],
+        obs: list[MPObservation],
+        goal: list[MPObservation],
     ) -> Batch:
         data = []
         for o, g in zip(obs, goal):
@@ -167,7 +167,7 @@ class GnnBase(ActorCriticBase, ABC):
         return Batch.from_data_list(data)
 
     def encode_states(
-        self, obs: MasterObservation, goal: MasterObservation
+        self, obs: MPObservation, goal: MPObservation
     ) -> tuple[torch.Tensor, torch.Tensor]:
         obs_encoded = [
             self.encoder_obs[state.type.name](obs.states[state.name].to(device))
@@ -183,8 +183,8 @@ class GnnBase(ActorCriticBase, ABC):
 
     def task_state_distances(
         self,
-        obs: MasterObservation,
-        goal: MasterObservation,
+        obs: MPObservation,
+        goal: MPObservation,
         pad: bool = False,
         sparse: bool = False,
     ) -> torch.Tensor:
@@ -271,8 +271,8 @@ class GnnBase(ActorCriticBase, ABC):
 
     def state_task_attr_weighted(
         self,
-        current: MasterObservation,
-        goal: MasterObservation,
+        current: MPObservation,
+        goal: MPObservation,
         pad: bool = True,
         sparse: bool = False,
     ) -> torch.Tensor:
@@ -291,7 +291,7 @@ class GnnBase(ActorCriticBase, ABC):
         return edge_attr
 
     def state_task_attr_weighted_sparse(
-        self, current: MasterObservation, goal: MasterObservation, pad: bool = True
+        self, current: MPObservation, goal: MPObservation, pad: bool = True
     ) -> torch.Tensor:
         dist_matrix = self.task_state_distances(current, goal, pad)  # [T, S, 2]
         # Now safely get edge attributes for (task, state) pairs: [E, 2]
