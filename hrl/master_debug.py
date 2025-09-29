@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from omegaconf import OmegaConf, SCMode
 
-from hrl.common.experiment_loader import ExperimentLoader
+from hrl.common.experiment import Experiment
 from hrl.env.environment import BaseEnvironment, MasterEnvConfig
 from hrl.common.agent import AgentConfig
 from hrl.networks import NetworkType
@@ -33,7 +33,7 @@ class MasterConfig:
 
 
 def train_agent(config: MasterConfig):
-    dloader = ExperimentLoader(config.state_space, config.task_space, config.verbose)
+    dloader = Experiment(config.state_space, config.task_space, config.verbose)
     env = BaseEnvironment(config.env, dloader.states, dloader.skills)
     env.reset()
     while True:

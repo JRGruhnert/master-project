@@ -7,6 +7,8 @@ from functools import cached_property
 import torch
 import numpy as np
 
+from hrl.state.logic.mixin import AreaCheckMixin
+
 
 class SkillCondition(ABC):
     """Abstract base class for skill evaluation strategies."""
@@ -16,111 +18,318 @@ class SkillCondition(ABC):
         self,
         obs: torch.Tensor,
         goal: torch.Tensor,
-        reset: bool = False,
-    ) -> bool:
+    ) -> float:
         """Evaluate goal condition for the given state."""
         raise NotImplementedError("Subclasses must implement the evaluate method.")
 
-    @property
-    def threshold(self) -> float:
-        """Returns the threshold for the state."""
-        return 0.05
 
-    @cached_property
-    def relative_threshold(self) -> torch.Tensor:
-        """Returns the relative threshold for the state."""
-        return self.threshold * (self.upper_bound - self.lower_bound)
-
-
-class DefaultSkillCondition(SkillCondition):
-    """Default skill condition based on Euclidean distance."""
-
-    def distance(
-        self,
-        obs: torch.Tensor,
-        goal: torch.Tensor,
-        reset: bool = False,
-    ) -> bool:
-        distance = torch.norm(obs - goal).item()
-        return distance < self.relative_threshold
-
-
-class AreaSkillCondition(SkillCondition):
+class AreaSkillCondition(SkillCondition, AreaCheckMixin):
     """Skill condition based on area matching."""
 
-    def __init__(self, surfaces: dict[str, np.ndarray]):
-        self.surfaces = surfaces
-
     def distance(
         self,
         obs: torch.Tensor,
         goal: torch.Tensor,
     ) -> bool:
-        return self.check_area_states(obs, goal)
+        return self._check_area_states(obs, goal)
 
-    def area_tapas_override(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Override the area check for TAPAS.
-        """
-        area = self.check_area(x)
-        if area == "closed_drawer":
-            x[1] -= 0.17  # Drawer Offset
-        return x  # Return original point if no area match
 
-    def check_area(self, x: torch.Tensor) -> str | None:
-        """
-        Check if the point x is in any of the defined areas.
-        Returns the name of the area or None if not found.
-        """
-        for name, surface in self.surfaces.items():
-            if self.point_in_polygon(x.numpy(), surface):
-                return name
-        return None
+class Euler2State(State):
+    def tp_distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+        tp: torch.Tensor,
+    ) -> float:
+        nx = self.normalize(current)
+        ny = self.normalize(tp)
+        return torch.linalg.norm(nx - ny)
 
-    def check_area_states(self, obs: torch.Tensor, goal: torch.Tensor) -> bool:
-        """
-        Check if both obs and goal are in the same area.
-        """
-        obs_area = self.check_area(obs)
-        goal_area = self.check_area(goal)
-        return obs_area is not None and obs_area == goal_area
+    def goal_distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+    ) -> float:
+        """Returns the distance of the state as a tensor."""
+        return self.tp_distance(current, goal, goal)
 
-    def make_eval_surfaces(
-        self, surfaces: dict[str, np.ndarray], padding_percent: float
+
+class Quaternion2State(State):
+    def normalize_quat(self, x: torch.Tensor) -> torch.Tensor:
+        x = x / torch.linalg.norm(x)
+        if x[3] < 0:
+            return -x
+        return x
+
+    def value(self, x):
+        return self.normalize_quat(x)
+
+    def tp_distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+        tp: torch.Tensor,
+    ) -> float:
+        nx = self.normalize_quat(current)
+        ny = self.normalize_quat(tp)
+        dot = torch.clamp(torch.abs(torch.dot(nx, ny)), -1.0, 1.0)
+        return 2.0 * torch.arccos(dot)
+
+    def goal_distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+    ) -> float:
+        """Returns the distance of the state as a tensor."""
+        return self.tp_distance(current, goal, goal)
+
+
+class Range2State(State):
+
+    def tp_distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+        tp: torch.Tensor,
+    ) -> float:
+        cx = torch.clamp(current, self.lower_bound, self.upper_bound)
+        cy = torch.clamp(tp, self.lower_bound, self.upper_bound)
+        nx = self.normalize(cx)
+        ny = self.normalize(cy)
+        return torch.abs(nx - ny).item()
+
+    def goal_distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+    ) -> float:
+        """Returns the distance of the state as a tensor."""
+        return self.tp_distance(current, goal, goal)
+
+
+class Boolean2State(State):
+
+    def tp_distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+        tp: torch.Tensor,
+    ) -> float:
+        return torch.abs(current - tp).item()
+
+    def goal_distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+    ) -> float:
+        """Returns the distance of the state as a tensor."""
+        return self.tp_distance(current, goal, goal)
+
+
+class Flip2State(State):
+
+    def tp_distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+        tp: torch.Tensor,
+    ) -> float:
+        """Returns the distance of the state as a tensor."""
+        return (tp - torch.abs(current - goal)).item()  # Flips distance
+
+    def goal_distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+    ) -> float:
+        """Returns the distance of the state as a tensor."""
+        return torch.abs(current - goal).item()
+
+
+class EulerAngleLogic(LinearStateLogic):
+    """Logic for Euler angle states (3D rotations) - needs bounds."""
+
+    def __init__(
+        self,
+        lower_bound: torch.Tensor,
+        upper_bound: torch.Tensor,
+        threshold: float = 0.05,
     ):
-        eval_surfaces: dict[str, np.ndarray] = surfaces
-        eval_surfaces["table"] = self.add_surface_padding(
-            eval_surfaces["table"], padding_percent
-        )
-        eval_surfaces["drawer_open"][0][0] -= 0.02
-        eval_surfaces["drawer_open"][1][0] += 0.02
-        eval_surfaces["drawer_closed"][0][0] -= 0.02
-        eval_surfaces["drawer_closed"][1][0] += 0.02
-        eval_surfaces["drawer_open"][0][1] -= 0.02
-        eval_surfaces["drawer_open"][1][1] += 0.02
-        eval_surfaces["drawer_closed"][0][1] -= 0.02
-        eval_surfaces["drawer_closed"][1][1] += 0.02
+        # Validate that bounds are 3D before calling super
+        assert lower_bound.shape == upper_bound.shape == (3,), "Euler angles must be 3D"
+        super().__init__(lower_bound, upper_bound, threshold)
 
-        return {k: torch.from_numpy(np.array(v)) for k, v in eval_surfaces.items()}
+    def tp_distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+        tp: torch.Tensor,
+    ) -> float:
+        """Compute normalized Euclidean distance for Euler angles."""
+        nx = self.normalize(current)
+        ny = self.normalize(tp)
+        return torch.linalg.norm(nx - ny).item()
 
-    def add_surface_padding(self, surface, padding_percent: float):
-        """Add padding to surface bounds in x and y directions"""
-        # surface = np.array(surface)
+    def goal_distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+    ) -> float:
+        """Compute distance to goal."""
+        return self.tp_distance(current, goal, goal)
 
-        # Get bounds
-        x_min, y_min, z_min = surface[0]
-        x_max, y_max, z_max = surface[1]
 
-        # Calculate padding amounts
-        x_range = x_max - x_min
-        y_range = y_max - y_min
-        x_padding = x_range * padding_percent / 2  # Divide by 2 for each side
-        y_padding = y_range * padding_percent / 2
+class QuaternionValueConverter(ValueConverter):
+    """Logic for quaternion states (4D rotations) - no bounds needed."""
 
-        # Apply padding (keep z unchanged)
-        padded_surface = [
-            [x_min - x_padding, y_min - y_padding, z_min],
-            [x_max + x_padding, y_max + y_padding, z_max],
-        ]
+    def __init__(self, threshold: float = 0.05):
+        # Quaternions don't need bounds - they're always unit quaternions
+        super().__init__(threshold)
 
-        return padded_surface
+    def normalize_quat(self, x: torch.Tensor) -> torch.Tensor:
+        """Normalize quaternion and ensure positive w component."""
+        x = x / torch.linalg.norm(x)
+        if x[3] < 0:
+            return -x
+        return x
+
+    def value(self, x: torch.Tensor) -> torch.Tensor:
+        """Normalize the quaternion."""
+        return self.normalize_quat(x)
+
+    def tp_distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+        tp: torch.Tensor,
+    ) -> float:
+        """Compute quaternion distance using angular metric."""
+        nx = self.normalize_quat(current)
+        ny = self.normalize_quat(tp)
+        dot = torch.clamp(torch.abs(torch.dot(nx, ny)), 0.0, 1.0)
+        return 2.0 * torch.arccos(dot).item()
+
+    def goal_distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+    ) -> float:
+        """Compute distance to goal."""
+        return self.tp_distance(current, goal, goal)
+
+
+class RangeLogic(LinearStateLogic):
+    """Logic for scalar range states - needs bounds."""
+
+    def __init__(
+        self,
+        lower_bound: torch.Tensor,
+        upper_bound: torch.Tensor,
+        threshold: float = 0.05,
+    ):
+        # Validate that bounds are scalar before calling super
+        assert (
+            lower_bound.shape == upper_bound.shape == (1,)
+        ), "Range states must be scalar"
+        super().__init__(lower_bound, upper_bound, threshold)
+
+    def tp_distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+        tp: torch.Tensor,
+    ) -> float:
+        """Compute normalized distance for range states."""
+        cx = torch.clamp(current, self.lower_bound, self.upper_bound)
+        cy = torch.clamp(tp, self.lower_bound, self.upper_bound)
+        nx = self.normalize(cx)
+        ny = self.normalize(cy)
+        return torch.abs(nx - ny).item()
+
+    def goal_distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+    ) -> float:
+        """Compute distance to goal."""
+        return self.tp_distance(current, goal, goal)
+
+
+class BooleanLogic(DiscreteStateLogic):
+    """Logic for boolean states - no bounds needed, just 0/1 values."""
+
+    def __init__(self, threshold: float = 0.05):
+        super().__init__(threshold)
+        # For boolean logic, we can define a relative threshold for consistency checks
+        self.relative_threshold = torch.tensor([threshold])
+
+    def tp_distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+        tp: torch.Tensor,
+    ) -> float:
+        """Compute boolean distance (0 or 1)."""
+        return torch.abs(current - tp).item()
+
+    def goal_distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+    ) -> float:
+        """Compute distance to goal."""
+        return self.tp_distance(current, goal, goal)
+
+    def make_tp(
+        self,
+        start: torch.Tensor,
+        end: torch.Tensor,
+        reversed: bool,
+        tapas_selection: bool = True,
+    ) -> torch.Tensor | None:
+        """Generate trajectory point if boolean state is consistent."""
+        if reversed:
+            std = end.std(dim=0)
+            if (std < self.relative_threshold).all():
+                return end.mean(dim=0)
+        else:
+            std = start.std(dim=0)
+            if (std < self.relative_threshold).all():
+                return start.mean(dim=0)
+        return None  # Not consistent enough
+
+
+class FlipLogic(DiscreteStateLogic):
+    """Logic for flip states (inverted distance) - no bounds needed."""
+
+    def __init__(self, threshold: float = 0.05):
+        super().__init__(threshold)
+
+    def tp_distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+        tp: torch.Tensor,
+    ) -> float:
+        """Compute flipped distance (inverted)."""
+        return (tp - torch.abs(current - goal)).item()  # Flipped distance
+
+    def goal_distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+    ) -> float:
+        """Compute normal distance to goal."""
+        return torch.abs(current - goal).item()
+
+    def make_tp(
+        self,
+        start: torch.Tensor,
+        end: torch.Tensor,
+        reversed: bool,
+        tapas_selection: bool = True,
+    ) -> torch.Tensor | None:
+        """Generate trajectory point if flip occurred."""
+        if (end == (1 - start)).all(dim=0).all():
+            return torch.tensor([1.0])  # Flip state detected
+        return None

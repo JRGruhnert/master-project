@@ -8,7 +8,7 @@ import concurrent.futures
 from conf.shared.experiment import ExperimentConfig
 from hrl.common.agent import MasterAgent
 from hrl.common.buffer import RolloutBuffer
-from hrl.common.experiment_loader import ExperimentLoader
+from hrl.common.experiment import Experiment
 from hrl.networks import NetworkType
 from hrl.state.state import StateSpace
 from hrl.skill.skill import SkillSpace
@@ -27,7 +27,7 @@ class EvalConfig:
 
 def eval_task(config: EvalConfig):
     # Initialize the environment and agent
-    dloader = ExperimentLoader(
+    dloader = Experiment(
         config.state_space, config.task_space, config.experiment.verbose
     )
     env = BaseEnvironment(config.experiment.env, dloader.states, dloader.skills)

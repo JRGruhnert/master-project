@@ -10,9 +10,6 @@ from hrl.observation.observation import EnvironmentObservation
 from hrl.networks.actor_critic import ActorCriticBase
 from hrl.state.state import State
 from hrl.skill.skill import Skill
-from ptflops import get_model_complexity_info
-from torchinfo import summary
-from torch_geometric.data import Batch
 
 
 @dataclass
@@ -49,7 +46,7 @@ class MasterAgent:
         nt: NetworkType,
         tag: str,
         states: list[State],
-        tasks: list[Skill],
+        skills: list[Skill],
     ):
         # Hyperparameters
         self.config = config
@@ -58,30 +55,18 @@ class MasterAgent:
         print("Using network:", nt)
         ### Initialize the agent
         self.states: list[State] = states
-        self.tasks: list[Skill] = tasks
+        self.skills: list[Skill] = skills
         self.mse_loss = nn.MSELoss()
         self.buffer = RolloutBuffer()
-        self.policy_new: ActorCriticBase = Net(states, tasks).to(device)
-        self.policy_old: ActorCriticBase = Net(states, tasks).to(device)
+        self.policy_new: ActorCriticBase = Net(states, skills).to(device)
+        self.policy_old: ActorCriticBase = Net(states, skills).to(device)
         self.optimizer = torch.optim.AdamW(
             self.policy_new.parameters(),
             lr=self.config.lr_actor,
         )
 
-        # param_count = sum(p.numel() for p in self.policy_new.parameters())
-        # print(f"Total {self.nt.value} parameters: {param_count}")
-        # if self.nt is NetworkType.GNN_V4:
-        #    dummy_batch = Batch.from_data_list([obs, dummy_graph2])
-        #    summary(self.policy_old, input_data=(dummy_batch, goal))
-        # else:
-        #    dummy_obs = torch.zeros(batch_size, obs_dim)
-        #    dummy_goal = torch.zeros(batch_size, goal_dim)
-        #    summary(self.policy_old, input_data=(dummy_obs, dummy_goal))
-
         ### Internal flags and counter
-        self.waiting_feedback: bool = False
         self.current_epoch: int = 0
-        # For early stopping
         self.best_success = 0
         self.epochs_since_improvement = 0
 
@@ -100,33 +85,18 @@ class MasterAgent:
         goal: EnvironmentObservation,
         eval: bool = False,
     ) -> Skill:
-        if self.waiting_feedback:
-            raise UserWarning(
-                "The agent hasn't recieved any feedback of previous action yet. "
-                "Learning will not work without feedback. Please call feedback() fafter every act() call."
-            )
-
         with torch.no_grad():
             action, action_logprob, state_val = self.policy_old.act(obs, goal, eval)
-
         self.buffer.obs.append(obs)
         self.buffer.goal.append(goal)
         self.buffer.actions.append(action)
         self.buffer.logprobs.append(action_logprob)
         self.buffer.values.append(state_val)
-        self.waiting_feedback = True
-        return self.tasks[action.item()]  # Can safely be accessed
+        return self.skills[action.item()]  # Can safely be accessed
 
     def feedback(self, reward: float, terminal: bool):
-        if not self.waiting_feedback:
-            raise UserWarning(
-                "The agent is recieving feedback without any action taken. "
-                "Learning will not work without actions. Is this correct?"
-            )
-
         self.buffer.rewards.append(reward)
         self.buffer.terminals.append(terminal)
-        self.waiting_feedback = False
         return self.buffer.has_batch(self.config.batch_size)
 
     def compute_gae(
@@ -169,14 +139,17 @@ class MasterAgent:
             self.save()
 
         total_reward, episode_length, success_rate = self.buffer.stats()
-        if verbose:
 
-            print(
-                f"Total Reward: {total_reward} \t Episode Length: {episode_length:.2f} \t Success Rate: {success_rate:.3f}"
-            )
-
-            print(
-                f"Called learning on new batch (Batch {self.current_epoch}). Updating gradients of the agent!"
+        if self.config.use_wandb:
+            self.run.log(
+                {
+                    "reward": total_reward,
+                    "success_rate": success_rate,
+                    "episode_length": episode_length,
+                    "epoch": self.current_epoch,
+                    "best_success": self.best_success,
+                    "epochs_since_improvement": self.epochs_since_improvement,
+                }
             )
 
         ### Check for early stop (Plateau reached)

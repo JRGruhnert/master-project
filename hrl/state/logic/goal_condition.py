@@ -12,20 +12,9 @@ class GoalCondition(ABC):
         self,
         obs: torch.Tensor,
         goal: torch.Tensor,
-        reset: bool = False,
     ) -> bool:
         """Evaluate goal condition for the given state."""
         raise NotImplementedError("Subclasses must implement the evaluate method.")
-
-    @property
-    def threshold(self) -> float:
-        """Returns the threshold for the state."""
-        return 0.05
-
-    @cached_property
-    def relative_threshold(self) -> torch.Tensor:
-        """Returns the relative threshold for the state."""
-        return self.threshold * (self.upper_bound - self.lower_bound)
 
 
 class IgnoreGoalCondition(GoalCondition):
@@ -33,8 +22,7 @@ class IgnoreGoalCondition(GoalCondition):
 
     def distance(
         self,
-        obs: torch.Tensor,
+        current: torch.Tensor,
         goal: torch.Tensor,
-        reset: bool = False,
-    ) -> bool:
-        return
+    ) -> float:
+        return True  # Always return True, ignoring the goal condition

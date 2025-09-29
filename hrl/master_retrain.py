@@ -1,11 +1,10 @@
 from dataclasses import dataclass
 from datetime import datetime
 from omegaconf import OmegaConf, SCMode
+import wandb
 
-from hrl.common.experiment_loader import ExperimentLoader
-from hrl.state.state import StateSpace
-from hrl.skill.skill import SkillSpace
-from hrl.env.environment import BaseEnvironment, MasterEnvConfig
+from hrl.common.experiment import Experiment
+from hrl.env.calvin import CalvinEnvironment, MasterEnvConfig
 from hrl.common.agent import MasterAgent, AgentConfig
 from hrl.networks import NetworkType
 from tapas_gmm.utils.argparse import parse_and_build_config
@@ -13,8 +12,8 @@ from tapas_gmm.utils.argparse import parse_and_build_config
 
 @dataclass
 class RetrainConfig:
-    state_space: StateSpace
-    task_space: SkillSpace
+    state_space: str
+    task_space: str
     tag: str
     nt: NetworkType
     agent: AgentConfig
@@ -23,11 +22,16 @@ class RetrainConfig:
     keep_epoch: bool
     verbose: bool = True
 
+    # New wandb parameters
+    use_wandb: bool = True
+    p_empty: float = 0.0  # Probability of empty skill
+    p_rand: float = 0.0  # Probability of random skill
+
 
 def train_agent(config: RetrainConfig):
     # Initialize the environment and agent
-    dloader = ExperimentLoader(config.state_space, config.task_space, config.verbose)
-    env = BaseEnvironment(config.env, dloader.states, dloader.skills)
+    dloader = Experiment(config.state_space, config.task_space, "data/")
+    env = CalvinEnvironment(config.env, dloader.max_steps)
     agent = MasterAgent(
         config.agent,
         config.nt,
@@ -36,6 +40,21 @@ def train_agent(config: RetrainConfig):
         dloader.skills,
     )
     agent.load(config.checkpoint)
+    # Initialize wandb
+    if config.use_wandb:
+        run = wandb.init(
+            entity="experiments",
+            project="retraining",
+            config={
+                "state_space": config.state_space,
+                "task_space": config.task_space,
+                "tag": config.tag,
+                "nt": config.nt.value,
+                "checkpoint": config.checkpoint,
+            },
+        )
+        for name, param in agent.policy_new.named_parameters():
+            run.log({f"{name}": wandb.Histogram(param.data.cpu())})
 
     # track total training time
     start_time = datetime.now().replace(microsecond=0)
@@ -46,12 +65,20 @@ def train_agent(config: RetrainConfig):
         batch_rdy = False
         obs, goal = env.reset()
         while not terminal and not batch_rdy:
-            task = agent.act(obs, goal)
-            reward, terminal, obs = env.step_exp1(task, verbose=config.verbose)
+            skill = agent.act(obs, goal)
+            reward, terminal, obs = env.step_exp1(
+                skill,
+                dloader.skills,
+                p_empty=config.p_empty,
+                p_rand=config.p_rand,
+            )
             batch_rdy = agent.feedback(reward, terminal)
         if batch_rdy:
             start_time_learning = datetime.now().replace(microsecond=0)
             stop_training = agent.learn(verbose=config.verbose)
+            if config.use_wandb:
+                for name, param in agent.policy_new.named_parameters():
+                    run.log({f"{name}": wandb.Histogram(param.data.cpu())})
             end_time_learning = datetime.now().replace(microsecond=0)
             print(
                 f"""
@@ -64,6 +91,7 @@ def train_agent(config: RetrainConfig):
                 """
             )
     env.close()
+    run.finish()
     end_time = datetime.now().replace(microsecond=0)
     print(
         f"""

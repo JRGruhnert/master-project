@@ -1,9 +1,10 @@
 from dataclasses import dataclass
 from datetime import datetime
 from omegaconf import OmegaConf, SCMode
+import wandb
 
 from conf.shared.experiment import ExperimentConfig
-from hrl.common.experiment_loader import ExperimentLoader
+from hrl.common.experiment import Experiment
 from hrl.env.calvin import CalvinEnvironment
 from hrl.common.agent import MasterAgent
 from tapas_gmm.utils.argparse import parse_and_build_config
@@ -11,15 +12,16 @@ from tapas_gmm.utils.argparse import parse_and_build_config
 
 @dataclass
 class TrainConfig:
-    state_space: str
-    task_space: str
     tag: str
     experiment: ExperimentConfig
+
+    # New wandb parameters
+    use_wandb: bool = True
 
 
 def train_agent(config: TrainConfig):
     # Initialize the environment and agent
-    dloader = ExperimentLoader(config.state_space, config.task_space, "results/")
+    dloader = Experiment(config.experiment, "results/")
     env = CalvinEnvironment(config.experiment.env)
     agent = MasterAgent(
         config.experiment.agent,
@@ -28,6 +30,23 @@ def train_agent(config: TrainConfig):
         dloader.states,
         dloader.skills,
     )
+
+    # Initialize wandb
+    if config.use_wandb:
+        run = wandb.init(
+            entity="experiments",
+            project="training",
+            config={
+                "state_tag": config.experiment.states_tag,
+                "task_tag": config.experiment.skills_tag,
+                "tag": config.tag,
+                "nt": config.experiment.nt.value,
+                "p_empty": config.experiment.p_empty,
+                "p_rand": config.experiment.p_rand,
+            },
+        )
+        for name, param in agent.policy_new.named_parameters():
+            run.log({f"{name}": wandb.Histogram(param.data.cpu())})
 
     # track total training time
     start_time = datetime.now().replace(microsecond=0)
@@ -49,6 +68,10 @@ def train_agent(config: TrainConfig):
         if batch_rdy:
             start_time_learning = datetime.now().replace(microsecond=0)
             stop_training = agent.learn(verbose=config.experiment.verbose)
+            if config.use_wandb:
+                for name, param in agent.policy_new.named_parameters():
+                    run.log({f"{name}": wandb.Histogram(param.data.cpu())})
+
             end_time_learning = datetime.now().replace(microsecond=0)
             print(
                 f"""
@@ -61,6 +84,7 @@ def train_agent(config: TrainConfig):
                 """
             )
     env.close()
+    run.finish()
     end_time = datetime.now().replace(microsecond=0)
     print(
         f"""

@@ -20,7 +20,7 @@ from hrl.state.logic.value_converter import (
     ValueConverter,
 )
 from hrl.state.logic.success_condition import (
-    DefaultSuccessCondition,
+    EulerPrecisionSuccessCondition,
     SuccessCondition,
 )
 
@@ -56,45 +56,6 @@ class State:
 
         return decorator
 
-    @classmethod
-    def _create_state_by_type(
-        cls,
-        **kwargs,
-    ) -> "State":
-        """Factory method using registry"""
-        if "type" not in kwargs:
-            raise ValueError(f"Unknown state type: {kwargs.get('type')}")
-
-        state_class = cls._state_registry[kwargs["type"]]
-        return state_class(**kwargs)
-
-    @classmethod
-    def from_json_list(cls, state_space: str, relative_path: str) -> list["State"]:
-        """Convert a StateSpace to a list of State objects by reading from states.json"""
-        # Load the states.json file
-        path = Path(relative_path)
-
-        if not path.exists():
-            raise FileNotFoundError(f"States JSON file not found at {path}")
-
-        with open(path, "r") as f:
-            data: dict = json.load(f)
-
-        # Filter states based on the requested state space
-        filtered = []
-
-        for state_key, state_value in data.items():
-            # Check if this state belongs to the requested space
-            state_space_list = state_value.get("space")
-            if state_space_list is None:
-                raise ValueError(f"State {state_key} does not have a 'space' defined.")
-
-            if state_space in state_space_list:
-                state = cls._create_state_by_type(state_key, **state_value)
-                filtered.append(state)
-
-        return filtered
-
     def __init__(
         self,
         name: str,
@@ -104,7 +65,7 @@ class State:
         skill_condition: SkillCondition = DefaultSkillCondition(),
         goal_condition: GoalCondition = IgnoreGoalCondition(),
         precon_converter: PreconConverter = DefaultPreconConverter(),
-        success_condition: SuccessCondition = DefaultSuccessCondition(),
+        success_condition: SuccessCondition = EulerPrecisionSuccessCondition(),
     ):
         self._name = name
         self._id = id
@@ -158,7 +119,7 @@ class State:
         reversed: bool,
     ) -> torch.Tensor:
         """Returns the mean of the given tensor values."""
-        return self._precon_converter.make_tp(start, end, reversed)
+        return self._precon_converter.retrieve_precon(start, end, reversed)
 
     def evaluate(
         self,

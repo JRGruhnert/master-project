@@ -14,11 +14,9 @@ p1_baseline = MasterEnvConfig(
 )
 
 
-p1_gnn = MasterEnvConfig(
+t1_gnn = MasterEnvConfig(
     calvin_config=calvin_env_config,
     debug_vis=False,
-    p_empty=0.5,
-    p_rand=0.5,
 )
 
 p2_baseline = MasterEnvConfig(

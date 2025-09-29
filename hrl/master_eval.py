@@ -4,7 +4,7 @@ import concurrent.futures
 
 from conf.shared.experiment import Exp1Config, ExperimentConfig
 from hrl.common.agent import MasterAgent
-from hrl.common.experiment_loader import ExperimentLoader
+from hrl.common.experiment import Experiment
 from hrl.networks import NetworkType
 from hrl.state.state import StateSpace
 from hrl.skill.skill import SkillSpace
@@ -23,9 +23,7 @@ class EvalConfig:
 
 def eval_agent(config: EvalConfig):
     # Initialize the environment and agent
-    dl = ExperimentLoader(
-        config.state_space, config.task_space, config.experiment.verbose
-    )
+    dl = Experiment(config.state_space, config.task_space, config.experiment.verbose)
     pe = config.experiment.pe
     pr = config.experiment.pr
     max_steps = int(len(dl.skills) * pe + len(dl.skills) * pr + len(dl.skills))

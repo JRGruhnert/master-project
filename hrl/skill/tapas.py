@@ -27,46 +27,17 @@ from tapas_gmm.utils.observation import (
 
 
 class Tapas(Skill):
-    @classmethod
-    def from_json_list(cls, skill_space: str, relative_path: str) -> list["Skill"]:
-        """Convert a SkillSpace to a list of Skill objects by reading from skills.json"""
-        # Load the skills.json file
-        path = pathlib.Path(relative_path)
-
-        if not path.exists():
-            raise FileNotFoundError(f"Skills JSON file not found at {path}")
-
-        with open(path, "r") as f:
-            data: dict = json.load(f)
-
-        # Filter skills based on the requested skill space
-        filtered = []
-        for skill_key, skill_value in data.items():
-            # Check if this skill belongs to the requested space
-            skill_space_list = skill_value.get("space")
-            if skill_space_list is None:
-                raise ValueError(f"Skill {skill_key} does not have a 'space' defined.")
-
-            if skill_space in skill_space_list:
-                skill = cls(name=skill_key, **skill_value)
-                filtered.append(skill)
-
-        return filtered
-
     def __init__(
         self,
         name: str,
-        policy_name: str,
         id: int,
-        states: list[State],
         reversed: bool,
         override_keys: list[str],
     ):
         super().__init__(name, id)
         self._reversed = reversed
         self._override_keys = override_keys
-        self.policy_name = policy_name
-        self._states = states
+        self.policy_name = "GMMPolicy"
         self._overrides: dict[str, np.ndarray] = {}
         self._policy: GMMPolicy = self._load_policy()
         self._initialize_conditions()
@@ -136,7 +107,7 @@ class Tapas(Skill):
         policy.eval()
         return policy
 
-    def _initialize_conditions(self):
+    def initialize_conditions(self, states: list[State]):
         """
         Initialize the task parameters based on the active states.
         """
@@ -150,7 +121,7 @@ class Tapas(Skill):
                 tapas_tp.add(rot_str)
         # TODO: Currently assumes tapas tps are euler and quaternion
         # My whole code does not generalize to other Task Parameterized models and state types
-        for state in self._states:
+        for state in states:
             pre_value = state.retrieve_precon(
                 tpgmm.start_values[state.name],
                 tpgmm.end_values[state.name],
@@ -168,14 +139,14 @@ class Tapas(Skill):
             if post_value is not None:
                 self.postcons[state.name] = post_value
 
-    def _initialize_overrides(self):
+    def initialize_overrides(self, states: list[State]):
         """
         Initialize the task parameters based on the active states.
         """
         # TODO: Its a copy of initialize_task_parameters but only override states get loaded and also in reverse
         # So basically normal since reversed is True
         tpgmm: AutoTPGMM = self._policy.model
-        for state in self._states:
+        for state in states:
             if state.name in self._override_keys:
                 value = state.retrieve_precon(
                     tpgmm.start_values[state.name],
