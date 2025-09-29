@@ -38,7 +38,7 @@ def train_agent(config: TrainConfig):
             + "-"
             + str(config.experiment.p_empty)
             + "-"
-            + str(config.experiment.p_rand),
+            + str(config.experiment.p_rand)
         )
         run = wandb.init(
             entity="jan-gruhnert-universit-t-freiburg",
