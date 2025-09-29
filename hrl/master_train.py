@@ -32,6 +32,14 @@ def train_agent(config: TrainConfig):
 
     # Initialize wandb
     if config.use_wandb:
+        wandb_name = (
+            "timeseries-"
+            + config.tag
+            + "-"
+            + config.experiment.p_empty
+            + "-"
+            + config.experiment.p_rand,
+        )
         run = wandb.init(
             entity="jan-gruhnert-universit-t-freiburg",
             project="master-project",
@@ -43,8 +51,8 @@ def train_agent(config: TrainConfig):
                 "p_empty": config.experiment.p_empty,
                 "p_rand": config.experiment.p_rand,
             },
-            name="timeseries",
-            id="timeseries",
+            name=wandb_name,
+            id=wandb_name,
         )
         # Log initial weights with step=0
         for name, param in agent.policy_new.named_parameters():
