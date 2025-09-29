@@ -43,8 +43,8 @@ def train_agent(config: TrainConfig):
                 "p_empty": config.experiment.p_empty,
                 "p_rand": config.experiment.p_rand,
             },
-            name="test",
-            id="test",
+            name="timeseries",
+            id="timeseries",
         )
         # Log initial weights with step=0
         for name, param in agent.policy_new.named_parameters():
