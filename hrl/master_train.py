@@ -32,14 +32,7 @@ def train_agent(config: TrainConfig):
 
     # Initialize wandb
     if config.use_wandb:
-        wandb_name = (
-            "timeseries-"
-            + config.tag
-            + "-"
-            + str(config.experiment.p_empty)
-            + "-"
-            + str(config.experiment.p_rand)
-        )
+        wandb_name = "timeseries-" + config.tag
         run = wandb.init(
             entity="jan-gruhnert-universit-t-freiburg",
             project="master-project",
