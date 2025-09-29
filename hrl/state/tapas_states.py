@@ -81,18 +81,21 @@ class RangeState(TapasState):
             id=id,
             type_str="Range",
             normalizer=LinearNormalizer(
-                lower_bound=lower_bound, upper_bound=upper_bound
+                lower_bound=torch.Tensor([lower_bound]),
+                upper_bound=torch.Tensor([upper_bound]),
             ),
             skill_condition=RangeDistanceCondition(
-                lower_bound=lower_bound, upper_bound=upper_bound
+                lower_bound=torch.Tensor([lower_bound]),
+                upper_bound=torch.Tensor([upper_bound]),
             ),
             goal_condition=RangeDistanceCondition(
-                lower_bound=lower_bound, upper_bound=upper_bound
+                lower_bound=torch.Tensor([lower_bound]),
+                upper_bound=torch.Tensor([upper_bound]),
             ),
             eval_condition=eval_condition,
             tapas_addons=ScalarTapasAddons(
-                lower_bound=lower_bound,
-                upper_bound=upper_bound,
+                lower_bound=torch.Tensor([lower_bound]),
+                upper_bound=torch.Tensor([upper_bound]),
             ),
         )
 
@@ -114,8 +117,8 @@ class BoolState(TapasState):
             goal_condition=BooleanDistanceCondition(),
             eval_condition=eval_condition,
             tapas_addons=ScalarTapasAddons(
-                lower_bound=0.0,
-                upper_bound=1.0,
+                lower_bound=torch.Tensor([0.0]),
+                upper_bound=torch.Tensor([1.0]),
             ),
         )
 
