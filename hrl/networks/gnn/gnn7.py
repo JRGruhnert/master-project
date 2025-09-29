@@ -2,13 +2,13 @@ import torch
 from torch import nn
 from torch_geometric.data import Batch, HeteroData
 from torch_geometric.nn import GINConv, GINEConv
-from tapas_gmm.master_project.observation import MasterObservation
-from tapas_gmm.master_project.networks.base import GnnBase, PPOType
-from tapas_gmm.utils.select_gpu import device
-from tapas_gmm.master_project.networks.layers.mlp import (
+from hrl.env.observation import EnvironmentObservation as MasterObservation
+from hrl.networks.actor_critic import GnnBase, PPOType
+from hrl.networks.layers.mlp import (
     GinStandardMLP,
     UnactivatedMLP,
 )
+from tapas_gmm.utils.select_gpu import device
 
 
 class GinVirtualReadoutNetwork(nn.Module):

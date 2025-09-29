@@ -8,7 +8,8 @@ from tapas_gmm.env.calvin import Calvin, CalvinConfig
 import torch
 
 from hrl.env.observation import EnvironmentObservation
-from hrl.state.state import State
+from hrl.skill.tapas import Tapas
+from hrl.state.state import State, TapasState
 from hrl.skill.skill import Skill
 
 
@@ -53,10 +54,6 @@ class CalvinEnvironment:
         self.skill: Skill = None
         self.max_steps, self.steps_left = max_steps, max_steps  # Cached property
         self.terminal = False
-        self.spawn_surfaces: dict[str, torch.Tensor] = {
-            k: torch.from_numpy(np.array(v)) for k, v in self.env.surfaces.items()
-        }
-        print(f"Spawn Surfaces: {self.spawn_surfaces}")
 
     def reset(
         self, states: list[State], skill: Skill = None
@@ -96,23 +93,27 @@ class CalvinEnvironment:
             logger.warning("Taking Random Step")
             self.step(random.choice(skills))
         else:  # The rest
-            self.step(skill)
+            self.step(skill, states)
         self.steps_left -= 1
         reward, done = self.evaluate(states)
         return reward, done, self.current
 
     def step(
         self,
-        skill: Skill,
+        skill: Tapas,
+        states: list[TapasState],
         predict_as_batch: bool = True,
         control_duration: int = -1,
     ):
-        skill.prepare(
+        skill.reset(
+            self.env,
             predict_as_batch=predict_as_batch,
             control_duration=control_duration,
         )
         try:
-            while (action := skill.predict(self.current, self.goal)) is not None:
+            while (
+                action := skill.predict(self.current_env, self.goal, states)
+            ) is not None:
                 self.current_env, _, _, _ = self.env.step(action, self.config.debug_vis)
                 self.current = EnvironmentObservation(self.current_env)
         except Exception as e:

@@ -21,6 +21,10 @@ class Skill(ABC):
         self._id: int = id
         self._precons: dict[str, torch.Tensor] = {}
         self._postcons: dict[str, torch.Tensor] = {}
+        self.control_duration = -1
+        self.predict_as_batch = False
+        self.current_step = -1  # Will be increased at first prediction
+        self.predictions = None
 
     @property
     def name(self) -> str:
@@ -63,7 +67,7 @@ class Skill(ABC):
             task_features.append(value)
         return torch.stack(task_features, dim=0)
 
-    def prepare(
+    def reset(
         self,
         predict_as_batch: bool,
         control_duration: int,

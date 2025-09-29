@@ -15,7 +15,7 @@ class TrainConfig:
     experiment: ExperimentConfig
 
     # New wandb parameters
-    use_wandb: bool = True
+    use_wandb: bool
 
 
 def train_agent(config: TrainConfig):

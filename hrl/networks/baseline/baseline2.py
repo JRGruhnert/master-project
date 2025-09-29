@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-from tapas_gmm.master_project.networks.base import BaselineBase
-from tapas_gmm.master_project.observation import MasterObservation
+from hrl.networks.actor_critic import BaselineBase
+from hrl.env.observation import EnvironmentObservation as MasterObservation
 from tapas_gmm.utils.select_gpu import device
 
 

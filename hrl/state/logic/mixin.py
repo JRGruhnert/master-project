@@ -50,8 +50,8 @@ class BoundedMixin:
 
     def __init__(
         self,
-        lower_bound: float | np.ndarray,
-        upper_bound: float | np.ndarray,
+        lower_bound: float | torch.Tensor,
+        upper_bound: float | torch.Tensor,
         *args,
         **kwargs
     ):
@@ -88,7 +88,7 @@ class RelThresholdMixin(BoundedMixin, ThresholdMixin):
 class TapasAreaCheckMixin:
     """Mixin for area-based success conditions"""
 
-    def __init__(self, surfaces: Dict[str, np.ndarray], *args, **kwargs):
+    def __init__(self, surfaces: Dict[str, torch.Tensor], *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.spawn_surfaces = surfaces
         self.eval_surfaces = self.make_eval_surfaces(surfaces)
@@ -118,9 +118,9 @@ class TapasAreaCheckMixin:
         return x  # Return original point if no area match
 
     def make_eval_surfaces(
-        self, surfaces: dict[str, np.ndarray], padding_percent: float = 0.1
+        self, surfaces: dict[str, torch.Tensor], padding_percent: float = 0.1
     ):
-        eval_surfaces: dict[str, np.ndarray] = surfaces
+        eval_surfaces: dict[str, torch.Tensor] = surfaces
         eval_surfaces["table"] = self.add_surface_padding(
             eval_surfaces["table"], padding_percent
         )

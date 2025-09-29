@@ -24,6 +24,8 @@ from tapas_gmm.utils.observation import (
     empty_batchsize,
 )
 
+from hrl.state.tapas_states import EulerState
+
 
 class Tapas(Skill):
     def __init__(
@@ -38,7 +40,7 @@ class Tapas(Skill):
         self.overrides = overrides
         self.policy_name = "gmm"
         self.overrides_dict: dict[str, np.ndarray] = {}
-        self._policy: GMMPolicy = self._load_policy()
+        self.policy: GMMPolicy = self._load_policy()
 
     def _policy_checkpoint_name(self) -> pathlib.Path:
         return (
@@ -109,7 +111,7 @@ class Tapas(Skill):
         """
         Initialize the task parameters based on the active states.
         """
-        tpgmm: AutoTPGMM = self._policy.model
+        tpgmm: AutoTPGMM = self.policy.model
         # Taskparameters of the AutoTPGMM model
         tapas_tp: set[str] = set()
         for _, segment in enumerate(tpgmm.segment_frames):
@@ -143,7 +145,7 @@ class Tapas(Skill):
         """
         # TODO: Its a copy of initialize_task_parameters but only override states get loaded and also in reverse
         # So basically normal since reversed is True
-        tpgmm: AutoTPGMM = self._policy.model
+        tpgmm: AutoTPGMM = self.policy.model
         for state in states:
             if state.name in self.overrides:
                 value = state.make_additional_tps(
@@ -158,14 +160,15 @@ class Tapas(Skill):
                     )
                 self.overrides_dict[state.name] = value.numpy()
 
-    def prepare(self, predict_as_batch: bool = True, control_duration: int = -1):
-        super().__init__(predict_as_batch, control_duration)
-        self._policy.reset_episode()
+    def reset(self, env, predict_as_batch: bool = True, control_duration: int = -1):
+        super().reset(predict_as_batch, control_duration)
+        self.policy.reset_episode(env)
 
     def predict(
         self,
-        current: EnvironmentObservation,
+        current: CalvinObservation,
         goal: EnvironmentObservation,
+        states: list[TapasState],
     ) -> np.ndarray:
         self.current_step += 1
         if self.predict_as_batch:  # We currently only support batch prediction
@@ -173,8 +176,8 @@ class Tapas(Skill):
                 # Batch prediction for the given observation
                 # NOTE: Could use control_duration later to enforce certain length
                 try:
-                    self.predictions, _ = self._policy.predict(
-                        self.to_skill_format(current, goal)
+                    self.predictions, _ = self.policy.predict(
+                        self.to_skill_format(current, goal, states)
                     )
                 except Exception as e:
                     logger.error(f"Error during batch prediction: {e}")
@@ -196,7 +199,7 @@ class Tapas(Skill):
             )
         )
 
-    def to_skill_format(self, obs: CalvinObservation, goal: EnvironmentObservation = None) -> SceneObservation:  # type: ignore
+    def to_skill_format(self, obs: CalvinObservation, goal: EnvironmentObservation = None, states: list[TapasState] = None) -> SceneObservation:  # type: ignore
         """
         Convert the observation from the environment to a SceneObservation. This format is used for TAPAS.
 
@@ -239,7 +242,8 @@ class Tapas(Skill):
         )
         object_poses_dict = obs.object_poses
         object_states_dict = obs.object_states
-        if goal is not None and self._reversed:
+        if goal is not None and self.reversed:
+            states_dict = {state.name: state for state in states} if states else {}
             # NOTE: This is only a hack to make reversed tapas models work
             # TODO: Update this when possible
             # logger.debug(f"Overriding Tapas Task {task.name}")
@@ -247,6 +251,8 @@ class Tapas(Skill):
                 match_position = re.search(r"(.+?)_(?:position)", state_name)
                 match_rotation = re.search(r"(.+?)_(?:rotation)", state_name)
                 match_scalar = re.search(r"(.+?)_(?:scalar)", state_name)
+                print(f"Overriding Tapas State {state_name}")
+                print(f"Value: {state_value}")
                 if state_name == "ee_position":
                     ee_pose = torch.cat(
                         [
@@ -264,18 +270,19 @@ class Tapas(Skill):
                 elif state_name == "ee_scalar":
                     ee_state = torch.Tensor(state_value)
 
-                # TODO: Evaluate if goal state is correct here
                 elif match_position:
-                    temp_pos = self.states[0].area_tapas_override(
-                        goal.states[f"{match_position.group(1)}_position"],
-                        self.spawn_surfaces,
-                    )
-                    object_poses_dict[match_position.group(1)] = np.concatenate(
-                        [
-                            temp_pos.numpy(),
-                            object_poses_dict[match_position.group(1)][3:],
-                        ]
-                    )
+                    position_state_name = f"{match_position.group(1)}_position"
+                    if position_state_name not in states_dict:
+                        temp_state = states_dict[position_state_name]
+                        temp_pos = temp_state.area_tapas_override(
+                            goal.states[position_state_name],
+                        )
+                        object_poses_dict[match_position.group(1)] = np.concatenate(
+                            [
+                                temp_pos.numpy(),
+                                object_poses_dict[match_position.group(1)][3:],
+                            ]
+                        )
                 elif match_rotation:
                     object_poses_dict[match_rotation.group(1)] = np.concatenate(
                         [
