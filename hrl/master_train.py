@@ -75,7 +75,7 @@ def train_agent(config: TrainConfig):
             batch_rdy = agent.feedback(reward, terminal)
         if batch_rdy:
             start_time_learning = datetime.now().replace(microsecond=0)
-            stop_training = agent.learn(verbose=config.experiment.verbose)
+            stop_training = agent.learn(verbose=True)
             epoch += 1
             if config.use_wandb:
                 # Log weights every 5 epochs (not every epoch to reduce data)

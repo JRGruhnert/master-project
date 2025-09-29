@@ -33,7 +33,11 @@ class Experiment:
         )
         self.p_empty = config.p_empty
         self.p_rand = config.p_rand
-        self.max_steps = 5
+        self.max_steps = (
+            len(self.skills)
+            + len(self.skills) * self.p_empty
+            + len(self.skills) * self.p_rand
+        )
 
         for skill in self.skills:
             skill.initialize_conditions(self.states)
