@@ -3,9 +3,11 @@ from enum import Enum
 import random
 from loguru import logger
 
+import numpy as np
 from tapas_gmm.env.calvin import Calvin, CalvinConfig
+import torch
 
-from hrl.observation.calvin_tapas import MasterCalvinObs
+from hrl.env.observation import EnvironmentObservation
 from hrl.state.state import State
 from hrl.skill.skill import Skill
 
@@ -18,7 +20,7 @@ class RewardMode(Enum):
 
 @dataclass
 class MasterEnvConfig:
-    debug_vis: bool
+    debug_vis: bool = False
     # Reward Settings
     reward_mode: RewardMode = RewardMode.SPARSE
     max_reward: float = 100.0
@@ -51,22 +53,28 @@ class CalvinEnvironment:
         self.skill: Skill = None
         self.max_steps, self.steps_left = max_steps, max_steps  # Cached property
         self.terminal = False
+        self.spawn_surfaces: dict[str, torch.Tensor] = {
+            k: torch.from_numpy(np.array(v)) for k, v in self.env.surfaces.items()
+        }
+        print(f"Spawn Surfaces: {self.spawn_surfaces}")
 
-    def reset(self, skill: Skill = None) -> tuple[MasterCalvinObs, MasterCalvinObs]:
+    def reset(
+        self, states: list[State], skill: Skill = None
+    ) -> tuple[EnvironmentObservation, EnvironmentObservation]:
 
         goal_calvin, _, _, _ = self.env.reset(settle_time=50)
-        self.goal = MasterCalvinObs(goal_calvin)
+        self.goal = EnvironmentObservation(goal_calvin)
 
         self.current_env, _, _, _ = self.env.reset(settle_time=50)
-        self.current = MasterCalvinObs(self.current_env)
+        self.current = EnvironmentObservation(self.current_env)
         if skill:
-            while not self.startposition_check(skill):
+            while not self.startposition_check(skill, states):
                 self.current_env, _, _, _ = self.env.reset(settle_time=50)
-                self.current = MasterCalvinObs(self.current_env)
+                self.current = EnvironmentObservation(self.current_env)
         else:
-            while self.completion_check():  # Ensure that they are not the same
+            while self.completion_check(states):  # Ensure that they are not the same
                 self.current_env, _, _, _ = self.env.reset(settle_time=50)
-                self.current = MasterCalvinObs(self.current_env)
+                self.current = EnvironmentObservation(self.current_env)
 
         self.steps_left = self.max_steps
         self.terminal = False
@@ -76,9 +84,10 @@ class CalvinEnvironment:
         self,
         skill: Skill,
         skills: list[Skill],
+        states: list[State],
         p_empty: float = 0.0,
         p_rand: float = 0.0,
-    ) -> tuple[float, bool, MasterCalvinObs]:
+    ) -> tuple[float, bool, EnvironmentObservation]:
         sample = random.random()
         if sample < p_empty:  # 0-p_empty>
             logger.warning("Taking Empty Step")
@@ -89,25 +98,23 @@ class CalvinEnvironment:
         else:  # The rest
             self.step(skill)
         self.steps_left -= 1
-        reward, done = self.evaluate()
+        reward, done = self.evaluate(states)
         return reward, done, self.current
 
     def step(
         self,
         skill: Skill,
-        predict_at_once: bool = False,
-        as_batch: bool = False,
+        predict_as_batch: bool = True,
         control_duration: int = -1,
     ):
         skill.prepare(
-            predict_at_once=predict_at_once,
-            as_batch=as_batch,
+            predict_as_batch=predict_as_batch,
             control_duration=control_duration,
         )
         try:
             while (action := skill.predict(self.current, self.goal)) is not None:
                 self.current_env, _, _, _ = self.env.step(action, self.config.debug_vis)
-                self.current = MasterCalvinObs(self.current_env)
+                self.current = EnvironmentObservation(self.current_env)
         except Exception as e:
             # At some point the model crashes.
             # Have to debug if its because of bad input but seems to be not relevant for training

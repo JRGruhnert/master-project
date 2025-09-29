@@ -4,7 +4,7 @@ import torch
 from hrl.state.logic.mixin import QuaternionMixin, RelThresholdMixin
 
 
-class ValueConverter(ABC):
+class Normalizer(ABC):
     """Abstract base class for state logic strategies."""
 
     @abstractmethod
@@ -13,15 +13,15 @@ class ValueConverter(ABC):
         raise NotImplementedError("Subclasses must implement the value method.")
 
 
-class DefaultValueConverter(ValueConverter):
-    """Default value converter that returns the input as-is."""
+class IgnoreNormalizer(Normalizer):
+    """Value converter for discrete states."""
 
     def value(self, x: torch.Tensor) -> torch.Tensor:
-        """Return the input value as-is."""
-        return x  # No processing
+        """Return input value as it is."""
+        return x
 
 
-class NormalizeValueConverter(ValueConverter, RelThresholdMixin):
+class LinearNormalizer(Normalizer, RelThresholdMixin):
     """Default value converter that returns the input as-is."""
 
     def value(self, x: torch.Tensor) -> torch.Tensor:
@@ -30,7 +30,7 @@ class NormalizeValueConverter(ValueConverter, RelThresholdMixin):
         return self._normalize(cx)
 
 
-class QuaternionValueConverter(ValueConverter, QuaternionMixin):
+class QuaternionNormalizer(Normalizer, QuaternionMixin):
     """Value converter for quaternion states - no bounds needed."""
 
     def value(self, x: torch.Tensor) -> torch.Tensor:

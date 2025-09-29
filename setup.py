@@ -30,7 +30,7 @@ calvin_requires = [
 
 
 setuptools.setup(
-    name="master_project",
+    name="hrl",
     version="0.0.1",
     author="Jan Gruhnert",
     description="Implementation of my master project",
@@ -48,11 +48,11 @@ setuptools.setup(
     python_requires=">=3.10",
     entry_points={
         "console_scripts": [
-            "master-train = master_project.master_train:entry_point",
-            "master-retrain = master_project.master_retrain:entry_point",
-            "master-debug = master_project.master_debug:entry_point",
-            "master-plot = master_project.master_plot:entry_point",
-            "master-eval = master_project.master_eval:entry_point",
+            "master-train = hrl.master_train:entry_point",
+            "master-retrain = hrl.master_retrain:entry_point",
+            "master-debug = hrl.master_debug:entry_point",
+            "master-plot = hrl.master_plot:entry_point",
+            "master-eval = hrl.master_eval:entry_point",
         ]
     },
 )

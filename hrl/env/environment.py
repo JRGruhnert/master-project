@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from hrl.observation.observation import EnvironmentObservation
+from hrl.env.observation import EnvironmentObservation
 from hrl.skill.skill import Skill
 
 

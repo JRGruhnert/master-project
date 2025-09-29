@@ -1,129 +1,207 @@
-from hrl.state.calvin_states import (
+import numpy as np
+from hrl.state.logic.target_condition import (
+    BooleanDistanceCondition,
+    EulerDistanceCondition,
+    FlipDistanceCondition,
+    QuaternionDistanceCondition,
+    RangeDistanceCondition,
+)
+from hrl.state.tapas_states import (
     BoolState,
     EulerState,
     FlipState,
     QuatState,
     RangeState,
 )
-from hrl.state.logic.success_condition import (
-    AreaSuccessCondition,
-    IgnoreSuccessCondition,
-    EulerPrecisionSuccessCondition,
+from hrl.state.logic.eval_condition import (
+    AreaEvalCondition,
+    PreciseEvalCondition,
+    IgnoreEvalCondition,
 )
 
 _S = {
     "ee_position": EulerState(
         name="ee_position",
         id=0,
-        success_condition=EulerPrecisionSuccessCondition(),
+        eval_condition=PreciseEvalCondition(
+            target_condition=EulerDistanceCondition(),
+        ),
     ),
     "base__slide_position": EulerState(
         name="base__slide_position",
         id=1,
-        success_condition=EulerPrecisionSuccessCondition(),
+        eval_condition=PreciseEvalCondition(
+            target_condition=EulerDistanceCondition(),
+        ),
     ),
     "base__drawer_position": EulerState(
         name="base__drawer_position",
         id=2,
-        success_condition=EulerPrecisionSuccessCondition(),
+        eval_condition=PreciseEvalCondition(
+            target_condition=EulerDistanceCondition(),
+        ),
     ),
     "base__button_position": EulerState(
         name="base__button_position",
         id=3,
-        success_condition=EulerPrecisionSuccessCondition(),
+        eval_condition=PreciseEvalCondition(
+            target_condition=EulerDistanceCondition(),
+        ),
     ),
     "led_position": EulerState(
         name="led_position",
         id=4,
-        success_condition=EulerPrecisionSuccessCondition(),
+        eval_condition=PreciseEvalCondition(
+            target_condition=EulerDistanceCondition(),
+        ),
     ),
     "block_red_position": EulerState(
         name="block_red_position",
         id=14,
-        success_condition=AreaSuccessCondition(),
+        eval_condition=AreaEvalCondition(
+            surfaces={
+                "table": np.array([[0.0, -0.15, 0.46], [0.30, -0.03, 0.46]]),
+                "drawer_open": np.array([[0.04, -0.35, 0.38], [0.30, -0.21, 0.38]]),
+                "drawer_closed": np.array([[0.04, -0.16, 0.38], [0.30, -0.03, 0.38]]),
+            },
+            lower_bound=[-1.0, -1.0, -1.0],
+            upper_bound=[1.0, 1.0, 1.0],
+        ),
     ),
     "block_blue_position": EulerState(
         name="block_blue_position",
         id=15,
-        success_condition=AreaSuccessCondition(),
+        eval_condition=AreaEvalCondition(
+            surfaces={
+                "table": np.array([[0.0, -0.15, 0.46], [0.30, -0.03, 0.46]]),
+                "drawer_open": np.array([[0.04, -0.35, 0.38], [0.30, -0.21, 0.38]]),
+                "drawer_closed": np.array([[0.04, -0.16, 0.38], [0.30, -0.03, 0.38]]),
+            },
+            lower_bound=[-1.0, -1.0, -1.0],
+            upper_bound=[1.0, 1.0, 1.0],
+        ),
     ),
     "block_pink_position": EulerState(
         name="block_pink_position",
         id=16,
-        success_condition=AreaSuccessCondition(),
+        eval_condition=AreaEvalCondition(
+            surfaces={
+                "table": np.array([[0.0, -0.15, 0.46], [0.30, -0.03, 0.46]]),
+                "drawer_open": np.array([[0.04, -0.35, 0.38], [0.30, -0.21, 0.38]]),
+                "drawer_closed": np.array([[0.04, -0.16, 0.38], [0.30, -0.03, 0.38]]),
+            },
+            lower_bound=[-1.0, -1.0, -1.0],
+            upper_bound=[1.0, 1.0, 1.0],
+        ),
     ),
     "ee_rotation": QuatState(
         name="ee_rotation",
         id=5,
-        success_condition=EulerPrecisionSuccessCondition(),
+        eval_condition=PreciseEvalCondition(
+            target_condition=QuaternionDistanceCondition()
+        ),
     ),
     "base__slide_rotation": QuatState(
         name="base__slide_rotation",
         id=6,
-        success_condition=EulerPrecisionSuccessCondition(),
+        eval_condition=PreciseEvalCondition(
+            target_condition=QuaternionDistanceCondition()
+        ),
     ),
     "base__drawer_rotation": QuatState(
         name="base__drawer_rotation",
         id=7,
-        success_condition=EulerPrecisionSuccessCondition(),
+        eval_condition=PreciseEvalCondition(
+            target_condition=QuaternionDistanceCondition()
+        ),
     ),
     "base__button_rotation": QuatState(
         name="base__button_rotation",
         id=8,
-        success_condition=EulerPrecisionSuccessCondition(),
+        eval_condition=PreciseEvalCondition(
+            target_condition=QuaternionDistanceCondition()
+        ),
     ),
     "led_rotation": QuatState(
         name="led_rotation",
         id=9,
-        success_condition=EulerPrecisionSuccessCondition(),
+        eval_condition=PreciseEvalCondition(
+            target_condition=QuaternionDistanceCondition()
+        ),
     ),
     "block_red_rotation": QuatState(
         name="block_red_rotation",
         id=17,
-        success_condition=IgnoreSuccessCondition(),
+        eval_condition=IgnoreEvalCondition(),
     ),
     "block_blue_rotation": QuatState(
         name="block_blue_rotation",
         id=18,
-        success_condition=IgnoreSuccessCondition(),
+        eval_condition=IgnoreEvalCondition(),
     ),
     "block_pink_rotation": QuatState(
         name="block_pink_rotation",
         id=19,
-        success_condition=IgnoreSuccessCondition(),
+        eval_condition=IgnoreEvalCondition(),
     ),
     "ee_scalar": BoolState(
         name="ee_scalar",
         id=10,
-        success_condition=EulerPrecisionSuccessCondition(),
+        eval_condition=PreciseEvalCondition(
+            target_condition=BooleanDistanceCondition()
+        ),
     ),
     "base__slide_scalar": RangeState(
         name="base__slide_scalar",
         id=11,
         lower_bound=0.0,
         upper_bound=0.28,
+        eval_condition=PreciseEvalCondition(
+            target_condition=RangeDistanceCondition(
+                lower_bound=0.0,
+                upper_bound=0.28,
+            ),
+        ),
     ),
     "base__drawer_scalar": RangeState(
         name="base__drawer_scalar",
         id=12,
         lower_bound=0.0,
         upper_bound=0.22,
+        eval_condition=PreciseEvalCondition(
+            target_condition=RangeDistanceCondition(
+                lower_bound=0.0,
+                upper_bound=0.22,
+            ),
+        ),
     ),
     "base__button_scalar": FlipState(
         name="base__button_scalar",
         id=13,
+        eval_condition=PreciseEvalCondition(
+            target_condition=FlipDistanceCondition(),
+        ),
     ),
     "block_red_scalar": BoolState(
         name="block_red_scalar",
         id=20,
+        eval_condition=PreciseEvalCondition(
+            target_condition=BooleanDistanceCondition(),
+        ),
     ),
     "block_blue_scalar": BoolState(
         name="block_blue_scalar",
         id=21,
+        eval_condition=PreciseEvalCondition(
+            target_condition=BooleanDistanceCondition(),
+        ),
     ),
     "block_pink_scalar": BoolState(
         name="block_pink_scalar",
         id=22,
+        eval_condition=PreciseEvalCondition(
+            target_condition=BooleanDistanceCondition(),
+        ),
     ),
 }
 

@@ -3,8 +3,7 @@ from datetime import datetime
 from omegaconf import OmegaConf, SCMode
 import wandb
 
-from conf.shared.experiment import ExperimentConfig
-from hrl.common.experiment import Experiment
+from hrl.common.experiment import Experiment, ExperimentConfig
 from hrl.env.calvin import CalvinEnvironment
 from hrl.common.agent import MasterAgent
 from tapas_gmm.utils.argparse import parse_and_build_config
@@ -21,8 +20,8 @@ class TrainConfig:
 
 def train_agent(config: TrainConfig):
     # Initialize the environment and agent
-    dloader = Experiment(config.experiment, "results/")
-    env = CalvinEnvironment(config.experiment.env)
+    dloader = Experiment(config.experiment)
+    env = CalvinEnvironment(config.experiment.env, dloader.max_steps)
     agent = MasterAgent(
         config.experiment.agent,
         config.experiment.nt,
@@ -34,8 +33,8 @@ def train_agent(config: TrainConfig):
     # Initialize wandb
     if config.use_wandb:
         run = wandb.init(
-            entity="experiments",
-            project="training",
+            entity="jan-gruhnert-universit-t-freiburg",
+            project="master-project",
             config={
                 "state_tag": config.experiment.states_tag,
                 "task_tag": config.experiment.skills_tag,
@@ -44,6 +43,8 @@ def train_agent(config: TrainConfig):
                 "p_empty": config.experiment.p_empty,
                 "p_rand": config.experiment.p_rand,
             },
+            name="test",
+            id="test",
         )
         for name, param in agent.policy_new.named_parameters():
             run.log({f"{name}": wandb.Histogram(param.data.cpu())})
@@ -55,12 +56,13 @@ def train_agent(config: TrainConfig):
         start_time_batch = datetime.now().replace(microsecond=0)
         terminal = False
         batch_rdy = False
-        obs, goal = env.reset()
+        obs, goal = env.reset(dloader.states)
         while not terminal and not batch_rdy:
             skill = agent.act(obs, goal)
             reward, terminal, obs = env.step_exp1(
                 skill,
                 dloader.skills,
+                dloader.states,
                 p_empty=config.experiment.p_empty,
                 p_rand=config.experiment.p_rand,
             )
@@ -103,7 +105,7 @@ def entry_point():
 
     dict_config["tag"] = (
         dict_config["tag"]
-        + f"_pe_{dict_config['env']['p_empty']}_pr_{dict_config['env']['p_rand']}"
+        + f"_pe_{dict_config['experiment']['p_empty']}_pr_{dict_config['experiment']['p_rand']}"
     )
 
     config = OmegaConf.to_container(

@@ -33,3 +33,8 @@ class Experiment:
         )
         self.p_empty = config.p_empty
         self.p_rand = config.p_rand
+        self.max_steps = 5
+
+        for skill in self.skills:
+            skill.initialize_conditions(self.states)
+            skill.initialize_overrides(self.states)

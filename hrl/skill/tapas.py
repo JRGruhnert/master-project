@@ -1,13 +1,12 @@
-import json
 import pathlib
 import re
 from loguru import logger
 import numpy as np
 import torch
 from calvin_env.envs.observation import CalvinObservation
-from hrl.observation.calvin_tapas import MasterCalvinObs
+from hrl.env.observation import EnvironmentObservation
 from hrl.skill.skill import Skill
-from hrl.state.state import State
+from hrl.state.state import TapasState
 from tapas_gmm.utils.select_gpu import device
 from tapas_gmm.policy import import_policy
 from tapas_gmm.policy.gmm import GMMPolicy, GMMPolicyConfig
@@ -32,21 +31,20 @@ class Tapas(Skill):
         name: str,
         id: int,
         reversed: bool,
-        override_keys: list[str],
+        overrides: list[str],
     ):
         super().__init__(name, id)
-        self._reversed = reversed
-        self._override_keys = override_keys
-        self.policy_name = "GMMPolicy"
-        self._overrides: dict[str, np.ndarray] = {}
+        self.reversed = reversed
+        self.overrides = overrides
+        self.policy_name = "gmm"
+        self.overrides_dict: dict[str, np.ndarray] = {}
         self._policy: GMMPolicy = self._load_policy()
-        self._initialize_conditions()
-        self._initialize_overrides()
-        self.prepare()
 
     def _policy_checkpoint_name(self) -> pathlib.Path:
         return (
             pathlib.Path("data")
+            / "skills"
+            / "tapas"
             / self.name
             / ("demos" + "_" + "gmm" + "_policy" + "-release")
         ).with_suffix(".pt")
@@ -93,7 +91,7 @@ class Tapas(Skill):
             postprocess_prediction=False,  # TODO:  abs quaternions if False else delta quaternions
             return_full_batch=True,
             batch_predict_in_t_models=True,  # Change if visualization is needed
-            invert_prediction_batch=self._reversed,
+            invert_prediction_batch=self.reversed,
         )
 
     def _load_policy(self) -> GMMPolicy:
@@ -107,7 +105,7 @@ class Tapas(Skill):
         policy.eval()
         return policy
 
-    def initialize_conditions(self, states: list[State]):
+    def initialize_conditions(self, states: list[TapasState]):
         """
         Initialize the task parameters based on the active states.
         """
@@ -122,16 +120,16 @@ class Tapas(Skill):
         # TODO: Currently assumes tapas tps are euler and quaternion
         # My whole code does not generalize to other Task Parameterized models and state types
         for state in states:
-            pre_value = state.retrieve_precon(
+            pre_value = state.make_additional_tps(
                 tpgmm.start_values[state.name],
                 tpgmm.end_values[state.name],
-                self._reversed,
+                self.reversed,
                 True if state.name in tapas_tp else False,
             )
-            post_value = state.retrieve_precon(
+            post_value = state.make_additional_tps(
                 tpgmm.start_values[state.name],
                 tpgmm.end_values[state.name],
-                not self._reversed,
+                not self.reversed,
                 True if state.name in tapas_tp else False,
             )
             if pre_value is not None:
@@ -139,7 +137,7 @@ class Tapas(Skill):
             if post_value is not None:
                 self.postcons[state.name] = post_value
 
-    def initialize_overrides(self, states: list[State]):
+    def initialize_overrides(self, states: list[TapasState]):
         """
         Initialize the task parameters based on the active states.
         """
@@ -147,18 +145,18 @@ class Tapas(Skill):
         # So basically normal since reversed is True
         tpgmm: AutoTPGMM = self._policy.model
         for state in states:
-            if state.name in self._override_keys:
-                value = state.retrieve_precon(
+            if state.name in self.overrides:
+                value = state.make_additional_tps(
                     tpgmm.start_values[state.name],
                     tpgmm.end_values[state.name],
-                    not self._reversed,  # NOTE: We want the opposite of the reverse trajectory
+                    not self.reversed,  # NOTE: We want the opposite of the reverse trajectory
                     True,  # NOTE: All States are True here
                 )
                 if value is None:
                     raise ValueError(
                         f"Failed to create override for state {state.name}. This should not happen."
                     )
-                self._overrides[state.name] = value.numpy()
+                self.overrides_dict[state.name] = value.numpy()
 
     def prepare(self, predict_as_batch: bool = True, control_duration: int = -1):
         super().__init__(predict_as_batch, control_duration)
@@ -166,8 +164,8 @@ class Tapas(Skill):
 
     def predict(
         self,
-        current: MasterCalvinObs,
-        goal: MasterCalvinObs,
+        current: EnvironmentObservation,
+        goal: EnvironmentObservation,
     ) -> np.ndarray:
         self.current_step += 1
         if self.predict_as_batch:  # We currently only support batch prediction
@@ -198,7 +196,7 @@ class Tapas(Skill):
             )
         )
 
-    def to_skill_format(self, obs: CalvinObservation, goal: MasterCalvinObs = None) -> SceneObservation:  # type: ignore
+    def to_skill_format(self, obs: CalvinObservation, goal: EnvironmentObservation = None) -> SceneObservation:  # type: ignore
         """
         Convert the observation from the environment to a SceneObservation. This format is used for TAPAS.
 
@@ -245,7 +243,7 @@ class Tapas(Skill):
             # NOTE: This is only a hack to make reversed tapas models work
             # TODO: Update this when possible
             # logger.debug(f"Overriding Tapas Task {task.name}")
-            for state_name, state_value in self._overrides.items():
+            for state_name, state_value in self.overrides_dict.items():
                 match_position = re.search(r"(.+?)_(?:position)", state_name)
                 match_rotation = re.search(r"(.+?)_(?:rotation)", state_name)
                 match_scalar = re.search(r"(.+?)_(?:scalar)", state_name)

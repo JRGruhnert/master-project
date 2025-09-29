@@ -1,44 +1,19 @@
-from enum import Enum
 import torch
-import json
-from pathlib import Path
 
-from hrl.state.logic.goal_condition import (
-    IgnoreGoalCondition,
-    GoalCondition,
+from hrl.state.logic.tapas_addons import (
+    EulerTapasAddons,
+    QuatTapasAddons,
+    TapasAddons,
 )
-from hrl.state.logic.precon_converter import (
-    DefaultPreconConverter,
-    PreconConverter,
+from hrl.state.logic.target_condition import (
+    TargetCondition,
 )
-from hrl.state.logic.skill_condition import (
-    DefaultSkillCondition,
-    SkillCondition,
+from hrl.state.logic.normalizer import (
+    Normalizer,
 )
-from hrl.state.logic.value_converter import (
-    DefaultValueConverter,
-    ValueConverter,
+from hrl.state.logic.eval_condition import (
+    EvalCondition,
 )
-from hrl.state.logic.success_condition import (
-    EulerPrecisionSuccessCondition,
-    SuccessCondition,
-)
-
-
-class StateSpace(Enum):
-    Minimal = "Minimal"
-    Normal = "Normal"
-    Full = "Full"
-    Debug = "Debug"
-
-
-# class StateType(Enum):
-#    Euler_Angle = "Euler"
-#    Axis_Angle = "Axis"
-#    Quaternion = "Quat"
-#    Range = "Range"
-#    Boolean = "Bool"
-#    Flip = "Flip"  # Special boolean type for flipping the distance
 
 
 class State:
@@ -61,20 +36,18 @@ class State:
         name: str,
         id: int,
         type_str: str,
-        value_converter: ValueConverter = DefaultValueConverter(),
-        skill_condition: SkillCondition = DefaultSkillCondition(),
-        goal_condition: GoalCondition = IgnoreGoalCondition(),
-        precon_converter: PreconConverter = DefaultPreconConverter(),
-        success_condition: SuccessCondition = EulerPrecisionSuccessCondition(),
+        normalizer: Normalizer,
+        skill_condition: TargetCondition,
+        goal_condition: TargetCondition,
+        eval_condition: EvalCondition,
     ):
         self._name = name
         self._id = id
         self._type_str = type_str
-        self._value_converter = value_converter
+        self._normalizer = normalizer
         self._skill_condition = skill_condition
         self._goal_condition = goal_condition
-        self._precon_converter = precon_converter
-        self._success_condition = success_condition
+        self._eval_condition = eval_condition
 
     @property
     def name(self) -> str:
@@ -93,7 +66,7 @@ class State:
 
     def value(self, x: torch.Tensor) -> torch.Tensor:
         """Returns the value of the state as a tensor."""
-        raise self._value_converter.value(x)
+        raise self._normalizer.value(x)
 
     def distance_to_skill(
         self,
@@ -110,16 +83,7 @@ class State:
         goal: torch.Tensor,
     ) -> float:
         """Returns the distance of the state as a tensor."""
-        return self._goal_condition.distance(current, goal)
-
-    def retrieve_precon(
-        self,
-        start: torch.Tensor,
-        end: torch.Tensor,
-        reversed: bool,
-    ) -> torch.Tensor:
-        """Returns the mean of the given tensor values."""
-        return self._precon_converter.retrieve_precon(start, end, reversed)
+        return self._goal_condition.distance(current, goal, goal)
 
     def evaluate(
         self,
@@ -127,4 +91,43 @@ class State:
         goal: torch.Tensor,
     ) -> bool:
         """Evaluate success using injected strategy."""
-        return self._success_condition.evaluate(obs, goal)
+        return self._eval_condition.evaluate(obs, goal)
+
+
+class TapasState(State):
+    def __init__(
+        self,
+        name: str,
+        id: int,
+        type_str: str,
+        normalizer: Normalizer,
+        skill_condition: TargetCondition,
+        goal_condition: TargetCondition,
+        eval_condition: EvalCondition,
+        tapas_addons: TapasAddons,
+    ):
+        super().__init__(
+            name,
+            id,
+            type_str,
+            normalizer,
+            skill_condition,
+            goal_condition,
+            eval_condition,
+        )
+        self._tapas_addons = tapas_addons
+
+    def make_additional_tps(
+        self,
+        start: torch.Tensor,
+        end: torch.Tensor,
+        reversed: bool,
+        tapas_selection: bool,
+    ) -> torch.Tensor:
+        """Returns the mean of the given tensor values."""
+        if not tapas_selection and (
+            isinstance(self._tapas_addons, EulerTapasAddons)
+            or isinstance(self._tapas_addons, QuatTapasAddons)
+        ):  # NOTE: Hack cause tapas does selects them themself
+            return None
+        return self._tapas_addons.make_tps(start, end, reversed)

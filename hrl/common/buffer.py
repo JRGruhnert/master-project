@@ -1,6 +1,6 @@
 import torch
 
-from hrl.observation.observation import EnvironmentObservation
+from hrl.env.observation import EnvironmentObservation
 
 
 class RolloutBuffer:

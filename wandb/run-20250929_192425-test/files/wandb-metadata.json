@@ -1,0 +1,33 @@
+{
+  "os": "Linux-6.16.8-200.fc42.x86_64-x86_64-with-glibc2.41",
+  "python": "CPython 3.10.18",
+  "startedAt": "2025-09-29T17:24:25.789131Z",
+  "args": [
+    "--config",
+    "conf/gnn4/t1.py"
+  ],
+  "program": "/home/jangruhnert/miniconda3/envs/tapas_env/bin/master-train",
+  "git": {
+    "remote": "git@github.com:JRGruhnert/master-project.git",
+    "commit": "76a2790d839822a0d6a4162ad49701302d318cb9"
+  },
+  "email": "jan-gruhnert@startmail.com",
+  "root": "/home/jangruhnert/Documents/GitHub/master-project",
+  "host": "gorilla",
+  "executable": "/home/jangruhnert/miniconda3/envs/tapas_env/bin/python3.10",
+  "cpu_count": 8,
+  "cpu_count_logical": 16,
+  "disk": {
+    "/": {
+      "total": "998500204544",
+      "used": "769098932224"
+    }
+  },
+  "memory": {
+    "total": "32735809536"
+  },
+  "cpu": {
+    "count": 8,
+    "countLogical": 16
+  }
+}

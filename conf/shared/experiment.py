@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from tapas_gmm.master_project.agent import AgentConfig
 from tapas_gmm.master_project.environment import MasterEnvConfig
 from tapas_gmm.master_project.networks import NetworkType
-from conf.env.calvin.env_eval_conf import calvin_env_config
 from tapas_gmm.master_project.state import StateSpace
 from tapas_gmm.master_project.task import TaskSpace
 
@@ -38,6 +37,5 @@ class Exp1Config(ExperimentConfig):
     verbose: bool = False
     agent: AgentConfig = AgentConfig()
     env: MasterEnvConfig = MasterEnvConfig(
-        calvin_config=calvin_env_config,
         debug_vis=False,
     )

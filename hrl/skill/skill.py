@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import torch
-from hrl.observation.observation import EnvironmentObservation
+from hrl.env.observation import EnvironmentObservation
 from hrl.state.state import State
 
 

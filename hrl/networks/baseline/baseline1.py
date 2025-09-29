@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-from tapas_gmm.master_project.networks.base import BaselineBase
-from tapas_gmm.master_project.observation import MasterObservation
+from hrl.networks.actor_critic import BaselineBase
+from hrl.env.observation import EnvironmentObservation as MasterObservation
 from tapas_gmm.utils.select_gpu import device
 
 
@@ -23,7 +23,7 @@ class Baseline(BaselineBase):
             nn.ReLU(),
             nn.Linear(h_dim1, h_dim2),
             nn.ReLU(),
-            nn.Linear(h_dim2, self.dim_tasks),
+            nn.Linear(h_dim2, self.dim_skills),
         )
         # critic
         self.critic = nn.Sequential(

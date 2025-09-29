@@ -56,16 +56,8 @@ class BoundedMixin:
         **kwargs
     ):
         super().__init__(*args, **kwargs)
-        self._lower_bound = lower_bound
-        self._upper_bound = upper_bound
-
-    @property
-    def lower_bound(self) -> float | np.ndarray:
-        return self._lower_bound
-
-    @property
-    def upper_bound(self) -> float | np.ndarray:
-        return self._upper_bound
+        self.lower_bound = lower_bound
+        self.upper_bound = upper_bound
 
     def _normalize(self, x: torch.Tensor) -> torch.Tensor:
         """Normalize a value x to the range [0, 1] based on bounds."""
@@ -87,30 +79,30 @@ class ThresholdMixin:
 class RelThresholdMixin(BoundedMixin, ThresholdMixin):
     """Mixin that provides relative threshold calculation"""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
     @cached_property
     def relative_threshold(self) -> torch.Tensor:
         """Returns the relative threshold for the state."""
         return self.threshold * (self.upper_bound - self.lower_bound)
 
 
-class AreaCheckMixin:
+class TapasAreaCheckMixin:
     """Mixin for area-based success conditions"""
 
     def __init__(self, surfaces: Dict[str, np.ndarray], *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.surfaces = surfaces
+        self.spawn_surfaces = surfaces
+        self.eval_surfaces = self.make_eval_surfaces(surfaces)
 
     def check_area(self, x: torch.Tensor) -> Optional[str]:
         """Check if the point x is in any of the defined areas."""
-        for name, surface in self.surfaces.items():
-            if self.point_in_polygon(x.numpy(), surface):
+        for name, (min_corner, max_corner) in self.eval_surfaces.items():
+            box_min = torch.tensor(min_corner)
+            box_max = torch.tensor(max_corner)
+            if torch.all(x >= box_min) and torch.all(x <= box_max):
                 return name
         return None
 
-    def _check_area_states(self, obs: torch.Tensor, goal: torch.Tensor) -> bool:
+    def check_area_states(self, obs: torch.Tensor, goal: torch.Tensor) -> bool:
         """Check if both obs and goal are in the same defined area."""
         obs_area = self.check_area(obs)
         goal_area = self.check_area(goal)
@@ -125,26 +117,8 @@ class AreaCheckMixin:
             x[1] -= 0.17  # Drawer Offset
         return x  # Return original point if no area match
 
-    def check_area(self, x: torch.Tensor) -> str | None:
-        """
-        Check if the point x is in any of the defined areas.
-        Returns the name of the area or None if not found.
-        """
-        for name, surface in self.surfaces.items():
-            if self.point_in_polygon(x.numpy(), surface):
-                return name
-        return None
-
-    def check_area_states(self, obs: torch.Tensor, goal: torch.Tensor) -> bool:
-        """
-        Check if both obs and goal are in the same area.
-        """
-        obs_area = self.check_area(obs)
-        goal_area = self.check_area(goal)
-        return obs_area is not None and obs_area == goal_area
-
     def make_eval_surfaces(
-        self, surfaces: dict[str, np.ndarray], padding_percent: float
+        self, surfaces: dict[str, np.ndarray], padding_percent: float = 0.1
     ):
         eval_surfaces: dict[str, np.ndarray] = surfaces
         eval_surfaces["table"] = self.add_surface_padding(

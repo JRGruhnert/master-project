@@ -1,15 +1,14 @@
 from abc import ABC, abstractmethod
 import torch
-import numpy as np
 
 from hrl.state.logic.mixin import QuaternionMixin, RelThresholdMixin
 
 
-class PreconConverter(ABC):
+class TapasAddons(ABC):
     """Abstract base class for state logic strategies."""
 
     @abstractmethod
-    def retrieve_precon(
+    def make_tps(
         self,
         start: torch.Tensor,
         end: torch.Tensor,
@@ -19,24 +18,10 @@ class PreconConverter(ABC):
         raise NotImplementedError("Subclasses must implement the make_tp method.")
 
 
-class DefaultPreconConverter(PreconConverter):
-    """Default no-op logic - returns input as-is."""
-
-    def retrieve_precon(
-        self,
-        start: torch.Tensor,
-        end: torch.Tensor,
-        reversed: bool,
-    ) -> torch.Tensor | None:
-        if reversed:
-            return end.mean(dim=0)
-        return start.mean(dim=0)
-
-
-class ScalarPreconConverter(PreconConverter, RelThresholdMixin):
+class ScalarTapasAddons(TapasAddons, RelThresholdMixin):
     """Scalar precondition converter."""
 
-    def retrieve_precon(
+    def make_tps(
         self,
         start: torch.Tensor,
         end: torch.Tensor,
@@ -53,10 +38,10 @@ class ScalarPreconConverter(PreconConverter, RelThresholdMixin):
         return None  # Not constant enough
 
 
-class FlipPreconConverter(PreconConverter):
+class FlipTapasAddons(TapasAddons):
     """Flip precondition converter for boolean states."""
 
-    def retrieve_precon(
+    def make_tps(
         self,
         start: torch.Tensor,
         end: torch.Tensor,
@@ -68,10 +53,10 @@ class FlipPreconConverter(PreconConverter):
         return None
 
 
-class QuaternionPreconConverter(PreconConverter, QuaternionMixin):
+class QuatTapasAddons(TapasAddons, QuaternionMixin):
     """Quaternion precondition converter."""
 
-    def retrieve_precon(
+    def make_tps(
         self,
         start: torch.Tensor,
         end: torch.Tensor,
@@ -82,10 +67,10 @@ class QuaternionPreconConverter(PreconConverter, QuaternionMixin):
         return self._quaternion_mean(start)
 
 
-class EulerPreconConverter(PreconConverter):
+class EulerTapasAddons(TapasAddons):
     """Euler angle precondition converter."""
 
-    def retrieve_precon(
+    def make_tps(
         self,
         start: torch.Tensor,
         end: torch.Tensor,

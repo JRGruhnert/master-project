@@ -6,7 +6,7 @@ import torch
 from hrl.common.buffer import RolloutBuffer
 from hrl.networks import NetworkType, import_network
 from tapas_gmm.utils.select_gpu import device
-from hrl.observation.observation import EnvironmentObservation
+from hrl.env.observation import EnvironmentObservation
 from hrl.networks.actor_critic import ActorCriticBase
 from hrl.state.state import State
 from hrl.skill.skill import Skill

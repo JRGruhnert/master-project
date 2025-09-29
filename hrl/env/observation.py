@@ -1,9 +1,10 @@
 import torch
 from calvin_env.envs.observation import CalvinObservation
-from hrl.observation.observation import EnvironmentObservation
 
 
-class MasterCalvinObs(EnvironmentObservation):
+class EnvironmentObservation:
+    __slots__ = "_states"
+
     def __init__(
         self,
         obs: CalvinObservation,
@@ -21,3 +22,8 @@ class MasterCalvinObs(EnvironmentObservation):
 
         for k, val in obs.object_states.items():
             self._states[f"{k}_scalar"] = torch.tensor([val], dtype=torch.float32)
+
+    @property
+    def states(self) -> dict[str, torch.Tensor]:
+        """Returns the scalar states of the observation."""
+        return self._states
