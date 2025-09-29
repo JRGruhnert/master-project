@@ -251,8 +251,6 @@ class Tapas(Skill):
                 match_position = re.search(r"(.+?)_(?:position)", state_name)
                 match_rotation = re.search(r"(.+?)_(?:rotation)", state_name)
                 match_scalar = re.search(r"(.+?)_(?:scalar)", state_name)
-                print(f"Overriding Tapas State {state_name}")
-                print(f"Value: {state_value}")
                 if state_name == "ee_position":
                     ee_pose = torch.cat(
                         [

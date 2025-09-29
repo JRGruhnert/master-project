@@ -140,18 +140,6 @@ class MasterAgent:
 
         total_reward, episode_length, success_rate = self.buffer.stats()
 
-        if self.config.use_wandb:
-            self.run.log(
-                {
-                    "reward": total_reward,
-                    "success_rate": success_rate,
-                    "episode_length": episode_length,
-                    "epoch": self.current_epoch,
-                    "best_success": self.best_success,
-                    "epochs_since_improvement": self.epochs_since_improvement,
-                }
-            )
-
         ### Check for early stop (Plateau reached)
         if success_rate > self.best_success + 1e-2:  # small threshold
             self.best_success = success_rate
