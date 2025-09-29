@@ -79,19 +79,14 @@ def train_agent(config: TrainConfig):
             epoch += 1
             if config.use_wandb:
                 # Log weights every 5 epochs (not every epoch to reduce data)
-                if epoch % 5 == 0:
-                    for name, param in agent.policy_new.named_parameters():
-                        clean_name = name.replace(
-                            ".", "/"
-                        )  # actor/0/weight instead of actor.0.weight
-                        run.log(
-                            {
-                                f"weights/{clean_name}": wandb.Histogram(
-                                    param.data.cpu()
-                                )
-                            },
-                            step=epoch,
-                        )
+                for name, param in agent.policy_new.named_parameters():
+                    clean_name = name.replace(
+                        ".", "/"
+                    )  # actor/0/weight instead of actor.0.weight
+                    run.log(
+                        {f"weights/{clean_name}": wandb.Histogram(param.data.cpu())},
+                        step=epoch,
+                    )
 
                 # Always log training metrics
                 if hasattr(agent, "buffer") and hasattr(agent.buffer, "stats"):
