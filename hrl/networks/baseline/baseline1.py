@@ -42,11 +42,9 @@ class Baseline(BaselineBase):
         # obs and goal are dicts with keys 'euler', 'quat', 'scalar'
         obs_dict, goal_dict = self.to_batch(obs, goal)
 
-        obs_encoded = [
-            self.encoder_obs[k.name](v.to(device)) for k, v in obs_dict.items()
-        ]
+        obs_encoded = [self.encoder_obs[k](v.to(device)) for k, v in obs_dict.items()]
         goal_encoded = [
-            self.encoder_goal[k.name](v.to(device)) for k, v in goal_dict.items()
+            self.encoder_goal[k](v.to(device)) for k, v in goal_dict.items()
         ]
 
         # Flatten each encoded component

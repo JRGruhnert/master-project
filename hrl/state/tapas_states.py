@@ -1,3 +1,4 @@
+import torch
 from hrl.state.logic.tapas_addons import (
     EulerTapasAddons,
     FlipTapasAddons,
@@ -35,8 +36,8 @@ class EulerState(TapasState):
             id=id,
             type_str="Euler",
             normalizer=LinearNormalizer(
-                lower_bound=[-1.0, -1.0, -1.0],
-                upper_bound=[1.0, 1.0, 1.0],
+                lower_bound=torch.Tensor([-1.0, -1.0, -1.0]),
+                upper_bound=torch.Tensor([1.0, 1.0, 1.0]),
             ),
             skill_condition=EulerDistanceCondition(),
             goal_condition=EulerDistanceCondition(),

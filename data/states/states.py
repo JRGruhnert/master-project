@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 from hrl.state.logic.target_condition import (
     BooleanDistanceCondition,
     EulerDistanceCondition,
@@ -60,12 +61,14 @@ _S = {
         id=14,
         eval_condition=AreaEvalCondition(
             surfaces={
-                "table": np.array([[0.0, -0.15, 0.46], [0.30, -0.03, 0.46]]),
-                "drawer_open": np.array([[0.04, -0.35, 0.38], [0.30, -0.21, 0.38]]),
-                "drawer_closed": np.array([[0.04, -0.16, 0.38], [0.30, -0.03, 0.38]]),
+                "table": torch.Tensor([[0.0, -0.15, 0.46], [0.30, -0.03, 0.46]]),
+                "drawer_open": torch.Tensor([[0.04, -0.35, 0.38], [0.30, -0.21, 0.38]]),
+                "drawer_closed": torch.Tensor(
+                    [[0.04, -0.16, 0.38], [0.30, -0.03, 0.38]]
+                ),
             },
-            lower_bound=[-1.0, -1.0, -1.0],
-            upper_bound=[1.0, 1.0, 1.0],
+            lower_bound=torch.Tensor([-1.0, -1.0, -1.0]),
+            upper_bound=torch.Tensor([1.0, 1.0, 1.0]),
         ),
     ),
     "block_blue_position": EulerState(
@@ -73,12 +76,14 @@ _S = {
         id=15,
         eval_condition=AreaEvalCondition(
             surfaces={
-                "table": np.array([[0.0, -0.15, 0.46], [0.30, -0.03, 0.46]]),
-                "drawer_open": np.array([[0.04, -0.35, 0.38], [0.30, -0.21, 0.38]]),
-                "drawer_closed": np.array([[0.04, -0.16, 0.38], [0.30, -0.03, 0.38]]),
+                "table": torch.Tensor([[0.0, -0.15, 0.46], [0.30, -0.03, 0.46]]),
+                "drawer_open": torch.Tensor([[0.04, -0.35, 0.38], [0.30, -0.21, 0.38]]),
+                "drawer_closed": torch.Tensor(
+                    [[0.04, -0.16, 0.38], [0.30, -0.03, 0.38]]
+                ),
             },
-            lower_bound=[-1.0, -1.0, -1.0],
-            upper_bound=[1.0, 1.0, 1.0],
+            lower_bound=torch.Tensor([-1.0, -1.0, -1.0]),
+            upper_bound=torch.Tensor([1.0, 1.0, 1.0]),
         ),
     ),
     "block_pink_position": EulerState(
@@ -86,12 +91,14 @@ _S = {
         id=16,
         eval_condition=AreaEvalCondition(
             surfaces={
-                "table": np.array([[0.0, -0.15, 0.46], [0.30, -0.03, 0.46]]),
-                "drawer_open": np.array([[0.04, -0.35, 0.38], [0.30, -0.21, 0.38]]),
-                "drawer_closed": np.array([[0.04, -0.16, 0.38], [0.30, -0.03, 0.38]]),
+                "table": torch.Tensor([[0.0, -0.15, 0.46], [0.30, -0.03, 0.46]]),
+                "drawer_open": torch.Tensor([[0.04, -0.35, 0.38], [0.30, -0.21, 0.38]]),
+                "drawer_closed": torch.Tensor(
+                    [[0.04, -0.16, 0.38], [0.30, -0.03, 0.38]]
+                ),
             },
-            lower_bound=[-1.0, -1.0, -1.0],
-            upper_bound=[1.0, 1.0, 1.0],
+            lower_bound=torch.Tensor([-1.0, -1.0, -1.0]),
+            upper_bound=torch.Tensor([1.0, 1.0, 1.0]),
         ),
     ),
     "ee_rotation": QuatState(
@@ -158,20 +165,20 @@ _S = {
         upper_bound=0.28,
         eval_condition=PreciseEvalCondition(
             target_condition=RangeDistanceCondition(
-                lower_bound=0.0,
-                upper_bound=0.28,
+                lower_bound=torch.Tensor([0.0]),
+                upper_bound=torch.Tensor([0.28]),
             ),
         ),
     ),
     "base__drawer_scalar": RangeState(
         name="base__drawer_scalar",
         id=12,
-        lower_bound=0.0,
-        upper_bound=0.22,
+        lower_bound=torch.Tensor([0.0]),
+        upper_bound=torch.Tensor([0.22]),
         eval_condition=PreciseEvalCondition(
             target_condition=RangeDistanceCondition(
-                lower_bound=0.0,
-                upper_bound=0.22,
+                lower_bound=torch.Tensor([0.0]),
+                upper_bound=torch.Tensor([0.22]),
             ),
         ),
     ),

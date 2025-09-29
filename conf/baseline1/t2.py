@@ -5,17 +5,15 @@ from hrl.networks import NetworkType
 from hrl.env.calvin import MasterEnvConfig
 
 config = TrainConfig(
-    tag="t1",
+    tag="t2",
     experiment=ExperimentConfig(
-        states_tag="Minimal",
-        skills_tag="Minimal",
-        p_empty=0.0,
+        states_tag="Normal",
+        skills_tag="Normal",
+        p_empty=0.8,
         p_rand=0.0,
-        env=MasterEnvConfig(
-            debug_vis=False,
-        ),
+        env=MasterEnvConfig(),
         agent=AgentConfig(),
-        nt=NetworkType.GNN_V4,
+        nt=NetworkType.BASELINE_V1,
     ),
-    use_wandb=False,
+    use_wandb=True,
 )

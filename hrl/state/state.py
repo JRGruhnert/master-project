@@ -66,7 +66,7 @@ class State:
 
     def value(self, x: torch.Tensor) -> torch.Tensor:
         """Returns the value of the state as a tensor."""
-        raise self._normalizer.value(x)
+        return self._normalizer.value(x)
 
     def distance_to_skill(
         self,
