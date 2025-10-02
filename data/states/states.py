@@ -1,4 +1,3 @@
-import numpy as np
 import torch
 from hrl.state.logic.target_condition import (
     BooleanDistanceCondition,

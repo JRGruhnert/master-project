@@ -3,14 +3,11 @@ from enum import Enum
 import random
 from loguru import logger
 
-import numpy as np
 from tapas_gmm.env.calvin import Calvin, CalvinConfig
-import torch
-
 from hrl.env.observation import EnvironmentObservation
 from hrl.skill.tapas import Tapas
-from hrl.state.state import State, TapasState
 from hrl.skill.skill import Skill
+from hrl.state.state import State, TapasState
 
 
 class RewardMode(Enum):
@@ -153,7 +150,9 @@ class CalvinEnvironment:
                 if not state.evaluate(
                     current_states[state.name], target_states[state.name]
                 ):
+                    print(f"State {state.name} does not match")
                     return False
+                print(f"State {state.name} not in target states")
         return True
 
     def startposition_check(self, skill: Skill, states: list[State]) -> bool:

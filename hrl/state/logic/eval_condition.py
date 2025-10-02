@@ -29,7 +29,12 @@ class PreciseEvalCondition(EvalCondition, ThresholdMixin):
 
     def evaluate(self, current: torch.Tensor, goal: torch.Tensor) -> bool:
         """Evaluate success condition based on Euclidean distance."""
-        return self.target_condition.distance(current, goal, goal) <= self.threshold
+        distance = self.target_condition.distance(current, goal, goal)
+        success = distance <= self.threshold
+        print(
+            f"🎯 Eval: obs={current.numpy()[:3]}, goal={goal.numpy()[:3]}, distance={distance:.4f}, success={success}"
+        )
+        return success
 
 
 class AreaEvalCondition(EvalCondition, TapasAreaCheckMixin, BoundedMixin):
