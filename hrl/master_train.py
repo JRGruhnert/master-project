@@ -53,13 +53,21 @@ def train_agent(config: TrainConfig):
             run.log(
                 {f"weights/{clean_name}": wandb.Histogram(param.data.cpu())}, step=0
             )
+            run.log(
+                {
+                    "train/reward": total_reward,
+                    "train/episode_length": episode_length,
+                    "train/success_rate": success_rate,
+                },
+                step=0,
+            )
 
     # track total training time
     start_time = datetime.now().replace(microsecond=0)
     stop_training = False
     epoch = 0
+    start_time_batch = datetime.now().replace(microsecond=0)
     while not stop_training:  # Training loop
-        start_time_batch = datetime.now().replace(microsecond=0)
         terminal = False
         batch_rdy = False
         obs, goal = env.reset(dloader.states)
@@ -96,7 +104,6 @@ def train_agent(config: TrainConfig):
                             "train/reward": total_reward,
                             "train/episode_length": episode_length,
                             "train/success_rate": success_rate,
-                            "train/epoch": epoch,
                         },
                         step=epoch,
                     )
@@ -111,6 +118,7 @@ def train_agent(config: TrainConfig):
                 --------------------------------------------------------------------------------------------
                 """
             )
+            start_time_batch = datetime.now().replace(microsecond=0)
     env.close()
     run.finish()
     end_time = datetime.now().replace(microsecond=0)
