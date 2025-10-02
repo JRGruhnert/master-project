@@ -53,14 +53,14 @@ def train_agent(config: TrainConfig):
             run.log(
                 {f"weights/{clean_name}": wandb.Histogram(param.data.cpu())}, step=0
             )
-            run.log(
-                {
-                    "train/reward": 0,
-                    "train/episode_length": 0,
-                    "train/success_rate": 0,
-                },
-                step=0,
-            )
+        run.log(
+            {
+                "train/reward": 0,
+                "train/episode_length": 0,
+                "train/success_rate": 0,
+            },
+            step=0,
+        )
 
     # track total training time
     start_time = datetime.now().replace(microsecond=0)
