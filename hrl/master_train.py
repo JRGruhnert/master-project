@@ -55,9 +55,9 @@ def train_agent(config: TrainConfig):
             )
             run.log(
                 {
-                    "train/reward": total_reward,
-                    "train/episode_length": episode_length,
-                    "train/success_rate": success_rate,
+                    "train/reward": 0,
+                    "train/episode_length": 0,
+                    "train/success_rate": 0,
                 },
                 step=0,
             )
