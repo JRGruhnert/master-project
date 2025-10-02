@@ -10,7 +10,13 @@ from hrl.state.logic.target_condition import (
     FlipDistanceCondition,
 )
 from hrl.state.state import TapasState
-from hrl.state.tapas_states import BoolState, EulerState, QuatState, RangeState
+from hrl.state.tapas_states import (
+    BoolState,
+    EulerState,
+    FlipState,
+    QuatState,
+    RangeState,
+)
 
 euler_precise = EulerState(
     "test",
@@ -62,11 +68,11 @@ bool_state = BoolState(
     ),
 )
 
-flip_state = BoolState(
+flip_state = FlipState(
     "test",
     0,
     eval_condition=PreciseEvalCondition(
-        target_condition=FlipDistanceCondition(),
+        target_condition=BooleanDistanceCondition(),
     ),
 )
 
@@ -176,11 +182,11 @@ class TestTapasState:
                 0.0,
             ),
             (range_state, [0.0], [0.0], [0.0], 0.0),
-            (range_state, [0.0], [1.0], [1.0], 1.0),  # Skill matches precon
+            (range_state, [0.0], [1.0], [1.0], 1.0),
             (bool_state, [0.0], [0.0], [0.0], 0.0),
             (bool_state, [1.0], [0.0], [0.0], 1.0),
-            (flip_state, [0.0], [0.0], [1.0], 0.0),  # Perfect flip
-            (flip_state, [0.0], [1.0], [0.0], 1.0),  # Perfect flip
+            (flip_state, [0.0], [0.0], [1.0], 1.0),
+            (flip_state, [0.0], [1.0], [1.0], 0.0),
         ],
     )
     def test_skill_distance(
@@ -197,7 +203,7 @@ class TestTapasState:
         precon_tensor = torch.tensor(precon, dtype=torch.float32)
 
         distance = state.distance_to_skill(current_tensor, goal_tensor, precon_tensor)
-
+        print(f"Distance computed: {distance}")
         # Convert to float if it's a tensor
         if isinstance(distance, torch.Tensor):
             distance = distance.item()

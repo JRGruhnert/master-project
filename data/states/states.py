@@ -185,7 +185,7 @@ _S = {
         name="base__button_scalar",
         id=13,
         eval_condition=PreciseEvalCondition(
-            target_condition=FlipDistanceCondition(),
+            target_condition=BooleanDistanceCondition(),
         ),
     ),
     "block_red_scalar": BoolState(

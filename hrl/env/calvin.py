@@ -150,9 +150,7 @@ class CalvinEnvironment:
                 if not state.evaluate(
                     current_states[state.name], target_states[state.name]
                 ):
-                    print(f"State {state.name} does not match")
                     return False
-                print(f"State {state.name} not in target states")
         return True
 
     def startposition_check(self, skill: Skill, states: list[State]) -> bool:
