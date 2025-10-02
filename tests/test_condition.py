@@ -203,7 +203,6 @@ class TestTapasState:
         precon_tensor = torch.tensor(precon, dtype=torch.float32)
 
         distance = state.distance_to_skill(current_tensor, goal_tensor, precon_tensor)
-        print(f"Distance computed: {distance}")
         # Convert to float if it's a tensor
         if isinstance(distance, torch.Tensor):
             distance = distance.item()
