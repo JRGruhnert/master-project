@@ -26,6 +26,7 @@ class TrainConfig:
     storage: StorageConfig
     # New wandb parameters
     use_wandb: bool
+    device_tag: str
 
 
 def train_agent(config: TrainConfig):
@@ -61,7 +62,7 @@ def train_agent(config: TrainConfig):
 
     # Initialize wandb
     if config.use_wandb:
-        wandb_name = config.nt.value + "_" + config.tag
+        wandb_name = config.nt.value + "_" + config.device_tag + "_" + config.tag
         run = wandb.init(
             entity="jan-gruhnert-universit-t-freiburg",
             project="master-project",
@@ -72,6 +73,7 @@ def train_agent(config: TrainConfig):
                 "nt": config.nt.value,
                 "p_empty": config.experiment.p_empty,
                 "p_rand": config.experiment.p_rand,
+                "device": config.device_tag,
             },
             name=wandb_name,
             id=wandb_name,

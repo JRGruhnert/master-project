@@ -5,6 +5,7 @@ from hrl.experiments.pepr import PePrConfig
 from hrl.master_train import TrainConfig
 from hrl.networks import NetworkType
 from hrl.env.environment import EnvironmentConfig
+from conf.machine import use_wandb, device_tag
 
 storage = StorageConfig(
     skills_tag="Normal",
@@ -24,5 +25,6 @@ config = TrainConfig(
         success_reward=100.0,
     ),
     storage=storage,
-    use_wandb=True,
+    use_wandb=use_wandb,
+    device_tag=device_tag,
 )
