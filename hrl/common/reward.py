@@ -7,13 +7,13 @@ from hrl.common.state import State
 
 
 @dataclass
-class EvalConfig:
+class RewardConfig:
     step_reward: float
     success_reward: float
 
 
 class RewardModule(ABC):
-    def __init__(self, config: EvalConfig, states: list[State]):
+    def __init__(self, config: RewardConfig, states: list[State]):
         self.states = states
         self.config = config
 
@@ -31,7 +31,7 @@ class RewardModule(ABC):
         raise NotImplementedError()
 
 
-class SparseEval(RewardModule):
+class SparseRewardModule(RewardModule):
 
     def _check_states(self, current: dict, goal: dict) -> bool:
         """Generic method to check if states match target conditions."""

@@ -1,8 +1,8 @@
 from loguru import logger
 
 from tapas_gmm.env.calvin import Calvin, CalvinConfig
-from hrl.common.reward import SparseEval
-from hrl.common.storage import Storage
+from hrl.common.reward import SparseRewardModule
+from hrl.common.storage import StorageModule
 from hrl.env.environment import BaseEnvironment, EnvironmentConfig
 from hrl.env.observation import EnvironmentObservation
 from hrl.common.skill import Skill
@@ -12,9 +12,14 @@ class CalvinEnvironment(BaseEnvironment):
     def __init__(
         self,
         config: EnvironmentConfig,
-        eval: SparseEval,
-        storage: Storage,
+        reward_module: SparseRewardModule,
+        storage_module: StorageModule,
     ):
+        self.config = config
+        self.reward_module = reward_module
+        self.storage_module = storage_module
+
+        # Calvin specific
         c_config = CalvinConfig(
             task="Undefined",
             cameras=("wrist", "front"),
@@ -31,9 +36,6 @@ class CalvinEnvironment(BaseEnvironment):
             real_time=False,
         )
         self.env = Calvin(c_config)
-        self.config = config
-        self.eval = eval
-        self.storage = storage
 
     def reset(
         self, skill: Skill = None
@@ -45,12 +47,12 @@ class CalvinEnvironment(BaseEnvironment):
         self.current = EnvironmentObservation(self.current_env)
         if skill:
             # Should fullfill preconditions for skill
-            while not self.eval.is_skill_start(skill, self.current):
+            while not self.reward_module.is_skill_start(skill, self.current):
                 self.current_env, _, _, _ = self.env.reset(settle_time=50)
                 self.current = EnvironmentObservation(self.current_env)
         else:
             # Current and goal should not be equal
-            while self.eval.is_equal(self.current, self.goal):
+            while self.reward_module.is_equal(self.current, self.goal):
                 self.current_env, _, _, _ = self.env.reset(settle_time=50)
                 self.current = EnvironmentObservation(self.current_env)
 
@@ -72,7 +74,7 @@ class CalvinEnvironment(BaseEnvironment):
                 action := skill.predict(
                     self.current_env,
                     self.goal,
-                    self.storage.states,
+                    self.storage_module.states,
                 )
             ) is not None:
                 self.current_env, _, _, _ = self.env.step(action, self.config.render)
@@ -87,6 +89,6 @@ class CalvinEnvironment(BaseEnvironment):
 
     def evaluate(self, skill: Skill = None) -> tuple[float, bool]:
         if skill:
-            return self.eval.is_skill_end(skill, self.current)
+            return self.reward_module.is_skill_end(skill, self.current)
         else:
-            return self.eval.step(self.current, self.goal)
+            return self.reward_module.step(self.current, self.goal)

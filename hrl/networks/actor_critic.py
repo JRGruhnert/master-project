@@ -129,6 +129,34 @@ class ActorCriticBase(nn.Module, ABC):
             if vals  # only include non-empty
         }
 
+    def compute_gae(
+        self,
+        rewards: list[float],
+        values: list[torch.Tensor],
+        is_terminals: list[float],
+    ):
+        advantages = []
+        gae = 0
+        values = values + [0]  # add dummy for V(s_{T+1})
+        for step in reversed(range(len(rewards))):
+            delta = (
+                rewards[step]
+                + self.config.gamma * values[step + 1] * (1 - is_terminals[step])
+                - values[step]
+            )
+            gae = (
+                delta
+                + self.config.gamma
+                * self.config.gae_lambda
+                * (1 - is_terminals[step])
+                * gae
+            )
+            advantages.insert(0, gae)
+        returns = [adv + val for adv, val in zip(advantages, values[:-1])]
+        return torch.tensor(advantages, dtype=torch.float32), torch.tensor(
+            returns, dtype=torch.float32
+        )
+
 
 class BaselineBase(ActorCriticBase):
     def to_batch(

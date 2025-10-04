@@ -6,8 +6,8 @@ from omegaconf import OmegaConf, SCMode
 import concurrent.futures
 
 from conf.shared.experiment import ExperimentConfig
-from hrl.common.agent import MasterAgent
-from hrl.common.buffer import RolloutBuffer
+from hrl.common.agent import HRLAgent
+from hrl.common.buffer import BufferModule
 from hrl.experiments.pepr import PePrExperiment
 from hrl.networks import NetworkType
 from hrl.common.state import StateSpace
@@ -31,7 +31,7 @@ def eval_task(config: EvalConfig):
         config.state_space, config.task_space, config.experiment.verbose
     )
     env = BaseEnvironment(config.experiment.env, dloader.states, dloader.skills)
-    buffer = RolloutBuffer()
+    buffer = BufferModule()
     os.makedirs("results/tasks", exist_ok=True)
     # track total training time
     start_time = datetime.now().replace(microsecond=0)

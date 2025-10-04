@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from omegaconf import OmegaConf, SCMode
 
 from conf.shared.experiment import Exp1Config, ExperimentConfig
-from hrl.common.agent import MasterAgent
+from hrl.common.agent import HRLAgent
 from hrl.experiments.pepr import PePrExperiment
 from hrl.networks import NetworkType
 from hrl.common.state import StateSpace
@@ -34,7 +34,7 @@ def eval_agent(config: EvalConfig):
         dl.skills,
         max_steps,
     )
-    agent = MasterAgent(
+    agent = HRLAgent(
         config.experiment.agent,
         config.experiment.nt,
         config.tag,

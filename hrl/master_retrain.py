@@ -5,7 +5,7 @@ import wandb
 
 from hrl.experiments.pepr import PePrExperiment
 from hrl.env.calvin import CalvinEnvironment, MasterEnvConfig
-from hrl.common.agent import MasterAgent, AgentConfig
+from hrl.common.agent import HRLAgent, HRLAgentConfig
 from hrl.networks import NetworkType
 from tapas_gmm.utils.argparse import parse_and_build_config
 
@@ -16,7 +16,7 @@ class RetrainConfig:
     task_space: str
     tag: str
     nt: NetworkType
-    agent: AgentConfig
+    agent: HRLAgentConfig
     env: MasterEnvConfig
     checkpoint: str
     keep_epoch: bool
@@ -32,7 +32,7 @@ def train_agent(config: RetrainConfig):
     # Initialize the environment and agent
     dloader = PePrExperiment(config.state_space, config.task_space, "data/")
     env = CalvinEnvironment(config.env, dloader.max_steps)
-    agent = MasterAgent(
+    agent = HRLAgent(
         config.agent,
         config.nt,
         config.tag,

@@ -2,17 +2,16 @@ from dataclasses import dataclass
 import torch
 from torch import nn
 import torch
-from hrl.common.buffer import RolloutBuffer
-from hrl.common.storage import Storage
+from hrl.common.buffer import BufferModule
+from hrl.common.storage import StorageModule
 from tapas_gmm.utils.select_gpu import device
 from hrl.env.observation import EnvironmentObservation
 from hrl.networks.actor_critic import ActorCriticBase
-from hrl.common.state import State
 from hrl.common.skill import Skill
 
 
 @dataclass
-class AgentConfig:
+class HRLAgentConfig:
     # Default values
     early_stop_patience: int = 5
     min_sampling_epochs: int = 10
@@ -38,23 +37,23 @@ class AgentConfig:
     eval: bool = False
 
 
-class MasterAgent:
+class HRLAgent:
 
     def __init__(
         self,
-        config: AgentConfig,
-        buffer: RolloutBuffer,
+        config: HRLAgentConfig,
         model: ActorCriticBase,
-        storage: Storage,
+        buffer_module: BufferModule,
+        storage_module: StorageModule,
     ):
         # Hyperparameters
         self.config = config
         ### Initialize the agent
-        self.buffer: RolloutBuffer = buffer
+        self.buffer_module: BufferModule = buffer_module
         self.mse_loss = nn.MSELoss()
         self.policy_new: ActorCriticBase = model.to(device)
         self.policy_old: ActorCriticBase = model.to(device)
-        self.storage = storage
+        self.storage_module = storage_module
         self.optimizer = torch.optim.AdamW(
             self.policy_new.parameters(),
             lr=self.config.lr_actor,
@@ -74,17 +73,17 @@ class MasterAgent:
             action, action_logprob, state_val = self.policy_old.act(
                 obs, goal, self.config.eval
             )
-        self.buffer.obs.append(obs)
-        self.buffer.goal.append(goal)
-        self.buffer.actions.append(action)
-        self.buffer.logprobs.append(action_logprob)
-        self.buffer.values.append(state_val)
-        return self.storage.skills[action.item()]  # Can safely be accessed
+        self.buffer_module.obs.append(obs)
+        self.buffer_module.goal.append(goal)
+        self.buffer_module.actions.append(action)
+        self.buffer_module.logprobs.append(action_logprob)
+        self.buffer_module.values.append(state_val)
+        return self.storage_module.skills[action.item()]  # Can safely be accessed
 
     def feedback(self, reward: float, terminal: bool):
-        self.buffer.rewards.append(reward)
-        self.buffer.terminals.append(terminal)
-        return self.buffer.has_batch(self.config.batch_size)
+        self.buffer_module.rewards.append(reward)
+        self.buffer_module.terminals.append(terminal)
+        return self.buffer_module.has_batch(self.config.batch_size)
 
     def compute_gae(
         self,
@@ -115,17 +114,21 @@ class MasterAgent:
         )
 
     def save_buffer(self):
-        self.buffer.save(self.storage.buffer_saving_path, self.current_epoch)
+        self.buffer_module.save(
+            self.storage_module.buffer_saving_path, self.current_epoch
+        )
 
     def learn(self) -> bool:
-        assert self.buffer.health(), "Rollout buffer not in sync"
-        assert len(self.buffer.obs) == self.config.batch_size, "Batch size mismatch"
+        assert self.buffer_module.health(), "Rollout buffer not in sync"
+        assert (
+            len(self.buffer_module.obs) == self.config.batch_size
+        ), "Batch size mismatch"
 
         # Saves batch values
         if self.config.save_stats:
             self.save_buffer()
 
-        total_reward, episode_length, success_rate = self.buffer.stats()
+        total_reward, episode_length, success_rate = self.buffer_module.stats()
 
         ### Check for early stop (Plateau reached)
         if success_rate > self.best_success + 1e-2:  # small threshold
@@ -145,7 +148,9 @@ class MasterAgent:
 
         ### Preprocess batch values
         advantages, rewards = self.compute_gae(
-            self.buffer.rewards, self.buffer.values, self.buffer.terminals
+            self.buffer_module.rewards,
+            self.buffer_module.values,
+            self.buffer_module.terminals,
         )
 
         # Check shapes
@@ -155,13 +160,17 @@ class MasterAgent:
         advantages = advantages.to(device)
         rewards = rewards.to(device)
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
-        old_obs = self.buffer.obs
-        old_goal = self.buffer.goal
+        old_obs = self.buffer_module.obs
+        old_goal = self.buffer_module.goal
         old_actions = (
-            torch.squeeze(torch.stack(self.buffer.actions, dim=0)).detach().to(device)
+            torch.squeeze(torch.stack(self.buffer_module.actions, dim=0))
+            .detach()
+            .to(device)
         )
         old_logprobs = (
-            torch.squeeze(torch.stack(self.buffer.logprobs, dim=0)).detach().to(device)
+            torch.squeeze(torch.stack(self.buffer_module.logprobs, dim=0))
+            .detach()
+            .to(device)
         )
 
         ### Learning Rate Annealing
@@ -249,7 +258,7 @@ class MasterAgent:
         self.policy_old.load_state_dict(self.policy_new.state_dict())
 
         # Clear buffer
-        self.buffer.clear()
+        self.buffer_module.clear()
 
         # Update Epoch
         self.current_epoch += 1
@@ -276,14 +285,17 @@ class MasterAgent:
             print("Saving Regular Checkpoint!")
         if tag is None:
             checkpoint_path = (
-                self.storage.agent_saving_path
+                self.storage_module.agent_saving_path
                 + "model_cp_epoch_{}.pth".format(
                     self.current_epoch,
                 )
             )
         else:
-            checkpoint_path = self.storage.agent_saving_path + "model_cp_{}.pth".format(
-                tag,
+            checkpoint_path = (
+                self.storage_module.agent_saving_path
+                + "model_cp_{}.pth".format(
+                    tag,
+                )
             )
         # torch.save(self.policy_old.state_dict(), checkpoint_path)
         torch.save(
@@ -299,7 +311,7 @@ class MasterAgent:
         """
         Load the model from the specified path.
         """
-        if "baseline" in self.storage.checkpoint_path.lower():
+        if "baseline" in self.storage_module.checkpoint_path.lower():
             self.load_baseline()
         else:
             self.load_gnn()
@@ -309,7 +321,7 @@ class MasterAgent:
         Load the model from the specified path.
         """
         print("🔄 Loading GNN checkpoint...")
-        checkpoint = torch.load(self.storage.checkpoint_path, map_location="cpu")
+        checkpoint = torch.load(self.storage_module.checkpoint_path, map_location="cpu")
 
         self.policy_old.load_state_dict(checkpoint["model_state"])
         self.policy_new.load_state_dict(checkpoint["model_state"])
@@ -321,7 +333,7 @@ class MasterAgent:
         """Load state_dict and expand dimensions where needed"""
         print("🔄 Loading baseline checkpoint...")
         # Load the checkpoint
-        checkpoint = torch.load(self.storage.checkpoint_path, map_location="cpu")
+        checkpoint = torch.load(self.storage_module.checkpoint_path, map_location="cpu")
         old_state_dict: dict[str, torch.Tensor] = (
             checkpoint["state_dict"] if "state_dict" in checkpoint else checkpoint
         )

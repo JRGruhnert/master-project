@@ -1,5 +1,5 @@
-from hrl.common.agent import AgentConfig
-from hrl.common.reward import EvalConfig
+from hrl.common.agent import HRLAgentConfig
+from hrl.common.reward import RewardConfig
 from hrl.common.storage import StorageConfig
 from hrl.experiments.pepr import PePrConfig
 from hrl.master_train import TrainConfig
@@ -18,8 +18,8 @@ config = TrainConfig(
         p_rand=0.0,
     ),
     env=EnvironmentConfig(render=False),
-    agent=AgentConfig(),
-    eval=EvalConfig(
+    agent=HRLAgentConfig(),
+    reward=RewardConfig(
         step_reward=-1.0,
         success_reward=100.0,
     ),

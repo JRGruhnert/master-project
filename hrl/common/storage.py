@@ -18,7 +18,7 @@ class StorageConfig:
     plots_path: str = "plots"
 
 
-class Storage:
+class StorageModule:
     def __init__(self, config: StorageConfig, nt: str, tag: str):
         self.config = config
         self.nt = nt

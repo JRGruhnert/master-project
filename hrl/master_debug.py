@@ -3,7 +3,7 @@ from omegaconf import OmegaConf, SCMode
 
 from hrl.experiments.pepr import PePrExperiment
 from hrl.env.environment import BaseEnvironment, MasterEnvConfig
-from hrl.common.agent import AgentConfig
+from hrl.common.agent import HRLAgentConfig
 from hrl.networks import NetworkType
 from hrl.common.state import StateSpace
 from tapas_gmm.utils.argparse import parse_and_build_config
@@ -15,7 +15,7 @@ class MasterConfig:
     state_space: StateSpace
     tag: str
     nt: NetworkType
-    agent: AgentConfig
+    agent: HRLAgentConfig
     env: MasterEnvConfig
     verbose: bool = True
 

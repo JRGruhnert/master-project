@@ -3,13 +3,13 @@ from datetime import datetime
 from omegaconf import OmegaConf, SCMode
 import wandb
 
-from hrl.common.buffer import RolloutBuffer
-from hrl.common.reward import EvalConfig, SparseEval
-from hrl.common.storage import Storage, StorageConfig
+from hrl.common.buffer import BufferModule
+from hrl.common.reward import RewardConfig, SparseRewardModule
+from hrl.common.storage import StorageModule, StorageConfig
 from hrl.env.environment import EnvironmentConfig
 from hrl.experiments.pepr import PePrExperiment, PePrConfig
 from hrl.env.calvin import CalvinEnvironment
-from hrl.common.agent import AgentConfig, MasterAgent
+from hrl.common.agent import HRLAgentConfig, HRLAgent
 from tapas_gmm.utils.argparse import parse_and_build_config
 
 from hrl.networks import NetworkType, import_network
@@ -20,9 +20,9 @@ class TrainConfig:
     tag: str
     nt: NetworkType
     experiment: PePrConfig
-    agent: AgentConfig
+    agent: HRLAgentConfig
     env: EnvironmentConfig
-    eval: EvalConfig
+    reward: RewardConfig
     storage: StorageConfig
     # New wandb parameters
     use_wandb: bool
@@ -30,22 +30,33 @@ class TrainConfig:
 
 def train_agent(config: TrainConfig):
     # Initialize the environment and agent
-    storage = Storage(
+    storage_module = StorageModule(
         config.storage,
         config.nt,
         config.tag,
     )
-    eval = SparseEval(config.eval, storage.states)
-    experiment = PePrExperiment(
-        config.experiment, CalvinEnvironment(config.env, eval, storage)
+    reward_module = SparseRewardModule(
+        config.reward,
+        storage_module.states,
     )
+    buffer_module = BufferModule(
+        reward_module,
+    )
+    experiment = PePrExperiment(
+        config.experiment,
+        CalvinEnvironment(
+            config.env,
+            reward_module,
+            storage_module,
+        ),
+    )  # Wrap environment in experiment
 
     Net = import_network(config.nt)
-    agent = MasterAgent(
+    agent = HRLAgent(
         config.agent,
-        RolloutBuffer(eval),
-        Net(storage.states, storage.skills),
-        storage,
+        Net(storage_module.states, storage_module.skills),
+        buffer_module,
+        storage_module,
     )
 
     # Initialize wandb
@@ -76,6 +87,9 @@ def train_agent(config: TrainConfig):
                 "train/reward": 0,
                 "train/episode_length": 0,
                 "train/success_rate": 0,
+                "train/batch_duration": 0,
+                "train/learn_duration": 0,
+                "train/total_duration": 0,
             },
             step=0,
         )
@@ -111,21 +125,18 @@ def train_agent(config: TrainConfig):
                         step=epoch,
                     )
 
-                # Always log training metrics
-                if hasattr(agent, "buffer") and hasattr(agent.buffer, "stats"):
-                    total_reward, episode_length, success_rate = agent.buffer.stats()
-                    run.log(
-                        {
-                            "train/reward": total_reward,
-                            "train/episode_length": episode_length,
-                            "train/success_rate": success_rate,
-                            "train/batch_duration": end_time_batch - start_time_batch,
-                            "train/learn_duration": end_time_learning
-                            - start_time_learning,
-                            "train/total_duration": end_time_learning - start_time,
-                        },
-                        step=epoch,
-                    )
+                total_reward, episode_length, success_rate = agent.buffer_module.stats()
+                run.log(
+                    {
+                        "train/reward": total_reward,
+                        "train/episode_length": episode_length,
+                        "train/success_rate": success_rate,
+                        "train/batch_duration": end_time_batch - start_time_batch,
+                        "train/learn_duration": end_time_learning - start_time_learning,
+                        "train/total_duration": end_time_learning - start_time,
+                    },
+                    step=epoch,
+                )
             start_time_batch = datetime.now().replace(microsecond=0)
     experiment.close()
     run.finish()

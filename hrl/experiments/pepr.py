@@ -29,7 +29,7 @@ class PePrExperiment:
             pass
         elif sample < self.p_empty + self.p_rand:  # 0-p_empty + p_rand>
             logger.warning("Taking Random Step")
-            self.env.step(random.choice(self.env.storage.skills))
+            self.env.step(random.choice(self.env.storage_module.skills))
         else:  # The rest
             self.env.step(skill)
         return self.env.step(skill)
