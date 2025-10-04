@@ -3,9 +3,9 @@ from datetime import datetime
 from omegaconf import OmegaConf, SCMode
 import wandb
 
-from hrl.common.buffer import BufferModule
-from hrl.common.reward import RewardConfig, SparseRewardModule
-from hrl.common.storage import StorageModule, StorageConfig
+from hrl.common.modules.buffer_module import BufferModule
+from hrl.common.modules.reward_modules import RewardConfig, SparseRewardModule
+from hrl.common.modules.storage_module import StorageModule, StorageConfig
 from hrl.env.environment import EnvironmentConfig
 from hrl.experiments.pepr import PePrExperiment, PePrConfig
 from hrl.env.calvin import CalvinEnvironment
@@ -32,8 +32,8 @@ def train_agent(config: TrainConfig):
     # Initialize the environment and agent
     storage_module = StorageModule(
         config.storage,
-        config.nt,
         config.tag,
+        config.nt,
     )
     reward_module = SparseRewardModule(
         config.reward,

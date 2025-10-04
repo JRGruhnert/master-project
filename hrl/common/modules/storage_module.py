@@ -6,6 +6,7 @@ from data.skills.skills import SKILLS_BY_TAG
 from data.states.states import STATES_BY_TAG
 from hrl.common.state import State
 from hrl.common.skill import Skill
+from hrl.networks import NetworkType
 
 
 @dataclass
@@ -19,10 +20,15 @@ class StorageConfig:
 
 
 class StorageModule:
-    def __init__(self, config: StorageConfig, nt: str, tag: str):
+    def __init__(
+        self,
+        config: StorageConfig,
+        tag: str,
+        nt: NetworkType,
+    ):
         self.config = config
-        self.nt = nt
         self.tag = tag
+        self.nt = nt
 
     def create_directory(self, path: str):
         if not os.path.exists(path):
@@ -31,7 +37,9 @@ class StorageModule:
 
     @cached_property
     def agent_saving_path(self) -> str:
-        directory_path = self.config.storage_path + "/" + self.nt + "/" + self.tag + "/"
+        directory_path = (
+            self.config.storage_path + "/" + self.nt.value + "/" + self.tag + "/"
+        )
         return self.create_directory(directory_path)
 
     @cached_property

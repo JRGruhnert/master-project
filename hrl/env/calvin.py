@@ -1,8 +1,8 @@
 from loguru import logger
 
 from tapas_gmm.env.calvin import Calvin, CalvinConfig
-from hrl.common.reward import SparseRewardModule
-from hrl.common.storage import StorageModule
+from hrl.common.modules.reward_modules import SparseRewardModule
+from hrl.common.modules.storage_module import StorageModule
 from hrl.env.environment import BaseEnvironment, EnvironmentConfig
 from hrl.env.observation import EnvironmentObservation
 from hrl.common.skill import Skill

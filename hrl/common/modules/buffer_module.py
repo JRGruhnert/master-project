@@ -1,6 +1,6 @@
 import torch
 
-from hrl.common.reward import SparseRewardModule
+from hrl.common.modules.reward_modules import SparseRewardModule
 from hrl.env.observation import EnvironmentObservation
 
 

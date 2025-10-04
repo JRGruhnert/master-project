@@ -2,8 +2,8 @@ from dataclasses import dataclass
 import torch
 from torch import nn
 import torch
-from hrl.common.buffer import BufferModule
-from hrl.common.storage import StorageModule
+from hrl.common.modules.buffer_module import BufferModule
+from hrl.common.modules.storage_module import StorageModule
 from tapas_gmm.utils.select_gpu import device
 from hrl.env.observation import EnvironmentObservation
 from hrl.networks.actor_critic import ActorCriticBase

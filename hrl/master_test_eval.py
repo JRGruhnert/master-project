@@ -7,7 +7,7 @@ import concurrent.futures
 
 from conf.shared.experiment import ExperimentConfig
 from hrl.common.agent import HRLAgent
-from hrl.common.buffer import BufferModule
+from hrl.common.modules.buffer_module import BufferModule
 from hrl.experiments.pepr import PePrExperiment
 from hrl.networks import NetworkType
 from hrl.common.state import StateSpace
