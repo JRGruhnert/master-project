@@ -131,9 +131,18 @@ def train_agent(config: TrainConfig):
                         "train/reward": total_reward,
                         "train/episode_length": episode_length,
                         "train/success_rate": success_rate,
-                        "train/batch_duration": end_time_batch - start_time_batch,
-                        "train/learn_duration": end_time_learning - start_time_learning,
-                        "train/total_duration": end_time_learning - start_time,
+                        "train/batch_duration_minutes": (
+                            end_time_batch - start_time_batch
+                        ).total_seconds()
+                        / 60,
+                        "train/learn_duration_minutes": (
+                            end_time_learning - start_time_learning
+                        ).total_seconds()
+                        / 60,
+                        "train/total_duration_minutes": (
+                            end_time_learning - start_time
+                        ).total_seconds()
+                        / 60,
                     },
                     step=epoch,
                 )
