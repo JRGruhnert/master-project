@@ -77,22 +77,18 @@ def train_agent(config: TrainConfig):
             id=wandb_name,
         )
         # Log initial weights with step=0
+        metrics = {
+            "train/reward": 0.0,
+            "train/episode_length": 0.0,
+            "train/success_rate": 0.0,
+            "train/batch_duration": 0.0,
+            "train/learn_duration": 0.0,
+            "train/total_duration": 0.0,
+        }
         for name, param in agent.policy_new.named_parameters():
             clean_name = name.replace(".", "/")  # Better naming for wandb
-            run.log(
-                {f"weights/{clean_name}": wandb.Histogram(param.data.cpu())}, step=0
-            )
-        run.log(
-            {
-                "train/reward": 0,
-                "train/episode_length": 0,
-                "train/success_rate": 0,
-                "train/batch_duration": 0,
-                "train/learn_duration": 0,
-                "train/total_duration": 0,
-            },
-            step=0,
-        )
+            metrics.update({f"weights/{clean_name}": wandb.Histogram(param.data.cpu())})
+        run.log(metrics, step=0)
 
     # track total training time
     start_time = datetime.now().replace(microsecond=0)
@@ -116,39 +112,36 @@ def train_agent(config: TrainConfig):
             epoch += 1
             if config.use_wandb:
                 # Log weights every 5 epochs (not every epoch to reduce data)
-                for name, param in agent.policy_new.named_parameters():
-                    clean_name = name.replace(
-                        ".", "/"
-                    )  # actor/0/weight instead of actor.0.weight
-                    run.log(
-                        {f"weights/{clean_name}": wandb.Histogram(param.data.cpu())},
-                        step=epoch,
-                    )
-
                 total_reward, episode_length, success_rate = agent.buffer_module.stats()
-                run.log(
-                    {
-                        "train/reward": total_reward,
-                        "train/episode_length": episode_length,
-                        "train/success_rate": success_rate,
-                        "train/batch_duration_minutes": (
-                            end_time_batch - start_time_batch
-                        ).total_seconds()
-                        / 60,
-                        "train/learn_duration_minutes": (
-                            end_time_learning - start_time_learning
-                        ).total_seconds()
-                        / 60,
-                        "train/total_duration_minutes": (
-                            end_time_learning - start_time
-                        ).total_seconds()
-                        / 60,
-                    },
-                    step=epoch,
-                )
+                metrics = {
+                    "train/reward": total_reward,
+                    "train/episode_length": episode_length,
+                    "train/success_rate": success_rate,
+                    "train/batch_duration_minutes": (
+                        end_time_batch - start_time_batch
+                    ).total_seconds()
+                    / 60,
+                    "train/learn_duration_minutes": (
+                        end_time_learning - start_time_learning
+                    ).total_seconds()
+                    / 60,
+                    "train/total_duration_minutes": (
+                        end_time_learning - start_time
+                    ).total_seconds()
+                    / 60,
+                }
+                for name, param in agent.policy_new.named_parameters():
+                    clean_name = name.replace(".", "/")  # Better naming for wandb
+                    metrics.update(
+                        {f"weights/{clean_name}": wandb.Histogram(param.data.cpu())}
+                    )
+                run.log(metrics, step=epoch)
+                print(f"📊 Epoch {epoch}: {metrics}")  # Debug output
+
             start_time_batch = datetime.now().replace(microsecond=0)
     experiment.close()
-    run.finish()
+    if config.use_wandb:
+        run.finish()
     end_time = datetime.now().replace(microsecond=0)
     print(f"Training ended: Total training time: {end_time - start_time}")
 
