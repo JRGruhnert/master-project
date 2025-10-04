@@ -116,3 +116,6 @@ data/calvin/tapas/
 /data/states/calvin/
 /results/
 /wandb/
+
+/conf/machine.py
+conf/machine.py
