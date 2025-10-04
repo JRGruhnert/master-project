@@ -97,7 +97,7 @@ def train_agent(config: TrainConfig):
         if batch_rdy:
             end_time_batch = datetime.now().replace(microsecond=0)
             start_time_learning = datetime.now().replace(microsecond=0)
-            stop_training = agent.learn(verbose=True)
+            stop_training = agent.learn()
             end_time_learning = datetime.now().replace(microsecond=0)
             epoch += 1
             if config.use_wandb:
