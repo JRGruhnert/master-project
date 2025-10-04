@@ -1,15 +1,14 @@
 from dataclasses import dataclass
-import os
 import torch
 from torch import nn
 import torch
 from hrl.common.buffer import RolloutBuffer
-from hrl.networks import NetworkType, import_network
+from hrl.common.storage import Storage
 from tapas_gmm.utils.select_gpu import device
 from hrl.env.observation import EnvironmentObservation
 from hrl.networks.actor_critic import ActorCriticBase
-from hrl.state.state import State
-from hrl.skill.skill import Skill
+from hrl.common.state import State
+from hrl.common.skill import Skill
 
 
 @dataclass
@@ -19,7 +18,6 @@ class AgentConfig:
     min_sampling_epochs: int = 10
     max_batches: int = 50
     saving_freq: int = 5  # Saving frequence of trained model
-    saving_path: str = "results/"
 
     save_stats: bool = True
     batch_size: int = 2048
@@ -37,29 +35,26 @@ class AgentConfig:
     target_kl: float | None = (
         None  # (Optional) early stopping if KL divergence gets too large
     )
+    eval: bool = False
 
 
 class MasterAgent:
+
     def __init__(
         self,
         config: AgentConfig,
-        nt: NetworkType,
-        tag: str,
-        states: list[State],
-        skills: list[Skill],
+        buffer: RolloutBuffer,
+        model: ActorCriticBase,
+        storage: Storage,
     ):
         # Hyperparameters
         self.config = config
-        self.nt: NetworkType = nt
-        Net = import_network(nt)
-        print("Using network:", nt)
         ### Initialize the agent
-        self.states: list[State] = states
-        self.skills: list[Skill] = skills
+        self.buffer: RolloutBuffer = buffer
         self.mse_loss = nn.MSELoss()
-        self.buffer = RolloutBuffer()
-        self.policy_new: ActorCriticBase = Net(states, skills).to(device)
-        self.policy_old: ActorCriticBase = Net(states, skills).to(device)
+        self.policy_new: ActorCriticBase = model.to(device)
+        self.policy_old: ActorCriticBase = model.to(device)
+        self.storage = storage
         self.optimizer = torch.optim.AdamW(
             self.policy_new.parameters(),
             lr=self.config.lr_actor,
@@ -70,29 +65,21 @@ class MasterAgent:
         self.best_success = 0
         self.epochs_since_improvement = 0
 
-        ### Directory path for the agent (specified by name)
-        self.directory_path = config.saving_path + nt.value + "/" + tag + "/"
-        if not os.path.exists(self.directory_path):
-            os.makedirs(self.directory_path)
-
-        self.log_path = self.directory_path + "logs/"
-        if not os.path.exists(self.log_path):
-            os.makedirs(self.log_path)
-
     def act(
         self,
         obs: EnvironmentObservation,
         goal: EnvironmentObservation,
-        eval: bool = False,
     ) -> Skill:
         with torch.no_grad():
-            action, action_logprob, state_val = self.policy_old.act(obs, goal, eval)
+            action, action_logprob, state_val = self.policy_old.act(
+                obs, goal, self.config.eval
+            )
         self.buffer.obs.append(obs)
         self.buffer.goal.append(goal)
         self.buffer.actions.append(action)
         self.buffer.logprobs.append(action_logprob)
         self.buffer.values.append(state_val)
-        return self.skills[action.item()]  # Can safely be accessed
+        return self.storage.skills[action.item()]  # Can safely be accessed
 
     def feedback(self, reward: float, terminal: bool):
         self.buffer.rewards.append(reward)
@@ -127,16 +114,16 @@ class MasterAgent:
             returns, dtype=torch.float32
         )
 
-    def save(self):
-        self.buffer.save(self.log_path, self.current_epoch)
+    def save_buffer(self):
+        self.buffer.save(self.storage.buffer_saving_path, self.current_epoch)
 
-    def learn(self, verbose: bool = False) -> bool:
+    def learn(self) -> bool:
         assert self.buffer.health(), "Rollout buffer not in sync"
         assert len(self.buffer.obs) == self.config.batch_size, "Batch size mismatch"
 
         # Saves batch values
         if self.config.save_stats:
-            self.save()
+            self.save_buffer()
 
         total_reward, episode_length, success_rate = self.buffer.stats()
 
@@ -145,7 +132,7 @@ class MasterAgent:
             self.best_success = success_rate
             self.epochs_since_improvement = 0
             # Aditional save the new highscore before new learning.
-            self.save("best", verbose)
+            self.save("best")
         else:
             self.epochs_since_improvement += 1
 
@@ -184,10 +171,6 @@ class MasterAgent:
 
             for param_group in self.optimizer.param_groups:
                 param_group["lr"] = new_lr
-            if verbose:
-                print(
-                    f"[Epoch {self.current_epoch}] Base LR: {new_lr:.6f} (progress={progress:.2f})"
-                )
 
         ### Training loop for network
         kl_divergence_stop = False
@@ -257,7 +240,6 @@ class MasterAgent:
                     with torch.no_grad():
                         kl = (mb_logprobs - logprobs).mean()
                         if kl > self.config.target_kl:
-                            print(f"Early stopping at epoch {epoch} due to KL={kl:.4f}")
                             kl_divergence_stop = True
                             break  # break minibatch loop
             if kl_divergence_stop:
@@ -274,7 +256,7 @@ class MasterAgent:
 
         ### Regular saving based on saving frequence
         if self.current_epoch % self.config.saving_freq == 0:
-            self.save(verbose=verbose)
+            self.save()
 
         ### Stop Training
         if self.current_epoch == self.config.max_batches:
@@ -284,18 +266,23 @@ class MasterAgent:
         ### Continue Training otherwise
         return False
 
-    def save(self, tag: str = None, verbose: bool = False):
+    def save(self, tag: str = None):
         """
         Save the model to the specified path.
         """
-        if verbose:
-            print("Saving Checkpoint!")
+        if tag:
+            print(f"Saving tagged Checkpoint: {tag}")
+        else:
+            print("Saving Regular Checkpoint!")
         if tag is None:
-            checkpoint_path = self.directory_path + "model_cp_epoch_{}.pth".format(
-                self.current_epoch,
+            checkpoint_path = (
+                self.storage.agent_saving_path
+                + "model_cp_epoch_{}.pth".format(
+                    self.current_epoch,
+                )
             )
         else:
-            checkpoint_path = self.directory_path + "model_cp_{}.pth".format(
+            checkpoint_path = self.storage.agent_saving_path + "model_cp_{}.pth".format(
                 tag,
             )
         # torch.save(self.policy_old.state_dict(), checkpoint_path)
@@ -308,26 +295,21 @@ class MasterAgent:
             checkpoint_path,
         )
 
-    def load(self, checkpoint_path: str):
+    def load(self):
         """
         Load the model from the specified path.
         """
-        if self.nt in {
-            NetworkType.BASELINE_TEST,
-            NetworkType.BASELINE_V1,
-            NetworkType.BASELINE_V2,
-        }:
-            self.load_baseline(checkpoint_path)
+        if "baseline" in self.storage.checkpoint_path.lower():
+            self.load_baseline()
         else:
-            self.load_gnn(checkpoint_path)
+            self.load_gnn()
 
-    def load_gnn(self, checkpoint_path: str):
+    def load_gnn(self):
         """
         Load the model from the specified path.
         """
-        print(f"Loading checkpoint from {checkpoint_path} (epoch {self.current_epoch})")
-
-        checkpoint = torch.load(checkpoint_path, map_location="cpu")
+        print("🔄 Loading GNN checkpoint...")
+        checkpoint = torch.load(self.storage.checkpoint_path, map_location="cpu")
 
         self.policy_old.load_state_dict(checkpoint["model_state"])
         self.policy_new.load_state_dict(checkpoint["model_state"])
@@ -335,11 +317,11 @@ class MasterAgent:
         # if keep_epoch:
         #    self.current_epoch = checkpoint["epoch"]  # redundant, but explicit
 
-    def load_baseline(self, checkpoint_path: str):
+    def load_baseline(self):
         """Load state_dict and expand dimensions where needed"""
-
+        print("🔄 Loading baseline checkpoint...")
         # Load the checkpoint
-        checkpoint = torch.load(checkpoint_path, map_location="cpu")
+        checkpoint = torch.load(self.storage.checkpoint_path, map_location="cpu")
         old_state_dict: dict[str, torch.Tensor] = (
             checkpoint["state_dict"] if "state_dict" in checkpoint else checkpoint
         )

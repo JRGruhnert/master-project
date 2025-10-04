@@ -4,9 +4,9 @@ from loguru import logger
 import numpy as np
 import torch
 from calvin_env.envs.observation import CalvinObservation
+from hrl.common.tapas_state import TapasState
 from hrl.env.observation import EnvironmentObservation
-from hrl.skill.skill import Skill
-from hrl.state.state import TapasState
+from hrl.common.skill import Skill
 from tapas_gmm.utils.select_gpu import device
 from tapas_gmm.policy import import_policy
 from tapas_gmm.policy.gmm import GMMPolicy, GMMPolicyConfig
@@ -24,10 +24,8 @@ from tapas_gmm.utils.observation import (
     empty_batchsize,
 )
 
-from hrl.state.tapas_states import EulerState
 
-
-class Tapas(Skill):
+class TapasSkill(Skill):
     def __init__(
         self,
         name: str,

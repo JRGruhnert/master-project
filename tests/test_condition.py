@@ -1,16 +1,16 @@
 import pytest
 import torch
-import numpy as np
-from hrl.state.logic.eval_condition import AreaEvalCondition, PreciseEvalCondition
-from hrl.state.logic.target_condition import (
+from hrl.common.logic.eval_condition import AreaEvalCondition, PreciseEvalCondition
+from hrl.common.logic.target_condition import (
     EulerDistanceCondition,
     QuaternionDistanceCondition,
     RangeDistanceCondition,
     BooleanDistanceCondition,
     FlipDistanceCondition,
 )
-from hrl.state.state import TapasState
-from hrl.state.tapas_states import (
+
+from hrl.common.tapas_state import (
+    TapasState,
     BoolState,
     EulerState,
     FlipState,

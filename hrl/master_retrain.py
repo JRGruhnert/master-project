@@ -3,7 +3,7 @@ from datetime import datetime
 from omegaconf import OmegaConf, SCMode
 import wandb
 
-from hrl.common.experiment import Experiment
+from hrl.experiments.pepr import PePrExperiment
 from hrl.env.calvin import CalvinEnvironment, MasterEnvConfig
 from hrl.common.agent import MasterAgent, AgentConfig
 from hrl.networks import NetworkType
@@ -30,7 +30,7 @@ class RetrainConfig:
 
 def train_agent(config: RetrainConfig):
     # Initialize the environment and agent
-    dloader = Experiment(config.state_space, config.task_space, "data/")
+    dloader = PePrExperiment(config.state_space, config.task_space, "data/")
     env = CalvinEnvironment(config.env, dloader.max_steps)
     agent = MasterAgent(
         config.agent,

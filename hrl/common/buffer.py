@@ -1,10 +1,11 @@
 import torch
 
+from hrl.common.reward import SparseEval
 from hrl.env.observation import EnvironmentObservation
 
 
 class RolloutBuffer:
-    def __init__(self):
+    def __init__(self, reward_module: SparseEval):
         self.actions: list[torch.Tensor] = []
         self.obs: list[EnvironmentObservation] = []
         self.goal: list[EnvironmentObservation] = []
@@ -12,6 +13,7 @@ class RolloutBuffer:
         self.rewards: list[float] = []
         self.values: list[torch.Tensor] = []
         self.terminals: list[bool] = []
+        self.reward_module: SparseEval = reward_module
 
     def clear(self):
         self.actions.clear()
@@ -64,11 +66,16 @@ class RolloutBuffer:
             if terminal:
                 episode_rewards.append(current_episode_reward)
                 episode_lengths_batch.append(current_episode_length)
+                episode_success.append(
+                    1.0
+                    if current_episode_reward
+                    == self.reward_module.config.success_reward
+                    + self.reward_module.config.step_reward
+                    * (current_episode_length - 1)
+                    else 0.0
+                )
                 current_episode_reward = 0
                 current_episode_length = 0
-
-                # TODO: Remove hardcoded 50 as success threshold
-                episode_success.append(1 if reward >= 50.0 else 0)
 
         return (
             sum(episode_rewards),

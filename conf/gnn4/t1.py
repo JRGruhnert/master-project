@@ -1,12 +1,12 @@
 from hrl.common.agent import AgentConfig
-from hrl.common.experiment import ExperimentConfig
+from hrl.experiments.pepr import PePrConfig
 from hrl.master_train import TrainConfig
 from hrl.networks import NetworkType
 from hrl.env.calvin import MasterEnvConfig
 
 config = TrainConfig(
     tag="t1",
-    experiment=ExperimentConfig(
+    experiment=PePrConfig(
         states_tag="Minimal",
         skills_tag="Minimal",
         p_empty=0.0,

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import torch
 from hrl.env.observation import EnvironmentObservation
-from hrl.state.state import State
+from hrl.common.state import State
 
 
 # class SkillSpace(Enum):

@@ -11,8 +11,8 @@ from hrl.networks.layers.encoder import (
     PositionEncoder,
 )
 from hrl.env.observation import EnvironmentObservation
-from hrl.state.state import State
-from hrl.skill.skill import Skill
+from hrl.common.state import State
+from hrl.common.skill import Skill
 from tapas_gmm.utils.select_gpu import device
 import networkx as nx
 import matplotlib.pyplot as plt

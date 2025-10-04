@@ -1,104 +1,104 @@
-from hrl.skill.tapas import Tapas
+from hrl.common.tapas_skill import TapasSkill
 
 
 _S = {
-    "CloseDrawer": Tapas(
+    "CloseDrawer": TapasSkill(
         name="CloseDrawer",
         id=0,
         reversed=False,
         overrides=[],
     ),
-    "CloseDrawerBack": Tapas(
+    "CloseDrawerBack": TapasSkill(
         name="CloseDrawerBack",
         id=1,
         reversed=True,
         overrides=["ee_scalar", "ee_rotation", "ee_position"],
     ),
-    "OpenDrawer": Tapas(
+    "OpenDrawer": TapasSkill(
         name="OpenDrawer",
         id=2,
         reversed=False,
         overrides=[],
     ),
-    "OpenDrawerBack": Tapas(
+    "OpenDrawerBack": TapasSkill(
         name="OpenDrawerBack",
         id=3,
         reversed=True,
         overrides=["ee_scalar", "ee_rotation", "ee_position"],
     ),
-    "PressButton": Tapas(
+    "PressButton": TapasSkill(
         name="PressButton",
         id=4,
         reversed=False,
         overrides=[],
     ),
-    "PressButtonBack": Tapas(
+    "PressButtonBack": TapasSkill(
         name="PressButtonBack",
         id=5,
         reversed=True,
         overrides=["ee_scalar", "ee_rotation", "ee_position"],
     ),
-    "OpenSlide": Tapas(
+    "OpenSlide": TapasSkill(
         name="OpenSlide",
         id=6,
         reversed=False,
         overrides=[],
     ),
-    "CloseSlide": Tapas(
+    "CloseSlide": TapasSkill(
         name="CloseSlide",
         id=7,
         reversed=False,
         overrides=[],
     ),
-    "OpenSlideBack": Tapas(
+    "OpenSlideBack": TapasSkill(
         name="OpenSlideBack",
         id=8,
         reversed=True,
         overrides=["ee_scalar", "ee_rotation", "ee_position"],
     ),
-    "CloseSlideBack": Tapas(
+    "CloseSlideBack": TapasSkill(
         name="CloseSlideBack",
         id=9,
         reversed=True,
         overrides=["ee_scalar", "ee_rotation", "ee_position"],
     ),
-    "GrabRedTable": Tapas(
+    "GrabRedTable": TapasSkill(
         name="GrabRedTable",
         id=10,
         reversed=False,
         overrides=[],
     ),
-    "GrabPinkTable": Tapas(
+    "GrabPinkTable": TapasSkill(
         name="GrabPinkTable",
         id=11,
         reversed=False,
         overrides=[],
     ),
-    "GrabBlueTable": Tapas(
+    "GrabBlueTable": TapasSkill(
         name="GrabBlueTable",
         id=12,
         reversed=False,
         overrides=[],
     ),
-    "GrabRedDrawer": Tapas(
+    "GrabRedDrawer": TapasSkill(
         name="GrabRedDrawer",
         id=13,
         reversed=False,
         overrides=[],
     ),
-    "GrabPinkDrawer": Tapas(
+    "GrabPinkDrawer": TapasSkill(
         name="GrabPinkDrawer",
         id=14,
         reversed=False,
         overrides=[],
     ),
-    "GrabBlueDrawer": Tapas(
+    "GrabBlueDrawer": TapasSkill(
         name="GrabBlueDrawer",
         id=15,
         reversed=False,
         overrides=[],
     ),
-    "PlaceRedTable": Tapas(
+    "PlaceRedTable": TapasSkill(
         name="PlaceRedTable",
         id=16,
         reversed=True,
@@ -111,7 +111,7 @@ _S = {
             "block_red_scalar",
         ],
     ),
-    "PlacePinkTable": Tapas(
+    "PlacePinkTable": TapasSkill(
         name="PlacePinkTable",
         id=17,
         reversed=True,
@@ -124,7 +124,7 @@ _S = {
             "block_pink_scalar",
         ],
     ),
-    "PlaceBlueTable": Tapas(
+    "PlaceBlueTable": TapasSkill(
         name="PlaceBlueTable",
         id=18,
         reversed=True,
@@ -137,7 +137,7 @@ _S = {
             "block_blue_scalar",
         ],
     ),
-    "PlaceRedDrawer": Tapas(
+    "PlaceRedDrawer": TapasSkill(
         name="PlaceRedDrawer",
         id=19,
         reversed=True,
@@ -150,7 +150,7 @@ _S = {
             "block_red_scalar",
         ],
     ),
-    "PlacePinkDrawer": Tapas(
+    "PlacePinkDrawer": TapasSkill(
         name="PlacePinkDrawer",
         id=20,
         reversed=True,
@@ -163,7 +163,7 @@ _S = {
             "block_pink_scalar",
         ],
     ),
-    "PlaceBlueDrawer": Tapas(
+    "PlaceBlueDrawer": TapasSkill(
         name="PlaceBlueDrawer",
         id=21,
         reversed=True,

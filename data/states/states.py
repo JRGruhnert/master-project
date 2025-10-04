@@ -1,19 +1,19 @@
 import torch
-from hrl.state.logic.target_condition import (
+from hrl.common.logic.target_condition import (
     BooleanDistanceCondition,
     EulerDistanceCondition,
     FlipDistanceCondition,
     QuaternionDistanceCondition,
     RangeDistanceCondition,
 )
-from hrl.state.tapas_states import (
+from hrl.common.tapas_state import (
     BoolState,
     EulerState,
     FlipState,
     QuatState,
     RangeState,
 )
-from hrl.state.logic.eval_condition import (
+from hrl.common.logic.eval_condition import (
     AreaEvalCondition,
     PreciseEvalCondition,
     IgnoreEvalCondition,

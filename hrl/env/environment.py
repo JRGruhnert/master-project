@@ -1,6 +1,12 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from hrl.env.observation import EnvironmentObservation
-from hrl.skill.skill import Skill
+from hrl.common.skill import Skill
+
+
+@dataclass
+class EnvironmentConfig:
+    render: bool = False
 
 
 class BaseEnvironment(ABC):

@@ -1,17 +1,12 @@
 import torch
 
-from hrl.state.logic.tapas_addons import (
-    EulerTapasAddons,
-    QuatTapasAddons,
-    TapasAddons,
-)
-from hrl.state.logic.target_condition import (
+from hrl.common.logic.target_condition import (
     TargetCondition,
 )
-from hrl.state.logic.normalizer import (
+from hrl.common.logic.normalizer import (
     Normalizer,
 )
-from hrl.state.logic.eval_condition import (
+from hrl.common.logic.eval_condition import (
     EvalCondition,
 )
 
@@ -87,47 +82,8 @@ class State:
 
     def evaluate(
         self,
-        obs: torch.Tensor,
+        current: torch.Tensor,
         goal: torch.Tensor,
     ) -> bool:
         """Evaluate success using injected strategy."""
-        return self._eval_condition.evaluate(obs, goal)
-
-
-class TapasState(State):
-    def __init__(
-        self,
-        name: str,
-        id: int,
-        type_str: str,
-        normalizer: Normalizer,
-        skill_condition: TargetCondition,
-        goal_condition: TargetCondition,
-        eval_condition: EvalCondition,
-        tapas_addons: TapasAddons,
-    ):
-        super().__init__(
-            name,
-            id,
-            type_str,
-            normalizer,
-            skill_condition,
-            goal_condition,
-            eval_condition,
-        )
-        self._tapas_addons = tapas_addons
-
-    def make_additional_tps(
-        self,
-        start: torch.Tensor,
-        end: torch.Tensor,
-        reversed: bool,
-        tapas_selection: bool,
-    ) -> torch.Tensor:
-        """Returns the mean of the given tensor values."""
-        if not tapas_selection and (
-            isinstance(self._tapas_addons, EulerTapasAddons)
-            or isinstance(self._tapas_addons, QuatTapasAddons)
-        ):  # NOTE: Hack cause tapas does selects them themself
-            return None
-        return self._tapas_addons.make_tps(start, end, reversed)
+        return self._eval_condition.evaluate(current, goal)

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 import torch
 
-from hrl.state.logic.mixin import BoundedMixin, QuaternionMixin
+from hrl.common.logic.mixin import BoundedMixin, QuaternionMixin
 
 
 class TargetCondition(ABC):

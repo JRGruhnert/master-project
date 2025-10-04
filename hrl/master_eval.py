@@ -1,13 +1,12 @@
 from dataclasses import dataclass
 from omegaconf import OmegaConf, SCMode
-import concurrent.futures
 
 from conf.shared.experiment import Exp1Config, ExperimentConfig
 from hrl.common.agent import MasterAgent
-from hrl.common.experiment import Experiment
+from hrl.experiments.pepr import PePrExperiment
 from hrl.networks import NetworkType
-from hrl.state.state import StateSpace
-from hrl.skill.skill import SkillSpace
+from hrl.common.state import StateSpace
+from hrl.common.skill import SkillSpace
 from hrl.env.environment import BaseEnvironment
 from tapas_gmm.utils.argparse import parse_and_build_config
 
@@ -23,7 +22,9 @@ class EvalConfig:
 
 def eval_agent(config: EvalConfig):
     # Initialize the environment and agent
-    dl = Experiment(config.state_space, config.task_space, config.experiment.verbose)
+    dl = PePrExperiment(
+        config.state_space, config.task_space, config.experiment.verbose
+    )
     pe = config.experiment.pe
     pr = config.experiment.pr
     max_steps = int(len(dl.skills) * pe + len(dl.skills) * pr + len(dl.skills))

@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 import torch
 
-from hrl.state.logic.mixin import (
+from hrl.common.logic.mixin import (
     TapasAreaCheckMixin,
     BoundedMixin,
     ThresholdMixin,
 )
-from hrl.state.logic.target_condition import TargetCondition
+from hrl.common.logic.target_condition import TargetCondition
 
 
 # Base class
@@ -14,7 +14,7 @@ class EvalCondition(ABC):
     """Abstract base class for success evaluation strategies."""
 
     @abstractmethod
-    def evaluate(self, obs: torch.Tensor, goal: torch.Tensor) -> bool:
+    def evaluate(self, current: torch.Tensor, goal: torch.Tensor) -> bool:
         """Evaluate success condition for the given state."""
         raise NotImplementedError("Subclasses must implement the evaluate method.")
 
@@ -36,12 +36,12 @@ class PreciseEvalCondition(EvalCondition, ThresholdMixin):
 class AreaEvalCondition(EvalCondition, TapasAreaCheckMixin, BoundedMixin):
     """Success condition based on area matching."""
 
-    def evaluate(self, obs: torch.Tensor, goal: torch.Tensor) -> bool:
-        return self.check_area_states(obs, goal)
+    def evaluate(self, current: torch.Tensor, goal: torch.Tensor) -> bool:
+        return self.check_area_states(current, goal)
 
 
 class IgnoreEvalCondition(EvalCondition):
     """Success condition that always returns True (ignores the check)."""
 
-    def evaluate(self, obs: torch.Tensor, goal: torch.Tensor) -> bool:
+    def evaluate(self, current: torch.Tensor, goal: torch.Tensor) -> bool:
         return True

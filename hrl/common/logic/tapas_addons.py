@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import torch
 
-from hrl.state.logic.mixin import QuaternionMixin, RelThresholdMixin
+from hrl.common.logic.mixin import QuaternionMixin, RelThresholdMixin
 
 
 class TapasAddons(ABC):

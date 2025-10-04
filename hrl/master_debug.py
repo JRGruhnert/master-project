@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 from omegaconf import OmegaConf, SCMode
 
-from hrl.common.experiment import Experiment
+from hrl.experiments.pepr import PePrExperiment
 from hrl.env.environment import BaseEnvironment, MasterEnvConfig
 from hrl.common.agent import AgentConfig
 from hrl.networks import NetworkType
-from hrl.state.state import StateSpace
+from hrl.common.state import StateSpace
 from tapas_gmm.utils.argparse import parse_and_build_config
 
 
@@ -33,7 +33,7 @@ class MasterConfig:
 
 
 def train_agent(config: MasterConfig):
-    dloader = Experiment(config.state_space, config.task_space, config.verbose)
+    dloader = PePrExperiment(config.state_space, config.task_space, config.verbose)
     env = BaseEnvironment(config.env, dloader.states, dloader.skills)
     env.reset()
     while True:
