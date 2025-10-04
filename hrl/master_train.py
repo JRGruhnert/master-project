@@ -87,12 +87,12 @@ def train_agent(config: TrainConfig):
             "train/learn_duration": 0.0,
             "train/total_duration": 0.0,
         }
-        run.log(**metrics, step=0)
+        run.log(metrics, step=0)
         w_and_b = {
             f"weights/{name.replace('.', '/')}": wandb.Histogram(param.data.cpu())
             for name, param in agent.policy_new.named_parameters()
         }
-        run.log(**w_and_b, step=0)
+        run.log(w_and_b, step=0)
 
     # track total training time
     start_time = datetime.now().replace(microsecond=0)
@@ -134,14 +134,14 @@ def train_agent(config: TrainConfig):
                     ).total_seconds()
                     / 60,
                 }
-                run.log(**metrics, step=epoch)
+                run.log(metrics, step=epoch)
                 w_and_b = {
                     f"weights/{name.replace('.', '/')}": wandb.Histogram(
                         param.data.cpu()
                     )
                     for name, param in agent.policy_new.named_parameters()
                 }
-                run.log(**w_and_b, step=epoch)
+                run.log(w_and_b, step=epoch)
                 print(f"📊 Epoch {epoch}: {metrics}")  # Debug output
 
             start_time_batch = datetime.now().replace(microsecond=0)
