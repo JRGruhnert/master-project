@@ -5,7 +5,7 @@ import torch
 from hrl.common.modules.buffer_module import BufferModule
 from hrl.common.modules.storage_module import StorageModule
 from tapas_gmm.utils.select_gpu import device
-from hrl.env.observation import EnvironmentObservation
+from hrl.env.observation import BaseObservation
 from hrl.networks.actor_critic import ActorCriticBase
 from hrl.common.skill import Skill
 
@@ -66,8 +66,8 @@ class HRLAgent:
 
     def act(
         self,
-        obs: EnvironmentObservation,
-        goal: EnvironmentObservation,
+        obs: BaseObservation,
+        goal: BaseObservation,
     ) -> Skill:
         with torch.no_grad():
             action, action_logprob, state_val = self.policy_old.act(

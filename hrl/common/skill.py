@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import torch
-from hrl.env.observation import EnvironmentObservation
+from hrl.env.observation import BaseObservation
 from hrl.common.state import State
 
 
@@ -44,8 +44,8 @@ class Skill(ABC):
 
     def distances(
         self,
-        obs: EnvironmentObservation,
-        goal: EnvironmentObservation,
+        obs: BaseObservation,
+        goal: BaseObservation,
         states: list[State],
         pad: bool = False,
         sparse: bool = False,
@@ -54,8 +54,8 @@ class Skill(ABC):
         for state in states:
             if state.name in self.precons.keys():
                 value = state.distance_to_skill(
-                    obs.states[state.name],
-                    goal.states[state.name],
+                    obs.top_level_observation[state.name],
+                    goal.top_level_observation[state.name],
                     self.precons[state.name],
                 )
                 value = torch.tensor([value, 0.0]) if pad else torch.tensor([value])
@@ -81,8 +81,8 @@ class Skill(ABC):
     @abstractmethod
     def predict(
         self,
-        current: EnvironmentObservation,
-        goal: EnvironmentObservation,
+        current: BaseObservation,
+        goal: BaseObservation,
     ) -> torch.Tensor | None:
         """
         Get the action for the skill.
@@ -92,8 +92,8 @@ class Skill(ABC):
     @abstractmethod
     def to_skill_format(
         self,
-        current: EnvironmentObservation,
-        goal: EnvironmentObservation,
+        current: BaseObservation,
+        goal: BaseObservation,
         states: list[State],
     ) -> dict:
         """

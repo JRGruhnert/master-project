@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from hrl.env.observation import EnvironmentObservation
+from hrl.env.observation import BaseObservation
 from hrl.common.skill import Skill
 
 
@@ -11,9 +11,7 @@ class EnvironmentConfig:
 
 class BaseEnvironment(ABC):
     @abstractmethod
-    def reset(
-        self, skill: Skill = None
-    ) -> tuple[EnvironmentObservation, EnvironmentObservation]:
+    def reset(self, skill: Skill = None) -> tuple[BaseObservation, BaseObservation]:
         """Resets the environment for a new episode. Returns the initial observation and goal observation."""
         raise NotImplementedError("Reset method not implemented yet.")
 

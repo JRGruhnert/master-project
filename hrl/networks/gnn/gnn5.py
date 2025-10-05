@@ -7,7 +7,7 @@ from hrl.networks.layers.mlp import (
     StandardMLP,
     UnactivatedMLP,
 )
-from hrl.env.observation import EnvironmentObservation as MasterObservation
+from hrl.env.observation import CalvinObservation as MasterObservation
 from hrl.networks.actor_critic import GnnBase, PPOType
 from tapas_gmm.utils.select_gpu import device
 

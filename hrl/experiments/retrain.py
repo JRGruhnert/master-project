@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from hrl.env.calvin import CalvinEnvironment
-from hrl.env.observation import EnvironmentObservation
+from hrl.env.calvin.calvin import CalvinEnvironment
+from hrl.env.observation import CalvinObservation
 
 
 @dataclass
@@ -17,10 +17,10 @@ class RetrainExperiment:
         self.checkpoint = config.checkpoint
         self.env = env
 
-    def step(self, skill) -> tuple[EnvironmentObservation, float, bool]:
+    def step(self, skill) -> tuple[CalvinObservation, float, bool]:
         return self.env.step(skill)
 
-    def reset(self) -> tuple[EnvironmentObservation, EnvironmentObservation]:
+    def reset(self) -> tuple[CalvinObservation, CalvinObservation]:
         return self.env.reset()
 
     def evaluate(self) -> tuple[float, bool]:

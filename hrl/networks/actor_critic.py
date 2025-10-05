@@ -10,7 +10,7 @@ from hrl.networks.layers.encoder import (
     ScalarEncoder,
     PositionEncoder,
 )
-from hrl.env.observation import EnvironmentObservation
+from hrl.env.observation import BaseObservation
 from hrl.common.state import State
 from hrl.common.skill import Skill
 from tapas_gmm.utils.select_gpu import device
@@ -60,23 +60,23 @@ class ActorCriticBase(nn.Module, ABC):
     @abstractmethod
     def forward(
         self,
-        obs: list[EnvironmentObservation],
-        goal: list[EnvironmentObservation],
+        obs: list[BaseObservation],
+        goal: list[BaseObservation],
     ) -> tuple[torch.Tensor, torch.Tensor]:
         pass
 
     @abstractmethod
     def to_batch(
         self,
-        obs: list[EnvironmentObservation],
-        goal: list[EnvironmentObservation],
+        obs: list[BaseObservation],
+        goal: list[BaseObservation],
     ):
         pass
 
     def act(
         self,
-        obs: EnvironmentObservation,
-        goal: EnvironmentObservation,
+        obs: BaseObservation,
+        goal: BaseObservation,
         eval_mode: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         logits, value = self.forward([obs], [goal])
@@ -96,8 +96,8 @@ class ActorCriticBase(nn.Module, ABC):
 
     def evaluate(
         self,
-        obs: list[EnvironmentObservation],
-        goal: list[EnvironmentObservation],
+        obs: list[BaseObservation],
+        goal: list[BaseObservation],
         action: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         assert len(obs) == len(goal), "Observation and Goal lists have different sizes."
@@ -117,11 +117,11 @@ class ActorCriticBase(nn.Module, ABC):
 
     def state_type_dict_values(
         self,
-        x: EnvironmentObservation,
+        x: BaseObservation,
     ) -> dict[str, torch.Tensor]:
         grouped = {t: [] for t in State._state_registry.keys()}
         for state in self.states:
-            value = state.value(x.states[state.name])
+            value = state.value(x.top_level_observation[state.name])
             grouped[state.type_str].append(value)
         return {
             t: torch.stack(vals).float()
@@ -133,8 +133,8 @@ class ActorCriticBase(nn.Module, ABC):
 class BaselineBase(ActorCriticBase):
     def to_batch(
         self,
-        obs: list[EnvironmentObservation],
-        goal: list[EnvironmentObservation],
+        obs: list[BaseObservation],
+        goal: list[BaseObservation],
     ):
         obs_dicts = [self.state_type_dict_values(o) for o in obs]
         goal_dicts = [self.state_type_dict_values(g) for g in goal]
@@ -153,15 +153,13 @@ class BaselineBase(ActorCriticBase):
 
 class GnnBase(ActorCriticBase, ABC):
     @abstractmethod
-    def to_data(
-        self, obs: EnvironmentObservation, goal: EnvironmentObservation
-    ) -> HeteroData:
+    def to_data(self, obs: BaseObservation, goal: BaseObservation) -> HeteroData:
         pass
 
     def to_batch(
         self,
-        obs: list[EnvironmentObservation],
-        goal: list[EnvironmentObservation],
+        obs: list[BaseObservation],
+        goal: list[BaseObservation],
     ) -> Batch:
         data = []
         for o, g in zip(obs, goal):
@@ -169,14 +167,18 @@ class GnnBase(ActorCriticBase, ABC):
         return Batch.from_data_list(data)
 
     def encode_states(
-        self, obs: EnvironmentObservation, goal: EnvironmentObservation
+        self, obs: BaseObservation, goal: BaseObservation
     ) -> tuple[torch.Tensor, torch.Tensor]:
         obs_encoded = [
-            self.encoder_obs[state.type_str](obs.states[state.name].to(device))
+            self.encoder_obs[state.type_str](
+                obs.top_level_observation[state.name].to(device)
+            )
             for state in self.states
         ]
         goal_encoded = [
-            self.encoder_goal[state.type_str](goal.states[state.name].to(device))
+            self.encoder_goal[state.type_str](
+                goal.top_level_observation[state.name].to(device)
+            )
             for state in self.states
         ]
         obs_tensor = torch.stack(obs_encoded, dim=0)  # [num_states, feature_size]
@@ -185,8 +187,8 @@ class GnnBase(ActorCriticBase, ABC):
 
     def skill_state_distances(
         self,
-        obs: EnvironmentObservation,
-        goal: EnvironmentObservation,
+        obs: BaseObservation,
+        goal: BaseObservation,
         pad: bool = False,
         sparse: bool = False,
     ) -> torch.Tensor:
@@ -275,8 +277,8 @@ class GnnBase(ActorCriticBase, ABC):
 
     def state_skill_attr_weighted(
         self,
-        current: EnvironmentObservation,
-        goal: EnvironmentObservation,
+        current: BaseObservation,
+        goal: BaseObservation,
         pad: bool = True,
         sparse: bool = False,
     ) -> torch.Tensor:
@@ -296,8 +298,8 @@ class GnnBase(ActorCriticBase, ABC):
 
     def state_skill_attr_weighted_sparse(
         self,
-        current: EnvironmentObservation,
-        goal: EnvironmentObservation,
+        current: BaseObservation,
+        goal: BaseObservation,
         pad: bool = True,
     ) -> torch.Tensor:
         dist_matrix = self.skill_state_distances(current, goal, pad)  # [T, S, 2]

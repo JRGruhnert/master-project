@@ -3,9 +3,9 @@ import re
 from loguru import logger
 import numpy as np
 import torch
-from calvin_env.envs.observation import CalvinObservation
+from calvin_env.envs.observation import CalvinEnvObservation
 from hrl.common.tapas_state import TapasState
-from hrl.env.observation import EnvironmentObservation
+from hrl.env.calvin.calvin_observation import CalvinObservation
 from hrl.common.skill import Skill
 from tapas_gmm.utils.select_gpu import device
 from tapas_gmm.policy import import_policy
@@ -39,6 +39,8 @@ class TapasSkill(Skill):
         self.policy_name = "gmm"
         self.overrides_dict: dict[str, np.ndarray] = {}
         self.policy: GMMPolicy = self._load_policy()
+        self.first_prediction = True
+        self.predictions: list = []
 
     def _policy_checkpoint_name(self) -> pathlib.Path:
         return (
@@ -161,36 +163,37 @@ class TapasSkill(Skill):
     def reset(self, env, predict_as_batch: bool = True, control_duration: int = -1):
         super().reset(predict_as_batch, control_duration)
         self.policy.reset_episode(env)
+        self.first_prediction = True
+        self.predictions = []
 
     def predict(
         self,
-        current: CalvinObservation,
-        goal: EnvironmentObservation,
+        current: CalvinEnvObservation,
+        goal: CalvinObservation,
         states: list[TapasState],
     ) -> np.ndarray:
-        self.current_step += 1
-        if self.predict_as_batch:  # We currently only support batch prediction
-            if self.current_step == 0:
-                # Batch prediction for the given observation
+        if self.predict_as_batch:
+            if self.first_prediction:
                 # NOTE: Could use control_duration later to enforce certain length
-                print(
-                    f"Current: {current}, Goal: {goal}, States: {states}"
-                )  # Debug output
                 try:
                     self.predictions, _ = self.policy.predict(
                         self.to_skill_format(current, goal, states)
                     )
+                except FloatingPointError as e:
+                    logger.error(f"Numerical error in GMM prediction: {e}")
+                    # Return a safe default action (e.g., no movement)
+                    return None  # TODO: I think its just cause of a bad robot position
                 except Exception as e:
-                    logger.error(f"Error during batch prediction: {e}")
+                    logger.error(f"Error in skill prediction: {e}")
                     return None
-            if len(self.predictions) == 0 or self.current_step >= len(self.predictions):
+                self.first_prediction = False
+
+            if self.predictions.is_finished:
                 return None
-            return self._to_action(self.predictions[self.current_step])
+            return self._to_action(self.predictions.step())
         else:
-            # TODO: DID NOT TEST YET
+            # NOTE: DID NOT TEST YET but is theoretical available in Tapas
             raise NotImplementedError("Non-batch prediction not implemented yet.")
-            # prediction, _ = self._policy.predict(self.to_format(current, goal))
-            # return self._to_action(prediction)
 
     def _to_action(self, prediction) -> np.ndarray:
         return np.concatenate(
@@ -200,7 +203,7 @@ class TapasSkill(Skill):
             )
         )
 
-    def to_skill_format(self, obs: CalvinObservation, goal: EnvironmentObservation = None, states: list[TapasState] = None) -> SceneObservation:  # type: ignore
+    def to_skill_format(self, obs: CalvinEnvObservation, goal: CalvinObservation = None, states: list[TapasState] = None) -> SceneObservation:  # type: ignore
         """
         Convert the observation from the environment to a SceneObservation. This format is used for TAPAS.
 
@@ -209,6 +212,7 @@ class TapasSkill(Skill):
         SceneObservation
             The observation in common format as SceneObservation.
         """
+
         if obs.action is None:
             action = None
         else:
@@ -274,7 +278,7 @@ class TapasSkill(Skill):
                     if position_state_name not in states_dict:
                         temp_state = states_dict[position_state_name]
                         temp_pos = temp_state.area_tapas_override(
-                            goal.states[position_state_name],
+                            goal.top_level_observation[position_state_name],
                         )
                         object_poses_dict[match_position.group(1)] = np.concatenate(
                             [
@@ -286,13 +290,17 @@ class TapasSkill(Skill):
                     object_poses_dict[match_rotation.group(1)] = np.concatenate(
                         [
                             object_poses_dict[match_rotation.group(1)][:3],
-                            goal.states[f"{match_rotation.group(1)}_rotation"].numpy(),
+                            goal.top_level_observation[
+                                f"{match_rotation.group(1)}_rotation"
+                            ].numpy(),
                         ]
                     )
                 elif match_scalar:
-                    object_states_dict[match_scalar.group(1)] = goal.states[
-                        f"{match_scalar.group(1)}_scalar"
-                    ].numpy()
+                    object_states_dict[match_scalar.group(1)] = (
+                        goal.top_level_observation[
+                            f"{match_scalar.group(1)}_scalar"
+                        ].numpy()
+                    )
                 else:
                     raise ValueError(f"Unknown state name: {state_name}")
 
@@ -304,7 +312,9 @@ class TapasSkill(Skill):
         )
         object_states = dict_to_tensordict(
             {
-                name: torch.Tensor(state)
+                name: (
+                    torch.tensor([state]) if np.isscalar(state) else torch.tensor(state)
+                )
                 for name, state in sorted(object_states_dict.items())
             },
         )

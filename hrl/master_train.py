@@ -8,7 +8,7 @@ from hrl.common.modules.reward_modules import RewardConfig, SparseRewardModule
 from hrl.common.modules.storage_module import StorageModule, StorageConfig
 from hrl.env.environment import EnvironmentConfig
 from hrl.experiments.pepr import PePrExperiment, PePrConfig
-from hrl.env.calvin import CalvinEnvironment
+from hrl.env.calvin.calvin import CalvinEnvironment
 from hrl.common.agent import HRLAgentConfig, HRLAgent
 from tapas_gmm.utils.argparse import parse_and_build_config
 
@@ -62,6 +62,8 @@ def train_agent(config: TrainConfig):
 
     # Initialize wandb
     if config.use_wandb:
+        random_id = wandb.util.generate_id()
+        print(f"Random ID for wandb: {random_id}")  # Debug output
         wandb_name = config.nt.value + "_" + config.device_tag + "_" + config.tag
         run = wandb.init(
             entity="jan-gruhnert-universit-t-freiburg",
@@ -76,7 +78,7 @@ def train_agent(config: TrainConfig):
                 "device": config.device_tag,
             },
             name=wandb_name,
-            id=wandb_name,
+            id=random_id,
         )
         # Log initial weights with step=0
         metrics = {
@@ -106,17 +108,25 @@ def train_agent(config: TrainConfig):
             skill = agent.act(obs, goal)
             experiment.step(skill)
             reward, terminal = experiment.evaluate()
-            print(f"Step Reward: {reward}, Terminal: {terminal}")  # Debug output
             batch_rdy = agent.feedback(reward, terminal)
         if batch_rdy:
+            print(
+                f"Rewards collected: {len(agent.buffer_module.rewards)}"
+            )  # Debug output
+            print(
+                f"Terminals collected: {len(agent.buffer_module.terminals)}"
+            )  # Debug output
+            print(
+                f"Actions collected: {len(agent.buffer_module.actions)}"
+            )  # Debug output
             end_time_batch = datetime.now().replace(microsecond=0)
             start_time_learning = datetime.now().replace(microsecond=0)
+            total_reward, episode_length, success_rate = agent.buffer_module.stats()
             stop_training = agent.learn()
             end_time_learning = datetime.now().replace(microsecond=0)
             epoch += 1
             if config.use_wandb:
                 # Log weights every 5 epochs (not every epoch to reduce data)
-                total_reward, episode_length, success_rate = agent.buffer_module.stats()
                 metrics = {
                     "train/reward": total_reward,
                     "train/episode_length": episode_length,

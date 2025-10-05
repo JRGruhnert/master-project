@@ -1,14 +1,14 @@
 import torch
 
 from hrl.common.modules.reward_modules import SparseRewardModule
-from hrl.env.observation import EnvironmentObservation
+from hrl.env.observation import BaseObservation
 
 
 class BufferModule:
     def __init__(self, eval_module: SparseRewardModule):
         self.actions: list[torch.Tensor] = []
-        self.obs: list[EnvironmentObservation] = []
-        self.goal: list[EnvironmentObservation] = []
+        self.obs: list[BaseObservation] = []
+        self.goal: list[BaseObservation] = []
         self.logprobs: list[torch.Tensor] = []
         self.rewards: list[float] = []
         self.values: list[torch.Tensor] = []
@@ -53,8 +53,8 @@ class BufferModule:
 
     def act_values(
         self,
-        obs: EnvironmentObservation,
-        goal: EnvironmentObservation,
+        obs: BaseObservation,
+        goal: BaseObservation,
         action: torch.Tensor,
         action_logprob: torch.Tensor,
         state_val: torch.Tensor,
@@ -78,7 +78,7 @@ class BufferModule:
         current_episode_reward = 0
         current_episode_length = 0
 
-        print(f"Rewards: {len(self.rewards)}, Terminals: {len(self.terminals)}")
+        # print(f"Rewards: {len(self.rewards)}, Terminals: {len(self.terminals)}")
 
         for _, (reward, terminal) in enumerate(zip(self.rewards, self.terminals)):
             current_episode_reward += reward

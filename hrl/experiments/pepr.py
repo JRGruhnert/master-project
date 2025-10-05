@@ -2,8 +2,8 @@ from dataclasses import dataclass
 import random
 
 from loguru import logger
-from hrl.env.calvin import CalvinEnvironment
-from hrl.env.observation import EnvironmentObservation
+from hrl.env.calvin.calvin import CalvinEnvironment
+from hrl.env.calvin.calvin_observation import CalvinObservation
 
 
 @dataclass
@@ -21,10 +21,14 @@ class PePrExperiment:
         self.p_empty = config.p_empty
         self.p_rand = config.p_rand
         self.env = env
+        num_skills = len(env.storage_module.skills)
+        self.max_episode_length = int(
+            num_skills + num_skills * self.p_empty + num_skills * self.p_rand
+        )
+        self.current_step = 0
 
-    def step(self, skill) -> tuple[EnvironmentObservation, float, bool]:
+    def step(self, skill) -> tuple[CalvinObservation, float, bool]:
         sample = random.random()
-        print(f"Random Sample: {sample}")  # Debug output
         if sample < self.p_empty:  # 0-p_empty>
             logger.warning("Taking Empty Step")
             pass
@@ -34,11 +38,15 @@ class PePrExperiment:
         else:  # The rest
             self.env.step(skill)
 
-    def reset(self) -> tuple[EnvironmentObservation, EnvironmentObservation]:
+    def reset(self) -> tuple[CalvinObservation, CalvinObservation]:
+        self.current_step = 0
         return self.env.reset()
 
     def evaluate(self) -> tuple[float, bool]:
-        return self.env.evaluate()
+        reward, done = self.env.evaluate()
+        terminal = True if self.current_step >= self.max_episode_length else done
+        self.current_step += 1
+        return reward, terminal
 
     def close(self):
         self.env.close()

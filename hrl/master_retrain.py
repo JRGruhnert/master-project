@@ -4,7 +4,7 @@ from omegaconf import OmegaConf, SCMode
 import wandb
 
 from hrl.experiments.pepr import PePrExperiment
-from hrl.env.calvin import CalvinEnvironment, MasterEnvConfig
+from hrl.env.calvin.calvin import CalvinEnvironment, MasterEnvConfig
 from hrl.common.agent import HRLAgent, HRLAgentConfig
 from hrl.networks import NetworkType
 from tapas_gmm.utils.argparse import parse_and_build_config
