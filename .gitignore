@@ -121,3 +121,5 @@ data/calvin/tapas/
 conf/machine.py
 /wandb
 /wandb
+/results_temp
+/wandb
