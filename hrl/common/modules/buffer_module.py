@@ -78,7 +78,13 @@ class BufferModule:
         current_episode_reward = 0
         current_episode_length = 0
         print(
-            f"Length: {current_episode_length}, Reward: {current_episode_reward}, Success: {current_episode_success}"
+            sum(episode_rewards),
+            (
+                sum(episode_lengths_batch) / len(episode_lengths_batch)
+                if episode_lengths_batch
+                else 0
+            ),
+            sum(episode_success) / len(episode_success) if episode_success else 0,
         )
         for _, (reward, terminal) in enumerate(zip(self.rewards, self.terminals)):
             current_episode_reward += reward
