@@ -33,14 +33,14 @@ class SparseRewardModule(RewardModule):
 
     def _check_states(self, current: dict, goal: dict) -> bool:
         """Generic method to check if states match target conditions."""
-        print(f"Checking states sparse reward module...")
+        # print(f"Checking states sparse reward module...")
         for state in self.states:
             if state.name in goal:
 
                 if not state.evaluate(current[state.name], goal[state.name]):
-                    print(f"State {state.name} NOOOT matching.")
+                    # print(f"State {state.name} NOOOT matching.")
                     return False
-                print(f"State {state.name} matching.")
+                # print(f"State {state.name} matching.")
         return True
 
     def step(
