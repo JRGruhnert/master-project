@@ -301,7 +301,7 @@ class TapasSkill(Skill):
         )
         object_states = dict_to_tensordict(
             {
-                name: torch.Tensor([state])
+                name: torch.Tensor(state)
                 for name, state in sorted(object_states_dict.items())
             },
         )

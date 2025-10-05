@@ -96,9 +96,7 @@ class TapasAreaCheckMixin:
     def check_area(self, x: torch.Tensor) -> Optional[str]:
         """Check if the point x is in any of the defined areas."""
         for name, (min_corner, max_corner) in self.eval_surfaces.items():
-            box_min = torch.tensor(min_corner)
-            box_max = torch.tensor(max_corner)
-            if torch.all(x >= box_min) and torch.all(x <= box_max):
+            if torch.all(x >= min_corner) and torch.all(x <= max_corner):
                 return name
         return None
 

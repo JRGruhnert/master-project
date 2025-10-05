@@ -77,6 +77,9 @@ class BufferModule:
 
         current_episode_reward = 0
         current_episode_length = 0
+        print(
+            f"Length: {current_episode_length}, Reward: {current_episode_reward}, Success: {current_episode_success}"
+        )
         for _, (reward, terminal) in enumerate(zip(self.rewards, self.terminals)):
             current_episode_reward += reward
             current_episode_length += 1
@@ -86,9 +89,6 @@ class BufferModule:
                 == self.eval_module.config.success_reward
                 + self.eval_module.config.step_reward * (current_episode_length - 1)
                 else 0.0
-            )
-            print(
-                f"Length: {current_episode_length}, Reward: {current_episode_reward}, Success: {current_episode_success}"
             )
 
             if terminal:
