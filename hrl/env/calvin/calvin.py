@@ -1,5 +1,3 @@
-from loguru import logger
-
 from tapas_gmm.env.calvin import Calvin, CalvinConfig
 from hrl.common.modules.reward_modules import SparseRewardModule
 from hrl.common.modules.storage_module import StorageModule

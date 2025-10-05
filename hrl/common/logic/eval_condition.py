@@ -37,7 +37,7 @@ class AreaEvalCondition(EvalCondition, TapasAreaCheckMixin, BoundedMixin):
     """Success condition based on area matching."""
 
     def evaluate(self, current: torch.Tensor, goal: torch.Tensor) -> bool:
-        return self.check_area_states(current, goal)
+        return self.check_area_similarity(current, goal)
 
 
 class IgnoreEvalCondition(EvalCondition):

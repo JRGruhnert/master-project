@@ -143,7 +143,7 @@ class TapasSkill(Skill):
         """
         Initialize the task parameters based on the active states.
         """
-        # TODO: Its a copy of initialize_task_parameters but only override states get loaded and also in reverse
+        # NOTE: Its a copy of initialize_task_parameters but only override states get loaded and also in reverse
         # So basically normal since reversed is True
         tpgmm: AutoTPGMM = self.policy.model
         for state in states:
@@ -187,7 +187,6 @@ class TapasSkill(Skill):
                     logger.error(f"Error in skill prediction: {e}")
                     return None
                 self.first_prediction = False
-
             if self.predictions.is_finished:
                 return None
             return self._to_action(self.predictions.step())

@@ -100,7 +100,7 @@ class TapasAreaCheckMixin:
                 return name
         return None
 
-    def check_area_states(self, obs: torch.Tensor, goal: torch.Tensor) -> bool:
+    def check_area_similarity(self, obs: torch.Tensor, goal: torch.Tensor) -> bool:
         """Check if both obs and goal are in the same defined area."""
         obs_area = self.check_area(obs)
         goal_area = self.check_area(goal)
@@ -111,7 +111,7 @@ class TapasAreaCheckMixin:
         Override the area check for TAPAS.
         """
         area = self.check_area(x)
-        if area == "closed_drawer":
+        if area == "drawer_closed":
             x[1] -= 0.17  # Drawer Offset
         return x  # Return original point if no area match
 

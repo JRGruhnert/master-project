@@ -19,7 +19,10 @@ config = TrainConfig(
         p_rand=0.0,
     ),
     env=EnvironmentConfig(render=False),
-    agent=HRLAgentConfig(),
+    agent=HRLAgentConfig(
+        batch_size=64,
+        mini_batch_size=8,
+    ),
     reward=RewardConfig(
         step_reward=-1.0,
         success_reward=100.0,

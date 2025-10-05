@@ -111,7 +111,7 @@ class HRLAgent:
     def learn(self) -> bool:
         assert self.buffer_module.health(), "Rollout buffer not in sync"
         assert (
-            len(self.buffer_module.obs) == self.config.batch_size
+            len(self.buffer_module.current) == self.config.batch_size
         ), "Batch size mismatch"
 
         # Saves batch values
@@ -151,7 +151,7 @@ class HRLAgent:
         advantages = advantages.to(device)
         rewards = rewards.to(device)
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
-        old_obs = self.buffer_module.obs
+        old_obs = self.buffer_module.current
         old_goal = self.buffer_module.goal
         old_actions = (
             torch.squeeze(torch.stack(self.buffer_module.actions, dim=0))

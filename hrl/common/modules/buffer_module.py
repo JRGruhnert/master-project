@@ -6,9 +6,9 @@ from hrl.env.observation import BaseObservation
 
 class BufferModule:
     def __init__(self, eval_module: SparseRewardModule):
-        self.actions: list[torch.Tensor] = []
-        self.obs: list[BaseObservation] = []
+        self.current: list[BaseObservation] = []
         self.goal: list[BaseObservation] = []
+        self.actions: list[torch.Tensor] = []
         self.logprobs: list[torch.Tensor] = []
         self.rewards: list[float] = []
         self.values: list[torch.Tensor] = []
@@ -16,19 +16,19 @@ class BufferModule:
         self.eval_module: SparseRewardModule = eval_module
 
     def clear(self):
+        self.current.clear()
+        self.goal.clear()
         self.actions.clear()
         self.logprobs.clear()
         self.rewards.clear()
         self.values.clear()
         self.terminals.clear()
-        self.obs.clear()
-        self.goal.clear()
 
     def health(self):
         lengths = [
-            len(self.actions),
-            len(self.obs),
+            len(self.current),
             len(self.goal),
+            len(self.actions),
             len(self.logprobs),
             len(self.rewards),
             len(self.values),
@@ -37,29 +37,30 @@ class BufferModule:
         return all(l == lengths[0] for l in lengths)
 
     def has_batch(self, batch_size: int):
-        return len(self.actions) == batch_size
+        return len(self.actions) == batch_size and self.health()
 
     def save(self, path: str, epoch: int):
+        assert self.health(), "Buffer lengths are inconsistent!"
+
         file_path = path + f"stats_epoch_{epoch}.pt"
-        data = {}
-
-        data["actions"] = torch.stack(self.actions)
-        data["logprobs"] = torch.tensor(self.logprobs)
-        data["values"] = torch.tensor(self.values)
-        data["rewards"] = torch.tensor(self.rewards)
-        data["terminals"] = torch.tensor(self.terminals)
-
+        data = {
+            "actions": torch.stack(self.actions),
+            "logprobs": torch.tensor(self.logprobs),
+            "values": torch.tensor(self.values),
+            "rewards": torch.tensor(self.rewards),
+            "terminals": torch.tensor(self.terminals),
+        }
         torch.save(data, file_path)
 
     def act_values(
         self,
-        obs: BaseObservation,
+        current: BaseObservation,
         goal: BaseObservation,
         action: torch.Tensor,
         action_logprob: torch.Tensor,
         state_val: torch.Tensor,
     ):
-        self.obs.append(obs)
+        self.current.append(current)
         self.goal.append(goal)
         self.actions.append(action)
         self.logprobs.append(action_logprob)
@@ -70,6 +71,7 @@ class BufferModule:
         self.terminals.append(terminal)
 
     def stats(self) -> tuple[float, float, float]:
+        assert self.health(), "Buffer lengths are inconsistent!"
         # Calculate episode statistics
         episode_rewards = []
         episode_lengths_batch = []
@@ -78,20 +80,14 @@ class BufferModule:
         current_episode_reward = 0
         current_episode_length = 0
 
-        # print(f"Rewards: {len(self.rewards)}, Terminals: {len(self.terminals)}")
-
-        for _, (reward, terminal) in enumerate(zip(self.rewards, self.terminals)):
+        for i, reward in enumerate(self.rewards):
             current_episode_reward += reward
             current_episode_length += 1
             current_episode_success = (
-                1.0
-                if current_episode_reward
-                == self.eval_module.config.success_reward
-                + self.eval_module.config.step_reward * (current_episode_length - 1)
-                else 0.0
+                1.0 if reward == self.eval_module.config.success_reward else 0.0
             )
 
-            if terminal:
+            if i == len(self.rewards) - 1 or self.terminals[i]:
                 episode_rewards.append(current_episode_reward)
                 episode_lengths_batch.append(current_episode_length)
                 episode_success.append(current_episode_success)
