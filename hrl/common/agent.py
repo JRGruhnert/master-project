@@ -74,6 +74,7 @@ class HRLAgent:
                 obs, goal, self.config.eval
             )
         self.buffer_module.act_values(obs, goal, action, action_logprob, state_val)
+        print(f"Action: {action}, LogProb: {action_logprob}, StateVal: {state_val}")
         return self.storage_module.skills[action.item()]  # Can safely be accessed
 
     def feedback(self, reward: float, terminal: bool):
