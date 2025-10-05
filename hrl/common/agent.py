@@ -73,16 +73,11 @@ class HRLAgent:
             action, action_logprob, state_val = self.policy_old.act(
                 obs, goal, self.config.eval
             )
-        self.buffer_module.obs.append(obs)
-        self.buffer_module.goal.append(goal)
-        self.buffer_module.actions.append(action)
-        self.buffer_module.logprobs.append(action_logprob)
-        self.buffer_module.values.append(state_val)
+        self.buffer_module.act_values(obs, goal, action, action_logprob, state_val)
         return self.storage_module.skills[action.item()]  # Can safely be accessed
 
     def feedback(self, reward: float, terminal: bool):
-        self.buffer_module.rewards.append(reward)
-        self.buffer_module.terminals.append(terminal)
+        self.buffer_module.feedback_values(reward, terminal)
         return self.buffer_module.has_batch(self.config.batch_size)
 
     def compute_gae(
@@ -113,11 +108,6 @@ class HRLAgent:
             returns, dtype=torch.float32
         )
 
-    def save_buffer(self):
-        self.buffer_module.save(
-            self.storage_module.buffer_saving_path, self.current_epoch
-        )
-
     def learn(self) -> bool:
         assert self.buffer_module.health(), "Rollout buffer not in sync"
         assert (
@@ -125,10 +115,11 @@ class HRLAgent:
         ), "Batch size mismatch"
 
         # Saves batch values
-        if self.config.save_stats:
-            self.save_buffer()
+        self.buffer_module.save(
+            self.storage_module.buffer_saving_path, self.current_epoch
+        )
 
-        total_reward, episode_length, success_rate = self.buffer_module.stats()
+        _, _, success_rate = self.buffer_module.stats()
 
         ### Check for early stop (Plateau reached)
         if success_rate > self.best_success + 1e-2:  # small threshold

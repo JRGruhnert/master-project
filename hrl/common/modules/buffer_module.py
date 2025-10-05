@@ -51,6 +51,24 @@ class BufferModule:
 
         torch.save(data, file_path)
 
+    def act_values(
+        self,
+        obs: EnvironmentObservation,
+        goal: EnvironmentObservation,
+        action: torch.Tensor,
+        action_logprob: torch.Tensor,
+        state_val: torch.Tensor,
+    ):
+        self.obs.append(obs)
+        self.goal.append(goal)
+        self.actions.append(action)
+        self.logprobs.append(action_logprob)
+        self.values.append(state_val)
+
+    def feedback_values(self, reward: float, terminal: bool):
+        self.rewards.append(reward)
+        self.terminals.append(terminal)
+
     def stats(self) -> tuple[float, float, float]:
         # Calculate episode statistics
         episode_rewards = []
