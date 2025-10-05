@@ -173,6 +173,9 @@ class TapasSkill(Skill):
             if self.current_step == 0:
                 # Batch prediction for the given observation
                 # NOTE: Could use control_duration later to enforce certain length
+                print(
+                    f"Current: {current}, Goal: {goal}, States: {states}"
+                )  # Debug output
                 try:
                     self.predictions, _ = self.policy.predict(
                         self.to_skill_format(current, goal, states)
