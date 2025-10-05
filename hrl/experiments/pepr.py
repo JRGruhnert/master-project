@@ -24,6 +24,7 @@ class PePrExperiment:
 
     def step(self, skill) -> tuple[EnvironmentObservation, float, bool]:
         sample = random.random()
+        print(f"Random Sample: {sample}")  # Debug output
         if sample < self.p_empty:  # 0-p_empty>
             logger.warning("Taking Empty Step")
             pass
