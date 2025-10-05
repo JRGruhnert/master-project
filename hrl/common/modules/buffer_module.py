@@ -62,17 +62,21 @@ class BufferModule:
         for _, (reward, terminal) in enumerate(zip(self.rewards, self.terminals)):
             current_episode_reward += reward
             current_episode_length += 1
+            current_episode_success = (
+                1.0
+                if current_episode_reward
+                == self.eval_module.config.success_reward
+                + self.eval_module.config.step_reward * (current_episode_length - 1)
+                else 0.0
+            )
+            print(
+                f"Length: {current_episode_length}, Reward: {current_episode_reward}, Success: {current_episode_success}"
+            )
 
             if terminal:
                 episode_rewards.append(current_episode_reward)
                 episode_lengths_batch.append(current_episode_length)
-                episode_success.append(
-                    1.0
-                    if current_episode_reward
-                    == self.eval_module.config.success_reward
-                    + self.eval_module.config.step_reward * (current_episode_length - 1)
-                    else 0.0
-                )
+                episode_success.append(current_episode_success)
                 current_episode_reward = 0
                 current_episode_length = 0
 

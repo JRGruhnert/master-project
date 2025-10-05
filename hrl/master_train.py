@@ -85,7 +85,6 @@ def train_agent(config: TrainConfig):
             "train/success_rate": 0.0,
             "train/batch_duration": 0.0,
             "train/learn_duration": 0.0,
-            "train/total_duration": 0.0,
         }
         run.log(metrics, step=0)
         w_and_b = {
@@ -121,16 +120,12 @@ def train_agent(config: TrainConfig):
                     "train/reward": total_reward,
                     "train/episode_length": episode_length,
                     "train/success_rate": success_rate,
-                    "train/batch_duration_minutes": (
+                    "train/batch_duration": (
                         end_time_batch - start_time_batch
                     ).total_seconds()
                     / 60,
-                    "train/learn_duration_minutes": (
+                    "train/learn_duration": (
                         end_time_learning - start_time_learning
-                    ).total_seconds()
-                    / 60,
-                    "train/total_duration_minutes": (
-                        end_time_learning - start_time
                     ).total_seconds()
                     / 60,
                 }
