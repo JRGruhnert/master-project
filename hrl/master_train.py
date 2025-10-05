@@ -106,6 +106,7 @@ def train_agent(config: TrainConfig):
             skill = agent.act(obs, goal)
             experiment.step(skill)
             reward, terminal = experiment.evaluate()
+            print(f"Step Reward: {reward}, Terminal: {terminal}")  # Debug output
             batch_rdy = agent.feedback(reward, terminal)
         if batch_rdy:
             end_time_batch = datetime.now().replace(microsecond=0)

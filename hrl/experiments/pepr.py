@@ -32,7 +32,6 @@ class PePrExperiment:
             self.env.step(random.choice(self.env.storage_module.skills))
         else:  # The rest
             self.env.step(skill)
-        return self.env.step(skill)
 
     def reset(self) -> tuple[EnvironmentObservation, EnvironmentObservation]:
         return self.env.reset()

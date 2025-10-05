@@ -37,7 +37,6 @@ class SparseRewardModule(RewardModule):
         """Generic method to check if states match target conditions."""
         for state in self.states:
             if state.name in goal:
-                # print(f"Evaluating state: {state.name}")
                 if not state.evaluate(current[state.name], goal[state.name]):
                     return False
         return True
