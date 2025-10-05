@@ -115,11 +115,10 @@ data/calvin/tapas/
 /data/skills/tapas/
 /data/states/calvin/
 /results/
+/results_temp/
 /wandb/
 
 /conf/machine.py
 conf/machine.py
-/wandb
-/wandb
-/results_temp
-/wandb
+
+

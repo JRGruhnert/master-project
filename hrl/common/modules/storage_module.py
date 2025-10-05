@@ -39,7 +39,7 @@ class StorageModule:
     @cached_property
     def agent_saving_path(self) -> str:
         directory_path = (
-            self.config.storage_path + "/" + self.nt.value + "/" + self.tag + "/"
+            self.config.results_path + "/" + self.nt.value + "/" + self.tag + "/"
         )
         return self.create_directory(directory_path)
 
