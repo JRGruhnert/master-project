@@ -302,7 +302,7 @@ class HRLAgent:
         """
         Load the model from the specified path.
         """
-        if "baseline" in self.storage_module.checkpoint_path.lower():
+        if "baseline" in self.storage_module.config.checkpoint_path.lower():
             self.load_baseline()
         else:
             self.load_gnn()
@@ -312,7 +312,9 @@ class HRLAgent:
         Load the model from the specified path.
         """
         print("🔄 Loading GNN checkpoint...")
-        checkpoint = torch.load(self.storage_module.checkpoint_path, map_location="cpu")
+        checkpoint = torch.load(
+            self.storage_module.config.checkpoint_path, map_location="cpu"
+        )
 
         self.policy_old.load_state_dict(checkpoint["model_state"])
         self.policy_new.load_state_dict(checkpoint["model_state"])
@@ -324,7 +326,9 @@ class HRLAgent:
         """Load state_dict and expand dimensions where needed"""
         print("🔄 Loading baseline checkpoint...")
         # Load the checkpoint
-        checkpoint = torch.load(self.storage_module.checkpoint_path, map_location="cpu")
+        checkpoint = torch.load(
+            self.storage_module.config.checkpoint_path, map_location="cpu"
+        )
         old_state_dict: dict[str, torch.Tensor] = (
             checkpoint["state_dict"] if "state_dict" in checkpoint else checkpoint
         )

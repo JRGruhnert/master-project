@@ -17,6 +17,7 @@ class StorageConfig:
     results_path: str = "results"
     buffer_path: str = "logs"
     plots_path: str = "plots"
+    checkpoint_path: str = "checkpoint.pth"
 
 
 class StorageModule:
