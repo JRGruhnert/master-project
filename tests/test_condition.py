@@ -1,7 +1,7 @@
 import pytest
 import torch
 from hrl.common.logic.eval_condition import AreaEvalCondition, PreciseEvalCondition
-from hrl.common.logic.target_condition import (
+from hrl.common.logic.distance_condition import (
     EulerDistanceCondition,
     QuaternionDistanceCondition,
     RangeDistanceCondition,
@@ -9,8 +9,8 @@ from hrl.common.logic.target_condition import (
     FlipDistanceCondition,
 )
 
-from hrl.common.tapas_state import (
-    TapasState,
+from hrl.calvin.calvin_state import (
+    CalvinState,
     BoolState,
     EulerState,
     FlipState,
@@ -22,7 +22,7 @@ euler_precise = EulerState(
     "test",
     0,
     eval_condition=PreciseEvalCondition(
-        target_condition=EulerDistanceCondition(),
+        distance_condition=EulerDistanceCondition(),
     ),
 )
 
@@ -44,7 +44,7 @@ quat_state = QuatState(
     "test",
     0,
     eval_condition=PreciseEvalCondition(
-        target_condition=QuaternionDistanceCondition(),
+        distance_condition=QuaternionDistanceCondition(),
     ),
 )
 
@@ -54,7 +54,7 @@ range_state = RangeState(
     lower_bound=torch.tensor([0.0]),
     upper_bound=torch.tensor([1.0]),
     eval_condition=PreciseEvalCondition(
-        target_condition=RangeDistanceCondition(
+        distance_condition=RangeDistanceCondition(
             lower_bound=torch.tensor([0.0]), upper_bound=torch.tensor([1.0])
         ),
     ),
@@ -64,7 +64,7 @@ bool_state = BoolState(
     "test",
     0,
     eval_condition=PreciseEvalCondition(
-        target_condition=BooleanDistanceCondition(),
+        distance_condition=BooleanDistanceCondition(),
     ),
 )
 
@@ -72,7 +72,7 @@ flip_state = FlipState(
     "test",
     0,
     eval_condition=PreciseEvalCondition(
-        target_condition=BooleanDistanceCondition(),
+        distance_condition=BooleanDistanceCondition(),
     ),
 )
 
@@ -112,7 +112,7 @@ class TestTapasState:
     )
     def test_value(
         self,
-        state: TapasState,
+        state: CalvinState,
         current: list[float],
         expected: list[float],
     ):
@@ -150,7 +150,7 @@ class TestTapasState:
     )
     def test_goal_distance(
         self,
-        state: TapasState,
+        state: CalvinState,
         current: list[float],
         goal: list[float],
         expected_approx: float,
@@ -191,7 +191,7 @@ class TestTapasState:
     )
     def test_skill_distance(
         self,
-        state: TapasState,
+        state: CalvinState,
         current: list[float],
         goal: list[float],
         precon: list[float],
@@ -233,7 +233,7 @@ class TestTapasState:
     )
     def test_evaluate(
         self,
-        state: TapasState,
+        state: CalvinState,
         current: list[float],
         goal: list[float],
         expected: bool,

@@ -6,7 +6,7 @@ from hrl.common.logic.mixin import (
     BoundedMixin,
     ThresholdMixin,
 )
-from hrl.common.logic.target_condition import TargetCondition
+from hrl.common.logic.distance_condition import DistanceCondition
 
 
 # Base class
@@ -23,9 +23,9 @@ class EvalCondition(ABC):
 class PreciseEvalCondition(EvalCondition, ThresholdMixin):
     """Success condition based on precision threshold."""
 
-    def __init__(self, target_condition: TargetCondition):
+    def __init__(self, distance_condition: DistanceCondition):
         ThresholdMixin.__init__(self)
-        self.target_condition = target_condition
+        self.target_condition = distance_condition
 
     def evaluate(self, current: torch.Tensor, goal: torch.Tensor) -> bool:
         """Evaluate success condition based on Euclidean distance."""
@@ -33,7 +33,7 @@ class PreciseEvalCondition(EvalCondition, ThresholdMixin):
         return distance <= self.threshold
 
 
-class AreaEvalCondition(EvalCondition, TapasAreaCheckMixin, BoundedMixin):
+class AreaEvalCondition(EvalCondition, TapasAreaCheckMixin):
     """Success condition based on area matching."""
 
     def evaluate(self, current: torch.Tensor, goal: torch.Tensor) -> bool:

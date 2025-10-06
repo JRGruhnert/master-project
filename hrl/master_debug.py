@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from omegaconf import OmegaConf, SCMode
 
 from hrl.experiments.pepr import PePrExperiment
-from hrl.env.environment import BaseEnvironment, MasterEnvConfig
+from hrl.common.environment import BaseEnvironment, MasterEnvConfig
 from hrl.common.agent import HRLAgentConfig
 from hrl.networks import NetworkType
 from hrl.common.state import StateSpace

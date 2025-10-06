@@ -1,9 +1,9 @@
 from tapas_gmm.env.calvin import Calvin, CalvinConfig
-from hrl.common.modules.reward_modules import SparseRewardModule
+from hrl.common.modules.reward_module import SparseRewardModule
 from hrl.common.modules.storage_module import StorageModule
-from hrl.env.environment import BaseEnvironment, EnvironmentConfig
-from hrl.env.calvin.calvin_observation import CalvinObservation
-from hrl.common.skill import Skill
+from hrl.common.environment import BaseEnvironment, EnvironmentConfig
+from hrl.calvin.calvin_observation import CalvinObservation
+from hrl.common.skill import BaseSkill
 
 
 class CalvinEnvironment(BaseEnvironment):
@@ -35,7 +35,9 @@ class CalvinEnvironment(BaseEnvironment):
         )
         self.env = Calvin(c_config)
 
-    def reset(self, skill: Skill = None) -> tuple[CalvinObservation, CalvinObservation]:
+    def reset(
+        self, skill: BaseSkill = None
+    ) -> tuple[CalvinObservation, CalvinObservation]:
         goal_calvin, _, _, _ = self.env.reset(settle_time=50)
         self.goal = CalvinObservation(goal_calvin)
 
@@ -56,7 +58,7 @@ class CalvinEnvironment(BaseEnvironment):
 
     def step(
         self,
-        skill: Skill,
+        skill: BaseSkill,
         predict_as_batch: bool = True,
         control_duration: int = -1,
     ):
@@ -79,7 +81,7 @@ class CalvinEnvironment(BaseEnvironment):
     def close(self):
         self.env.close()
 
-    def evaluate(self, skill: Skill = None) -> tuple[float, bool]:
+    def evaluate(self, skill: BaseSkill = None) -> tuple[float, bool]:
         if skill:
             return self.reward_module.is_skill_end(skill, self.current)
         else:

@@ -1,10 +1,10 @@
 from hrl.common.agent import HRLAgentConfig
-from hrl.common.modules.reward_modules import RewardConfig
+from hrl.common.modules.reward_module import RewardConfig
 from hrl.common.modules.storage_module import StorageConfig
 from hrl.experiments.pepr import PePrConfig
 from hrl.master_train import TrainConfig
 from hrl.networks import NetworkType
-from hrl.env.environment import EnvironmentConfig
+from hrl.common.environment import EnvironmentConfig
 from conf.machine import use_wandb, device_tag
 
 storage = StorageConfig(

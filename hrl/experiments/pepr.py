@@ -2,8 +2,8 @@ from dataclasses import dataclass
 import random
 
 from loguru import logger
-from hrl.env.calvin.calvin import CalvinEnvironment
-from hrl.env.calvin.calvin_observation import CalvinObservation
+from hrl.calvin.calvin_environment import CalvinEnvironment
+from hrl.calvin.calvin_observation import CalvinObservation
 
 
 @dataclass

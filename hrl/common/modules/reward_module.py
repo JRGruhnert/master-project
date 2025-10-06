@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from hrl.env.observation import BaseObservation
-from hrl.common.skill import Skill
-from hrl.common.state import State
+from hrl.common.observation import BaseObservation
+from hrl.common.skill import BaseSkill
+from hrl.common.state import BaseState
 
 
 @dataclass
@@ -13,7 +13,7 @@ class RewardConfig:
 
 
 class RewardModule(ABC):
-    def __init__(self, config: RewardConfig, states: list[State]):
+    def __init__(self, config: RewardConfig, states: list[BaseState]):
         self.states = states
         self.config = config
 
@@ -54,10 +54,10 @@ class SparseRewardModule(RewardModule):
             # Success not reached
             return self.config.step_reward, False
 
-    def is_skill_start(self, skill: Skill, current: BaseObservation) -> bool:
+    def is_skill_start(self, skill: BaseSkill, current: BaseObservation) -> bool:
         return self._check_states(skill.precons, current.top_level_observation)
 
-    def is_skill_end(self, skill: Skill, current: BaseObservation) -> bool:
+    def is_skill_end(self, skill: BaseSkill, current: BaseObservation) -> bool:
         return self._check_states(skill.postcons, current.top_level_observation)
 
     def is_equal(self, current: BaseObservation, goal: BaseObservation) -> bool:

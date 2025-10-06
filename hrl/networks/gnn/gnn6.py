@@ -4,7 +4,7 @@ from torch.distributions import Categorical
 from torch_geometric.data import Batch, HeteroData
 from torch_geometric.nn import GINEConv, GINConv, GIN
 from torch_geometric.nn import GATv2Conv
-from hrl.env.observation import CalvinObservation as MasterObservation
+from hrl.common.observation import CalvinObservation as MasterObservation
 from hrl.networks.actor_critic import GnnBase, PPOType
 from hrl.networks.layers.mlp import (
     GinStandardMLP,

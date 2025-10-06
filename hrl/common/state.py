@@ -1,40 +1,29 @@
 import torch
 
-from hrl.common.logic.target_condition import (
-    TargetCondition,
+from hrl.common.logic.addon import BaseAddon
+from hrl.common.logic.distance_condition import (
+    DistanceCondition,
 )
-from hrl.common.logic.normalizer import (
-    Normalizer,
+from hrl.common.logic.value_condition import (
+    ValueCondition,
 )
 from hrl.common.logic.eval_condition import (
     EvalCondition,
 )
 
 
-class State:
-    _state_registry = {}
-
-    @classmethod
-    def register_type(cls, state_type: str):
-        """Decorator to register state types"""
-
-        def decorator(state_class):
-            if state_type in cls._state_registry:
-                raise ValueError(f"State type {state_type} is already registered.")
-            cls._state_registry[state_type] = state_class
-            return state_class
-
-        return decorator
+class BaseState:
 
     def __init__(
         self,
         name: str,
         id: int,
         type_str: str,
-        normalizer: Normalizer,
-        skill_condition: TargetCondition,
-        goal_condition: TargetCondition,
+        normalizer: ValueCondition,
+        skill_condition: DistanceCondition,
+        goal_condition: DistanceCondition,
         eval_condition: EvalCondition,
+        addons: dict[str, BaseAddon],
     ):
         self._name = name
         self._id = id
@@ -43,6 +32,7 @@ class State:
         self._skill_condition = skill_condition
         self._goal_condition = goal_condition
         self._eval_condition = eval_condition
+        self._addons = addons
 
     @property
     def name(self) -> str:
@@ -87,3 +77,12 @@ class State:
     ) -> bool:
         """Evaluate success using injected strategy."""
         return self._eval_condition.evaluate(current, goal)
+
+    def run_addon(
+        self,
+        name: str,
+        *args,
+        **kwargs,
+    ) -> torch.Tensor:
+        """Returns the mean of the given tensor values."""
+        return self._addons.get(name).run(*args, **kwargs)

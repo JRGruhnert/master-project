@@ -4,11 +4,11 @@ from omegaconf import OmegaConf, SCMode
 import wandb
 
 from hrl.common.modules.buffer_module import BufferModule
-from hrl.common.modules.reward_modules import RewardConfig, SparseRewardModule
+from hrl.common.modules.reward_module import RewardConfig, SparseRewardModule
 from hrl.common.modules.storage_module import StorageModule, StorageConfig
-from hrl.env.environment import EnvironmentConfig
+from hrl.common.environment import EnvironmentConfig
 from hrl.experiments.pepr import PePrExperiment, PePrConfig
-from hrl.env.calvin.calvin import CalvinEnvironment
+from hrl.calvin.calvin_environment import CalvinEnvironment
 from hrl.common.agent import HRLAgentConfig, HRLAgent
 from tapas_gmm.utils.argparse import parse_and_build_config
 

@@ -10,9 +10,9 @@ from hrl.networks.layers.encoder import (
     ScalarEncoder,
     PositionEncoder,
 )
-from hrl.env.observation import BaseObservation
-from hrl.common.state import State
-from hrl.common.skill import Skill
+from hrl.common.observation import BaseObservation
+from hrl.common.state import BaseState
+from hrl.common.skill import BaseSkill
 from tapas_gmm.utils.select_gpu import device
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -28,8 +28,8 @@ class ActorCriticBase(nn.Module, ABC):
 
     def __init__(
         self,
-        states: list[State],
-        skills: list[Skill],
+        states: list[BaseState],
+        skills: list[BaseSkill],
     ):
         super().__init__()
         self.states = states
@@ -119,7 +119,14 @@ class ActorCriticBase(nn.Module, ABC):
         self,
         x: BaseObservation,
     ) -> dict[str, torch.Tensor]:
-        grouped = {t: [] for t in State._state_registry.keys()}
+        # TODO: MAKE IT DYNAMIC
+        grouped: dict[str, list] = {
+            "Euler": [],
+            "Quat": [],
+            "Range": [],
+            "Bool": [],
+            "Flip": [],
+        }
         for state in self.states:
             value = state.value(x.top_level_observation[state.name])
             grouped[state.type_str].append(value)

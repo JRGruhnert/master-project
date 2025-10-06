@@ -7,7 +7,7 @@ from hrl.experiments.pepr import PePrExperiment
 from hrl.networks import NetworkType
 from hrl.common.state import StateSpace
 from hrl.common.skill import SkillSpace
-from hrl.env.environment import BaseEnvironment
+from hrl.common.environment import BaseEnvironment
 from tapas_gmm.utils.argparse import parse_and_build_config
 
 

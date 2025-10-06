@@ -1,4 +1,4 @@
-from hrl.common.tapas_skill import TapasSkill
+from hrl.tapas.tapas_skill import TapasSkill
 
 
 _S = {

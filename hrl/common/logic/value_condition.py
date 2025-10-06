@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 import torch
 
-from hrl.common.logic.mixin import QuaternionMixin, RelThresholdMixin
+from hrl.common.logic.mixin import BoundedMixin, QuaternionMixin
 
 
-class Normalizer(ABC):
+class ValueCondition(ABC):
     """Abstract base class for state logic strategies."""
 
     @abstractmethod
@@ -13,7 +13,7 @@ class Normalizer(ABC):
         raise NotImplementedError("Subclasses must implement the value method.")
 
 
-class IgnoreNormalizer(Normalizer):
+class IdentityValue(ValueCondition):
     """Value converter for discrete states."""
 
     def value(self, x: torch.Tensor) -> torch.Tensor:
@@ -21,18 +21,18 @@ class IgnoreNormalizer(Normalizer):
         return x
 
 
-class LinearNormalizer(Normalizer, RelThresholdMixin):
+class LinearValueNormalizer(ValueCondition, BoundedMixin):
     """Default value converter that returns the input as-is."""
 
     def value(self, x: torch.Tensor) -> torch.Tensor:
         """Clamp and normalize the input value."""
         cx = torch.clamp(x, self.lower_bound, self.upper_bound)
-        return self._normalize(cx)
+        return self.normalize(cx)
 
 
-class QuaternionNormalizer(Normalizer, QuaternionMixin):
+class QuaternionValueNormalizer(ValueCondition, QuaternionMixin):
     """Value converter for quaternion states - no bounds needed."""
 
     def value(self, x: torch.Tensor) -> torch.Tensor:
         """Normalize the quaternion."""
-        return self._normalize_quat(x)
+        return self.normalize_quat(x)

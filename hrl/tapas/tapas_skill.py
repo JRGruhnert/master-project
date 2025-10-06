@@ -4,9 +4,9 @@ from loguru import logger
 import numpy as np
 import torch
 from calvin_env.envs.observation import CalvinEnvObservation
-from hrl.common.tapas_state import TapasState
-from hrl.env.calvin.calvin_observation import CalvinObservation
-from hrl.common.skill import Skill
+from hrl.calvin.calvin_state import CalvinState
+from hrl.calvin.calvin_observation import CalvinObservation
+from hrl.common.skill import BaseSkill
 from tapas_gmm.utils.select_gpu import device
 from tapas_gmm.policy import import_policy
 from tapas_gmm.policy.gmm import GMMPolicy, GMMPolicyConfig
@@ -25,7 +25,7 @@ from tapas_gmm.utils.observation import (
 )
 
 
-class TapasSkill(Skill):
+class TapasSkill(BaseSkill):
     def __init__(
         self,
         name: str,
@@ -107,7 +107,7 @@ class TapasSkill(Skill):
         policy.eval()
         return policy
 
-    def initialize_conditions(self, states: list[TapasState]):
+    def initialize_conditions(self, states: list[CalvinState]):
         """
         Initialize the task parameters based on the active states.
         """
@@ -122,13 +122,13 @@ class TapasSkill(Skill):
         # TODO: Currently assumes tapas tps are euler and quaternion
         # My whole code does not generalize to other Task Parameterized models and state types
         for state in states:
-            pre_value = state.make_additional_tps(
+            pre_value = state.run_addon(
                 tpgmm.start_values[state.name],
                 tpgmm.end_values[state.name],
                 self.reversed,
                 True if state.name in tapas_tp else False,
             )
-            post_value = state.make_additional_tps(
+            post_value = state.run_addon(
                 tpgmm.start_values[state.name],
                 tpgmm.end_values[state.name],
                 not self.reversed,
@@ -139,7 +139,7 @@ class TapasSkill(Skill):
             if post_value is not None:
                 self.postcons[state.name] = post_value
 
-    def initialize_overrides(self, states: list[TapasState]):
+    def initialize_overrides(self, states: list[CalvinState]):
         """
         Initialize the task parameters based on the active states.
         """
@@ -148,7 +148,7 @@ class TapasSkill(Skill):
         tpgmm: AutoTPGMM = self.policy.model
         for state in states:
             if state.name in self.overrides:
-                value = state.make_additional_tps(
+                value = state.run_addon(
                     tpgmm.start_values[state.name],
                     tpgmm.end_values[state.name],
                     not self.reversed,  # NOTE: We want the opposite of the reverse trajectory
@@ -170,7 +170,7 @@ class TapasSkill(Skill):
         self,
         current: CalvinEnvObservation,
         goal: CalvinObservation,
-        states: list[TapasState],
+        states: list[CalvinState],
     ) -> np.ndarray:
         if self.predict_as_batch:
             if self.first_prediction:
@@ -202,7 +202,7 @@ class TapasSkill(Skill):
             )
         )
 
-    def to_skill_format(self, obs: CalvinEnvObservation, goal: CalvinObservation = None, states: list[TapasState] = None) -> SceneObservation:  # type: ignore
+    def to_skill_format(self, obs: CalvinEnvObservation, goal: CalvinObservation = None, states: list[CalvinState] = None) -> SceneObservation:  # type: ignore
         """
         Convert the observation from the environment to a SceneObservation. This format is used for TAPAS.
 
