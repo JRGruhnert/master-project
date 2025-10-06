@@ -60,11 +60,9 @@ _S = {
         id=14,
         eval_condition=AreaEvalCondition(
             surfaces={
-                "table": torch.Tensor([[0.0, -0.15, 0.46], [0.30, -0.03, 0.46]]),
-                "drawer_open": torch.Tensor([[0.04, -0.35, 0.38], [0.30, -0.21, 0.38]]),
-                "drawer_closed": torch.Tensor(
-                    [[0.04, -0.16, 0.38], [0.30, -0.03, 0.38]]
-                ),
+                "table": [[0.0, -0.15, 0.46], [0.30, -0.03, 0.46]],
+                "drawer_open": [[0.04, -0.35, 0.38], [0.30, -0.21, 0.38]],
+                "drawer_closed": [[0.04, -0.16, 0.38], [0.30, -0.03, 0.38]],
             },
             lower_bound=torch.Tensor([-1.0, -1.0, -1.0]),
             upper_bound=torch.Tensor([1.0, 1.0, 1.0]),
@@ -75,11 +73,9 @@ _S = {
         id=15,
         eval_condition=AreaEvalCondition(
             surfaces={
-                "table": torch.Tensor([[0.0, -0.15, 0.46], [0.30, -0.03, 0.46]]),
-                "drawer_open": torch.Tensor([[0.04, -0.35, 0.38], [0.30, -0.21, 0.38]]),
-                "drawer_closed": torch.Tensor(
-                    [[0.04, -0.16, 0.38], [0.30, -0.03, 0.38]]
-                ),
+                "table": [[0.0, -0.15, 0.46], [0.30, -0.03, 0.46]],
+                "drawer_open": [[0.04, -0.35, 0.38], [0.30, -0.21, 0.38]],
+                "drawer_closed": [[0.04, -0.16, 0.38], [0.30, -0.03, 0.38]],
             },
             lower_bound=torch.Tensor([-1.0, -1.0, -1.0]),
             upper_bound=torch.Tensor([1.0, 1.0, 1.0]),
@@ -90,11 +86,9 @@ _S = {
         id=16,
         eval_condition=AreaEvalCondition(
             surfaces={
-                "table": torch.Tensor([[0.0, -0.15, 0.46], [0.30, -0.03, 0.46]]),
-                "drawer_open": torch.Tensor([[0.04, -0.35, 0.38], [0.30, -0.21, 0.38]]),
-                "drawer_closed": torch.Tensor(
-                    [[0.04, -0.16, 0.38], [0.30, -0.03, 0.38]]
-                ),
+                "table": [[0.0, -0.15, 0.46], [0.30, -0.03, 0.46]],
+                "drawer_open": [[0.04, -0.35, 0.38], [0.30, -0.21, 0.38]],
+                "drawer_closed": [[0.04, -0.16, 0.38], [0.30, -0.03, 0.38]],
             },
             lower_bound=torch.Tensor([-1.0, -1.0, -1.0]),
             upper_bound=torch.Tensor([1.0, 1.0, 1.0]),

@@ -88,9 +88,8 @@ class RelThresholdMixin(BoundedMixin, ThresholdMixin):
 class TapasAreaCheckMixin:
     """Mixin for area-based success conditions"""
 
-    def __init__(self, surfaces: Dict[str, torch.Tensor], *args, **kwargs):
+    def __init__(self, surfaces: Dict[str, np.ndarray], *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.spawn_surfaces = surfaces
         self.eval_surfaces = self.make_eval_surfaces(surfaces)
 
     def check_area(self, x: torch.Tensor) -> Optional[str]:
@@ -100,9 +99,9 @@ class TapasAreaCheckMixin:
                 return name
         return None
 
-    def check_area_similarity(self, obs: torch.Tensor, goal: torch.Tensor) -> bool:
+    def check_area_similarity(self, current: torch.Tensor, goal: torch.Tensor) -> bool:
         """Check if both obs and goal are in the same defined area."""
-        obs_area = self.check_area(obs)
+        obs_area = self.check_area(current)
         goal_area = self.check_area(goal)
         return obs_area is not None and (obs_area == goal_area)
 
@@ -116,9 +115,11 @@ class TapasAreaCheckMixin:
         return x  # Return original point if no area match
 
     def make_eval_surfaces(
-        self, surfaces: dict[str, torch.Tensor], padding_percent: float = 0.1
+        self,
+        surfaces: dict[str, list[list[float]]],
+        padding_percent: float = 0.1,
     ):
-        eval_surfaces: dict[str, torch.Tensor] = surfaces
+        eval_surfaces = surfaces.copy()
         eval_surfaces["table"] = self.add_surface_padding(
             eval_surfaces["table"], padding_percent
         )
@@ -133,7 +134,11 @@ class TapasAreaCheckMixin:
 
         return {k: torch.from_numpy(np.array(v)) for k, v in eval_surfaces.items()}
 
-    def add_surface_padding(self, surface, padding_percent: float):
+    def add_surface_padding(
+        self,
+        surface: dict[str, list[list[float]]],
+        padding_percent: float,
+    ):
         """Add padding to surface bounds in x and y directions"""
         # surface = np.array(surface)
 

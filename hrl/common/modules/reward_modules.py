@@ -36,7 +36,6 @@ class SparseRewardModule(RewardModule):
         # print(f"Checking states sparse reward module...")
         for state in self.states:
             if state.name in goal:
-
                 if not state.evaluate(current[state.name], goal[state.name]):
                     # print(f"State {state.name} NOOOT matching.")
                     return False
