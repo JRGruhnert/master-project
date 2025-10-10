@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torch_geometric.data import Batch, HeteroData
 from torch_geometric.nn import GINConv, GINEConv
-from hrl.env.observation import CalvinObservation as MasterObservation
+from hrl.common.observation import CalvinObservation as MasterObservation
 from hrl.networks.actor_critic import GnnBase, PPOType
 from hrl.networks.layers.mlp import (
     GinStandardMLP,

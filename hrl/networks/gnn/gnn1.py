@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.data import Batch, HeteroData
 from torch_geometric.nn import GATv2Conv, GINConv
-from hrl.env.observation import CalvinObservation as MasterObservation
+from hrl.common.observation import CalvinObservation as MasterObservation
 from hrl.networks.actor_critic import GnnBase
 from tapas_gmm.utils.select_gpu import device
 

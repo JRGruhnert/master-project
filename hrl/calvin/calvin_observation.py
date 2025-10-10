@@ -2,7 +2,7 @@ from functools import cached_property
 import numpy as np
 import torch
 
-from hrl.env.observation import BaseObservation
+from hrl.common.observation import BaseObservation
 
 from calvin_env.envs.calvin_env import CalvinEnvObservation
 

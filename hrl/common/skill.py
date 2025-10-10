@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import torch
-from hrl.env.observation import BaseObservation
-from hrl.common.state import State
+from hrl.common.observation import BaseObservation
+from hrl.common.state import BaseState
 
 
 # class SkillSpace(Enum):
@@ -11,7 +11,7 @@ from hrl.common.state import State
 #    Debug = "Debug"
 
 
-class Skill(ABC):
+class BaseSkill(ABC):
     def __init__(
         self,
         name: str,
@@ -46,7 +46,7 @@ class Skill(ABC):
         self,
         obs: BaseObservation,
         goal: BaseObservation,
-        states: list[State],
+        states: list[BaseState],
         pad: bool = False,
         sparse: bool = False,
     ) -> torch.Tensor:
@@ -94,7 +94,7 @@ class Skill(ABC):
         self,
         current: BaseObservation,
         goal: BaseObservation,
-        states: list[State],
+        states: list[BaseState],
     ) -> dict:
         """
         Serialize the skill to a dictionary format.

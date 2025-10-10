@@ -1,31 +1,31 @@
-from abc import ABC, abstractmethod
 import torch
 
+from hrl.common.logic.addon import BaseAddon
 from hrl.common.logic.mixin import QuaternionMixin, RelThresholdMixin
 
 
-class TapasAddons(ABC):
-    """Abstract base class for state logic strategies."""
+class TapasAddon(BaseAddon):
+    """Base class for tapas precondition converters."""
 
-    @abstractmethod
-    def make_tps(
+    def run(
         self,
         start: torch.Tensor,
         end: torch.Tensor,
         reversed: bool,
+        selected_by_tapas: bool = False,
     ) -> torch.Tensor | None:
-        """Generate trajectory point from start/end states."""
-        raise NotImplementedError("Subclasses must implement the make_tp method.")
+        raise NotImplementedError("Subclasses must implement the run method.")
 
 
-class ScalarTapasAddons(TapasAddons, RelThresholdMixin):
+class ScalarTapasAddon(BaseAddon, RelThresholdMixin):
     """Scalar precondition converter."""
 
-    def make_tps(
+    def run(
         self,
         start: torch.Tensor,
         end: torch.Tensor,
         reversed: bool,
+        selected_by_tapas: bool = False,
     ) -> torch.Tensor | None:
         if reversed:
             std = end.std(dim=0)
@@ -38,14 +38,15 @@ class ScalarTapasAddons(TapasAddons, RelThresholdMixin):
         return None  # Not constant enough
 
 
-class FlipTapasAddons(TapasAddons):
+class FlipTapasAddon(BaseAddon):
     """Flip precondition converter for boolean states."""
 
-    def make_tps(
+    def run(
         self,
         start: torch.Tensor,
         end: torch.Tensor,
         reversed: bool,
+        selected_by_tapas: bool = False,
     ) -> torch.Tensor | None:
         """Returns the mean of the given tensor values."""
         if (end == (1 - start)).all(dim=0).all():
@@ -53,29 +54,35 @@ class FlipTapasAddons(TapasAddons):
         return None
 
 
-class QuatTapasAddons(TapasAddons, QuaternionMixin):
+class QuatTapasAddon(BaseAddon, QuaternionMixin):
     """Quaternion precondition converter."""
 
-    def make_tps(
+    def run(
         self,
         start: torch.Tensor,
         end: torch.Tensor,
         reversed: bool,
+        selected_by_tapas: bool = False,
     ) -> torch.Tensor | None:
-        if reversed:
-            return self._quaternion_mean(end)
-        return self._quaternion_mean(start)
+        if selected_by_tapas:
+            if reversed:
+                return self._quaternion_mean(end)
+            return self._quaternion_mean(start)
+        return None
 
 
-class EulerTapasAddons(TapasAddons):
+class EulerTapasAddon(BaseAddon):
     """Euler angle precondition converter."""
 
-    def make_tps(
+    def run(
         self,
         start: torch.Tensor,
         end: torch.Tensor,
         reversed: bool,
+        selected_by_tapas: bool = False,
     ) -> torch.Tensor | None:
-        if reversed:
-            return end.mean(dim=0)
-        return start.mean(dim=0)
+        if selected_by_tapas:
+            if reversed:
+                return end.mean(dim=0)
+            return start.mean(dim=0)
+        return None  # Not selected by tapas

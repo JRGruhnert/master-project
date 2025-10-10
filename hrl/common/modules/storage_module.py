@@ -4,8 +4,8 @@ import os
 
 from data.skills.skills import SKILLS_BY_TAG
 from data.states.states import STATES_BY_TAG
-from hrl.common.state import State
-from hrl.common.skill import Skill
+from hrl.common.state import BaseState
+from hrl.common.skill import BaseSkill
 from hrl.networks import NetworkType
 
 
@@ -54,7 +54,7 @@ class StorageModule:
         return self.create_directory(directory_path)
 
     @cached_property
-    def skills(self) -> list[Skill]:
+    def skills(self) -> list[BaseSkill]:
         # We sort based on Id for the baseline network to be consistent
         skills = sorted(
             SKILLS_BY_TAG.get(self.config.skills_tag, []), key=lambda s: s.id
@@ -65,6 +65,6 @@ class StorageModule:
         return skills
 
     @cached_property
-    def states(self) -> list[State]:
+    def states(self) -> list[BaseState]:
         # We sort based on Id for the baseline network to be consistent
         return sorted(STATES_BY_TAG.get(self.config.states_tag, []), key=lambda s: s.id)

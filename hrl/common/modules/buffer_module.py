@@ -1,7 +1,7 @@
 import torch
 
-from hrl.common.modules.reward_modules import SparseRewardModule
-from hrl.env.observation import BaseObservation
+from hrl.common.modules.reward_module import SparseRewardModule
+from hrl.common.observation import BaseObservation
 
 
 class BufferModule:

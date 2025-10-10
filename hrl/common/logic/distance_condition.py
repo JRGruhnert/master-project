@@ -5,7 +5,7 @@ import torch
 from hrl.common.logic.mixin import BoundedMixin, QuaternionMixin
 
 
-class TargetCondition(ABC):
+class DistanceCondition(ABC):
     """Abstract base class for skill evaluation strategies."""
 
     @abstractmethod
@@ -19,13 +19,13 @@ class TargetCondition(ABC):
         raise NotImplementedError("Subclasses must implement the evaluate method.")
 
 
-class EulerDistanceCondition(TargetCondition, BoundedMixin):
+class EulerDistanceCondition(DistanceCondition, BoundedMixin):
     """Skill condition based on area matching."""
 
     def __init__(
         self,
-        lower_bound: np.ndarray = np.array([-1.0, -1.0, -1.0]),
-        upper_bound: np.ndarray = np.array([1.0, 1.0, 1.0]),
+        lower_bound: list[float] = [-1.0, -1.0, -1.0],
+        upper_bound: list[float] = [1.0, 1.0, 1.0],
     ):
         BoundedMixin.__init__(self, lower_bound=lower_bound, upper_bound=upper_bound)
 
@@ -34,13 +34,15 @@ class EulerDistanceCondition(TargetCondition, BoundedMixin):
         current: torch.Tensor,
         goal: torch.Tensor,
         tp: torch.Tensor,
-    ) -> bool:
-        nx = self._normalize(current)
-        ny = self._normalize(tp)
+    ) -> float:
+        cx = torch.clamp(current, self.lower_bound, self.upper_bound)
+        cy = torch.clamp(tp, self.lower_bound, self.upper_bound)
+        nx = self.normalize(cx)
+        ny = self.normalize(cy)
         return torch.linalg.norm(nx - ny)
 
 
-class QuaternionDistanceCondition(TargetCondition, QuaternionMixin):
+class QuaternionDistanceCondition(DistanceCondition, QuaternionMixin):
     """Skill condition based on quaternion distance."""
 
     def distance(
@@ -49,13 +51,13 @@ class QuaternionDistanceCondition(TargetCondition, QuaternionMixin):
         goal: torch.Tensor,
         tp: torch.Tensor,
     ) -> float:
-        nx = self._normalize_quat(current)
-        ny = self._normalize_quat(tp)
+        nx = self.normalize_quat(current)
+        ny = self.normalize_quat(tp)
         dot = torch.clamp(torch.abs(torch.dot(nx, ny)), -1.0, 1.0)
         return 2.0 * torch.arccos(dot)
 
 
-class RangeDistanceCondition(TargetCondition, BoundedMixin):
+class RangeDistanceCondition(DistanceCondition, BoundedMixin):
     """Skill condition based on range distance."""
 
     def distance(
@@ -66,12 +68,12 @@ class RangeDistanceCondition(TargetCondition, BoundedMixin):
     ) -> float:
         cx = torch.clamp(current, self.lower_bound, self.upper_bound)
         cy = torch.clamp(tp, self.lower_bound, self.upper_bound)
-        nx = self._normalize(cx)
-        ny = self._normalize(cy)
+        nx = self.normalize(cx)
+        ny = self.normalize(cy)
         return torch.abs(nx - ny).item()
 
 
-class BooleanDistanceCondition(TargetCondition):
+class BooleanDistanceCondition(DistanceCondition):
     """Skill condition based on boolean distance."""
 
     def distance(
@@ -83,7 +85,7 @@ class BooleanDistanceCondition(TargetCondition):
         return torch.abs(current - tp).item()
 
 
-class FlipDistanceCondition(TargetCondition):
+class FlipDistanceCondition(DistanceCondition):
     """Skill condition based on flip distance."""
 
     def distance(

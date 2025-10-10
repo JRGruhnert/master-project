@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from hrl.env.calvin.calvin import CalvinEnvironment
-from hrl.env.observation import CalvinObservation
+from hrl.common.observation import CalvinObservation
 
 
 @dataclass
