@@ -14,7 +14,7 @@ config = TrainConfig(
     tag="t1",
     nt=NetworkType.GNN_V4,
     experiment=PePrConfig(
-        p_empty=0.0,
+        p_empty=0.8,
         p_rand=0.0,
     ),
     env=EnvironmentConfig(render=False),
@@ -24,6 +24,6 @@ config = TrainConfig(
         success_reward=100.0,
     ),
     storage=storage,
-    use_wandb=False,
+    use_wandb=True,
     device_tag="gorilla",
 )

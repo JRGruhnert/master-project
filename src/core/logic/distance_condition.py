@@ -1,0 +1,90 @@
+from abc import ABC, abstractmethod
+import numpy as np
+import torch
+
+from src.core.logic.mixin import BoundedMixin, QuaternionMixin
+
+
+class DistanceCondition(ABC):
+    """Abstract base class for skill evaluation strategies."""
+
+    @abstractmethod
+    def distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+        tp: torch.Tensor,
+    ) -> float:
+        """Evaluate goal condition for the given state."""
+        raise NotImplementedError("Subclasses must implement the evaluate method.")
+
+
+class EulerDistanceCondition(DistanceCondition, BoundedMixin):
+    """Skill condition based on area matching."""
+
+    def distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+        tp: torch.Tensor,
+    ) -> float:
+        cx = torch.clamp(current, self.lower_bound, self.upper_bound)
+        cy = torch.clamp(tp, self.lower_bound, self.upper_bound)
+        nx = self.normalize(cx)
+        ny = self.normalize(cy)
+        return torch.linalg.norm(nx - ny)
+
+
+class QuaternionDistanceCondition(DistanceCondition, QuaternionMixin):
+    """Skill condition based on quaternion distance."""
+
+    def distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+        tp: torch.Tensor,
+    ) -> float:
+        nx = self.normalize_quat(current)
+        ny = self.normalize_quat(tp)
+        dot = torch.clamp(torch.abs(torch.dot(nx, ny)), -1.0, 1.0)
+        return (2.0 * torch.arccos(dot)).item()
+
+
+class RangeDistanceCondition(DistanceCondition, BoundedMixin):
+    """Skill condition based on range distance."""
+
+    def distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+        tp: torch.Tensor,
+    ) -> float:
+        cx = torch.clamp(current, self.lower_bound, self.upper_bound)
+        cy = torch.clamp(tp, self.lower_bound, self.upper_bound)
+        nx = self.normalize(cx)
+        ny = self.normalize(cy)
+        return torch.abs(nx - ny).item()
+
+
+class BooleanDistanceCondition(DistanceCondition):
+    """Skill condition based on boolean distance."""
+
+    def distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+        tp: torch.Tensor,
+    ) -> float:
+        return torch.abs(current - tp).item()
+
+
+class FlipDistanceCondition(DistanceCondition):
+    """Skill condition based on flip distance."""
+
+    def distance(
+        self,
+        current: torch.Tensor,
+        goal: torch.Tensor,
+        tp: torch.Tensor,
+    ) -> float:
+        return (tp - torch.abs(current - goal)).item()  # Flips distance
