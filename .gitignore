@@ -123,3 +123,4 @@ conf/machine.py
 
 
 wandb/latest-run
+/dependencies/
