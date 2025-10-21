@@ -2,12 +2,13 @@ from enum import Enum
 
 
 class NetworkType(Enum):
-    BASELINE_V1 = "baseline1"
+    PPO_GNN = "gnn4"
+    PPO_BASELINE = "baseline1"
+    SEARCH_TREE = "search_tree"
     BASELINE_V2 = "baseline2"
     GNN_V1 = "gnn1"
     GNN_V2 = "gnn2"
     GNN_V3 = "gnn3"
-    GNN_V4 = "gnn4"
     GNN_V5 = "gnn5"
     GNN_V6 = "gnn6"
     GNN_V7 = "gnn7"
@@ -28,7 +29,7 @@ def import_network(network_type):
         from src.core.networks.gnn.gnn2 import Gnn as Network
     elif network_type is NetworkType.GNN_V3:
         from src.core.networks.gnn.gnn3 import Gnn as Network
-    elif network_type is NetworkType.GNN_V4:
+    elif network_type is NetworkType.PPO_GNN:
         from src.core.networks.gnn.gnn4 import Gnn as Network
     elif network_type is NetworkType.GNN_V5:
         from src.core.networks.gnn.gnn5 import Gnn as Network
@@ -40,7 +41,7 @@ def import_network(network_type):
         from src.core.networks.baseline.baseline1 import (
             Baseline as Network,
         )
-    elif network_type is NetworkType.BASELINE_V1:
+    elif network_type is NetworkType.PPO_BASELINE:
         from src.core.networks.baseline.baseline1 import (
             Baseline as Network,
         )

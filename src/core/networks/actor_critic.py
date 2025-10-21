@@ -14,9 +14,6 @@ from src.core.observation import BaseObservation
 from src.core.state import BaseState
 from src.core.skill import BaseSkill
 from tapas_gmm.utils.select_gpu import device
-import networkx as nx
-import matplotlib.pyplot as plt
-from torch_geometric.utils import to_networkx
 
 
 class PPOType(Enum):
@@ -32,6 +29,7 @@ class ActorCriticBase(nn.Module, ABC):
         skills: list[BaseSkill],
     ):
         super().__init__()
+        self.is_eval_mode = False
         self.states = states
         self.skills = skills
         self.dim_states = len(states)
@@ -57,6 +55,37 @@ class ActorCriticBase(nn.Module, ABC):
             }
         )
 
+    def _create_encoders_for_states(self, states: list[BaseState]) -> nn.ModuleDict:
+        """Create encoders dynamically based on the actual state types present"""
+        unique_types = set(state.type_str for state in states)
+
+        encoder_dict = {}
+        for type_str in unique_types:
+            encoder_dict[type_str] = self._get_encoder_for_type(type_str)
+
+        return nn.ModuleDict(encoder_dict)
+
+    def _get_encoder_for_type(self, type_str: str) -> nn.Module:
+        """Factory method to create appropriate encoder for each state type"""
+        encoder_mapping = {
+            "Euler": lambda: PositionEncoder(self.dim_encoder),
+            "Quat": lambda: QuaternionEncoder(self.dim_encoder),
+            "Range": lambda: ScalarEncoder(self.dim_encoder),
+            "Bool": lambda: ScalarEncoder(self.dim_encoder),
+            "Flip": lambda: ScalarEncoder(self.dim_encoder),
+            # Need to find a way to store these mapping externally
+        }
+
+        if type_str in encoder_mapping:
+            return encoder_mapping[type_str]()
+        else:
+            raise ValueError(f"Unknown state type: {type_str}")
+
+    def eval(self):
+        for module in self.modules():
+            module.eval()
+        self.is_eval_mode = True
+
     @abstractmethod
     def forward(
         self,
@@ -77,7 +106,6 @@ class ActorCriticBase(nn.Module, ABC):
         self,
         obs: BaseObservation,
         goal: BaseObservation,
-        eval_mode: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         logits, value = self.forward([obs], [goal])
         assert logits.shape == (
@@ -87,8 +115,8 @@ class ActorCriticBase(nn.Module, ABC):
         assert value.shape == (1,), f"Expected value shape ({1},), got {value.shape}"
 
         dist = Categorical(logits=logits)
-        if eval_mode:
-            action = dist.probs.argmax(dim=-1)
+        if self.is_eval_mode:
+            action = logits.argmax(dim=-1)
         else:
             action = dist.sample()  # shape: [B]
         logprob = dist.log_prob(action)  # shape: [B]
@@ -115,6 +143,9 @@ class ActorCriticBase(nn.Module, ABC):
         dist_entropy = dist.entropy()
         return action_logprobs, value, dist_entropy
 
+
+class BaselineBase(ActorCriticBase):
+
     def state_type_dict_values(
         self,
         x: BaseObservation,
@@ -136,8 +167,6 @@ class ActorCriticBase(nn.Module, ABC):
             if vals  # only include non-empty
         }
 
-
-class BaselineBase(ActorCriticBase):
     def to_batch(
         self,
         obs: list[BaseObservation],

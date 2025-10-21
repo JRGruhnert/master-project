@@ -1,7 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
-from pathlib import Path
-import sys
+from datetime import datetime, time
 from omegaconf import OmegaConf, SCMode
 import wandb
 
@@ -9,11 +7,14 @@ from src.core.modules.buffer_module import BufferModule
 from src.core.modules.reward_module import RewardConfig, SparseRewardModule
 from src.core.modules.storage_module import StorageModule, StorageConfig
 from src.core.environment import EnvironmentConfig
+from src.core.agents.agent import AgentConfig
+from src.core.agents.ppo import BaselinePPOAgent, PPOAgentConfig, GNNPPOAgent
+from src.core.networks import NetworkType, import_network
 from src.experiments.pepr import PePrExperiment, PePrConfig
 from src.integrations.calvin.environment import CalvinEnvironment
-from src.core.agent import HRLAgentConfig, HRLAgent
 from tapas_gmm.utils.argparse import parse_and_build_config
-from src.core.networks import NetworkType, import_network
+from wandb import util as wandb_util  # Explicit import
+from loguru import logger
 
 
 @dataclass
@@ -21,7 +22,7 @@ class TrainConfig:
     tag: str
     nt: NetworkType
     experiment: PePrConfig
-    agent: HRLAgentConfig
+    agent: AgentConfig
     env: EnvironmentConfig
     reward: RewardConfig
     storage: StorageConfig
@@ -53,17 +54,35 @@ def train_agent(config: TrainConfig):
         ),
     )  # Wrap environment in experiment
 
-    Net = import_network(config.nt)
-    agent = HRLAgent(
-        config.agent,
-        Net(storage_module.states, storage_module.skills),
-        buffer_module,
-        storage_module,
-    )
+    if config.nt in [NetworkType.PPO_GNN, NetworkType.PPO_BASELINE]:
+        Net = import_network(config.nt)
+        if config.nt is NetworkType.PPO_GNN:
+            agent = GNNPPOAgent(
+                config.agent,  # type: ignore
+                Net(storage_module.states, storage_module.skills),
+                buffer_module,
+                storage_module,
+            )
+        else:
+            agent = BaselinePPOAgent(
+                config.agent,  # type: ignore
+                Net(storage_module.states, storage_module.skills),
+                buffer_module,
+                storage_module,
+            )
+    elif config.nt is NetworkType.SEARCH_TREE:
+        Net = import_network(config.nt)
+        agent = BaselinePPOAgent(
+            config.agent,  # type: ignore
+            Net(storage_module.states, storage_module.skills),
+            buffer_module,
+            storage_module,
+        )
+    logger.info(f"Initialized agent with network type: {config.nt}")
 
     # Initialize wandb
     if config.use_wandb:
-        random_id = wandb.util.generate_id()
+        random_id = wandb_util.generate_id()
         print(f"Random ID for wandb: {random_id}")  # Debug output
         wandb_name = config.nt.value + "_" + config.device_tag + "_" + config.tag
         run = wandb.init(
@@ -91,7 +110,9 @@ def train_agent(config: TrainConfig):
         }
         run.log(metrics, step=0)
         w_and_b = {
-            f"weights/{name.replace('.', '/')}": wandb.Histogram(param.data.cpu())
+            f"weights/{name.replace('.', '/')}": wandb.Histogram(
+                param.data.cpu().numpy()
+            )
             for name, param in agent.policy_new.named_parameters()
         }
         run.log(w_and_b, step=0)
@@ -102,24 +123,18 @@ def train_agent(config: TrainConfig):
     epoch = 0
     start_time_batch = datetime.now().replace(microsecond=0)
     while not stop_training:  # Training loop
+        print(f"Starting Epoch {epoch}")  # Debug output
         terminal = False
         batch_rdy = False
         obs, goal = experiment.reset()
         while not terminal and not batch_rdy:
             skill = agent.act(obs, goal)
-            experiment.step(skill)
+            print(f"Chosen Skill: {skill.name}")  # Debug output
+            obs = experiment.step(skill)
             reward, terminal = experiment.evaluate()
+            print(f"Step Reward: {reward}, Terminal: {terminal}")  # Debug output
             batch_rdy = agent.feedback(reward, terminal)
         if batch_rdy:
-            print(
-                f"Rewards collected: {len(agent.buffer_module.rewards)}"
-            )  # Debug output
-            print(
-                f"Terminals collected: {len(agent.buffer_module.terminals)}"
-            )  # Debug output
-            print(
-                f"Actions collected: {len(agent.buffer_module.actions)}"
-            )  # Debug output
             end_time_batch = datetime.now().replace(microsecond=0)
             start_time_learning = datetime.now().replace(microsecond=0)
             total_reward, episode_length, success_rate = agent.buffer_module.stats()
@@ -144,7 +159,7 @@ def train_agent(config: TrainConfig):
                 run.log(metrics, step=epoch)
                 w_and_b = {
                     f"weights/{name.replace('.', '/')}": wandb.Histogram(
-                        param.data.cpu()
+                        param.data.cpu().numpy()
                     )
                     for name, param in agent.policy_new.named_parameters()
                 }
@@ -172,11 +187,9 @@ def entry_point():
         dict_config, resolve=True, structured_config_mode=SCMode.INSTANTIATE
     )
 
-    train_agent(config)
+    train_agent(config)  # type: ignore
 
 
 if __name__ == "__main__":
-    # Add project root to Python path
-    project_root = Path(__file__).parent.parent.parent.parent
-    sys.path.insert(0, str(project_root))
+    print("Starting training script...")
     entry_point()

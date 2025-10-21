@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-from src.core.agent import BaseAgent
-from src.core.agent import BaseAgentConfig
+from src.core.agents.agent import BaseAgent
+from src.core.agents.agent import AgentConfig
 from src.integrations.taco.taco_modified import StateTaco
 
 
 @dataclass
-class TacoAgentConfig(BaseAgentConfig):
+class TacoAgentConfig(AgentConfig):
     pass
 
 

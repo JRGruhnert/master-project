@@ -3,7 +3,7 @@ from omegaconf import OmegaConf, SCMode
 
 from src.experiments.pepr import PePrExperiment
 from src.core.environment import BaseEnvironment, EnvironmentConfig
-from src.core.agent import HRLAgentConfig
+from src.core.agents.agent import HRLAgentConfig
 from src.networks import NetworkType
 from tapas_gmm.utils.argparse import parse_and_build_config
 

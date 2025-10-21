@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from omegaconf import OmegaConf, SCMode
 
 from conf.shared.experiment import Exp1Config, ExperimentConfig
-from src.core.agent import HRLAgent
+from src.core.agents.agent import HRLAgent
 from src.experiments.pepr import PePrExperiment
 from src.networks import NetworkType
 from src.core.environment import BaseEnvironment

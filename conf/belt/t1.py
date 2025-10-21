@@ -1,4 +1,4 @@
-from src.core.agent import HRLAgentConfig
+from src.core.agents.agent import HRLAgentConfig
 from src.core.modules.reward_module import RewardConfig
 from src.core.modules.storage_module import StorageConfig
 from src.experiments.pepr import PePrConfig
@@ -12,7 +12,7 @@ storage = StorageConfig(
 )
 config = TrainConfig(
     tag="t1",
-    nt=NetworkType.GNN_V4,
+    nt=NetworkType.PPO_GNN,
     experiment=PePrConfig(
         p_empty=0.8,
         p_rand=0.0,

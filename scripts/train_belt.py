@@ -11,7 +11,7 @@ from src.core.modules.storage_module import StorageModule, StorageConfig
 from src.core.environment import EnvironmentConfig
 from src.experiments.pepr import PePrExperiment, PePrConfig
 from src.integrations.calvin.environment import CalvinEnvironment
-from src.core.agent import HRLAgentConfig, HRLAgent
+from src.core.agents.agent import HRLAgentConfig, HRLAgent
 from tapas_gmm.utils.argparse import parse_and_build_config
 from src.core.networks import NetworkType, import_network
 

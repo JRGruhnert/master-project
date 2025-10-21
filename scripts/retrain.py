@@ -6,7 +6,7 @@ import wandb
 from src.experiments.pepr import PePrExperiment
 from src.integrations.calvin.environment import CalvinEnvironment
 from src.core.environment import EnvironmentConfig
-from src.core.agent import HRLAgent, HRLAgentConfig
+from src.core.agents.agent import HRLAgent, HRLAgentConfig
 from src.networks import NetworkType
 from tapas_gmm.utils.argparse import parse_and_build_config
 

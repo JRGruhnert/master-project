@@ -2,8 +2,10 @@ from dataclasses import dataclass
 import random
 
 from loguru import logger
+from src.core.skill import BaseSkill
 from src.integrations.calvin.environment import CalvinEnvironment
 from src.integrations.calvin.observation import CalvinObservation
+from src.integrations.tapas.skill import TapasSkill
 
 
 @dataclass
@@ -27,20 +29,23 @@ class PePrExperiment:
         )
         self.current_step = 0
 
-    def step(self, skill) -> tuple[CalvinObservation, float, bool]:
+    def step(self, skill: BaseSkill) -> CalvinObservation:
         sample = random.random()
         if sample < self.p_empty:  # 0-p_empty>
             logger.warning("Taking Empty Step")
             pass
         elif sample < self.p_empty + self.p_rand:  # 0-p_empty + p_rand>
             logger.warning("Taking Random Step")
-            self.env.step(random.choice(self.env.storage_module.skills))
+            self.current = self.env.step(random.choice(self.env.storage_module.skills))
         else:  # The rest
-            self.env.step(skill)
+            self.current = self.env.step(skill)
+
+        return self.current
 
     def reset(self) -> tuple[CalvinObservation, CalvinObservation]:
         self.current_step = 0
-        return self.env.reset()
+        self.current, goal = self.env.reset()
+        return self.current, goal
 
     def evaluate(self) -> tuple[float, bool]:
         reward, done = self.env.evaluate()

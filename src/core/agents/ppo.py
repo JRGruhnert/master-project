@@ -1,23 +1,19 @@
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import torch
 from torch import nn
-import torch
+from torch.nn.utils.clip_grad import clip_grad_norm_
+from tapas_gmm.utils.select_gpu import device
+from src.core.agents.agent import BaseAgent, AgentConfig
 from src.core.modules.buffer_module import BufferModule
 from src.core.modules.storage_module import StorageModule
-from tapas_gmm.utils.select_gpu import device
 from src.core.observation import BaseObservation
 from src.core.networks.actor_critic import ActorCriticBase
 from src.core.skill import BaseSkill
+from loguru import logger
 
 
 @dataclass
-class BaseAgentConfig:
-    eval: bool = False
-
-
-@dataclass
-class HRLAgentConfig(BaseAgentConfig):
+class PPOAgentConfig(AgentConfig):
     # Default values
     early_stop_patience: int = 5
     min_sampling_epochs: int = 10
@@ -29,8 +25,7 @@ class HRLAgentConfig(BaseAgentConfig):
     mini_batch_size: int = 64  # 64 # How many steps to use in each mini-batch
     learning_epochs: int = 50  # How many passes over the collected batch per update
     lr_annealing: bool = False
-    lr_actor: float = 0.0003  # Step size for actor optimizer
-    lr_critic: float = 0.0003  # NOTE unused # Step size for critic optimizer
+    learning_rate: float = 0.0003  # Step size for actor optimizer
     gamma: float = 0.99  # How much future rewards are worth today
     gae_lambda: float = 0.95  # Bias/variance trade‑off in advantage estimation
     eps_clip: float = 0.2  # How far the new policy is allowed to move from the old
@@ -42,53 +37,31 @@ class HRLAgentConfig(BaseAgentConfig):
     )
 
 
-class BaseAgent(ABC):
-    @abstractmethod
-    def act(
-        self,
-        obs: BaseObservation,
-        goal: BaseObservation,
-    ) -> BaseSkill:
-        raise NotImplementedError("Act method not implemented yet.")
-
-    @abstractmethod
-    def feedback(self, reward: float, terminal: bool):
-        raise NotImplementedError("Feedback method not implemented yet.")
-
-    @abstractmethod
-    def learn(self) -> bool:
-        raise NotImplementedError("Learn method not implemented yet.")
-
-    @abstractmethod
-    def save(self, tag: str = None):
-        raise NotImplementedError("Save method not implemented yet.")
-
-    @abstractmethod
-    def load(self):
-        raise NotImplementedError("Load method not implemented yet.")
-
-
-class HRLAgent(BaseAgent):
+class PPOAgent(BaseAgent):
 
     def __init__(
         self,
-        config: HRLAgentConfig,
+        config: PPOAgentConfig,
         model: ActorCriticBase,
         buffer_module: BufferModule,
         storage_module: StorageModule,
+        eval_mode: bool = False,
     ):
         ### Initialize hyperparameters
         self.config = config
         ### Initialize the agent
         self.buffer_module: BufferModule = buffer_module
+        self.storage_module: StorageModule = storage_module
         self.mse_loss = nn.MSELoss()
         self.policy_new: ActorCriticBase = model.to(device)
         self.policy_old: ActorCriticBase = model.to(device)
-        self.storage_module = storage_module
         self.optimizer = torch.optim.AdamW(
             self.policy_new.parameters(),
-            lr=self.config.lr_actor,
+            lr=self.config.learning_rate,
         )
+        if eval_mode:
+            self.policy_new.eval()
+            self.policy_old.eval()
 
         ### Internal flags and counter
         self.current_epoch: int = 0
@@ -101,11 +74,9 @@ class HRLAgent(BaseAgent):
         goal: BaseObservation,
     ) -> BaseSkill:
         with torch.no_grad():
-            action, action_logprob, state_val = self.policy_old.act(
-                obs, goal, self.config.eval
-            )
+            action, action_logprob, state_val = self.policy_old.act(obs, goal)
         self.buffer_module.act_values(obs, goal, action, action_logprob, state_val)
-        return self.storage_module.skills[action.item()]  # Can safely be accessed
+        return self.storage_module.skills[int(action.item())]  # Can safely be accessed
 
     def feedback(self, reward: float, terminal: bool):
         self.buffer_module.feedback_values(reward, terminal)
@@ -115,23 +86,21 @@ class HRLAgent(BaseAgent):
         self,
         rewards: list[float],
         values: list[torch.Tensor],
-        is_terminals: list[float],
+        is_terminals: list[bool],
     ):
         advantages = []
         gae = 0
-        values = values + [0]  # add dummy for V(s_{T+1})
+        values = values + [torch.tensor(0.0, device=device)]  # add dummy for V(s_{T+1})
         for step in reversed(range(len(rewards))):
+            terminal = float(is_terminals[step])
             delta = (
                 rewards[step]
-                + self.config.gamma * values[step + 1] * (1 - is_terminals[step])
+                + self.config.gamma * values[step + 1] * (1 - terminal)
                 - values[step]
             )
             gae = (
                 delta
-                + self.config.gamma
-                * self.config.gae_lambda
-                * (1 - is_terminals[step])
-                * gae
+                + self.config.gamma * self.config.gae_lambda * (1 - terminal) * gae
             )
             advantages.insert(0, gae)
         returns = [adv + val for adv, val in zip(advantages, values[:-1])]
@@ -198,7 +167,7 @@ class HRLAgent(BaseAgent):
         ### Learning Rate Annealing
         if self.config.lr_annealing:
             progress = self.current_epoch / self.config.max_batches
-            new_lr = self.config.lr_actor * (1.0 - progress)
+            new_lr = self.config.learning_rate * (1.0 - progress)
 
             for param_group in self.optimizer.param_groups:
                 param_group["lr"] = new_lr
@@ -261,9 +230,7 @@ class HRLAgent(BaseAgent):
                 ### Update gradients on mini-batch
                 self.optimizer.zero_grad()
                 loss.mean().backward()
-                nn.utils.clip_grad_norm_(
-                    self.policy_new.parameters(), self.config.max_grad_norm
-                )
+                clip_grad_norm_(self.policy_new.parameters(), self.config.max_grad_norm)
                 self.optimizer.step()
 
                 # Optional KL early stopping
@@ -297,15 +264,11 @@ class HRLAgent(BaseAgent):
         ### Continue Training otherwise
         return False
 
-    def save(self, tag: str = None):
+    def save(self, tag: str = ""):
         """
         Save the model to the specified path.
         """
-        if tag:
-            print(f"Saving tagged Checkpoint: {tag}")
-        else:
-            print("Saving Regular Checkpoint!")
-        if tag is None:
+        if tag == "":
             checkpoint_path = (
                 self.storage_module.agent_saving_path
                 + "model_cp_epoch_{}.pth".format(
@@ -319,6 +282,8 @@ class HRLAgent(BaseAgent):
                     tag,
                 )
             )
+
+        logger.info(f"Saving weights to: {checkpoint_path}")
         # torch.save(self.policy_old.state_dict(), checkpoint_path)
         torch.save(
             {
@@ -329,37 +294,38 @@ class HRLAgent(BaseAgent):
             checkpoint_path,
         )
 
+
+class GNNPPOAgent(PPOAgent):
     def load(self):
         """
         Load the model from the specified path.
         """
-        if "baseline" in self.storage_module.config.checkpoint_path.lower():
-            self.load_baseline()
-        else:
-            self.load_gnn()
-
-    def load_gnn(self):
-        """
-        Load the model from the specified path.
-        """
-        print("🔄 Loading GNN checkpoint...")
+        logger.info(
+            "Loading GNN checkpoint from: {}".format(
+                self.storage_module.config.checkpoint_path
+            )
+        )
         checkpoint = torch.load(
             self.storage_module.config.checkpoint_path, map_location="cpu"
         )
 
         self.policy_old.load_state_dict(checkpoint["model_state"])
         self.policy_new.load_state_dict(checkpoint["model_state"])
-        # self.optimizer.load_state_dict(checkpoint["optimizer_state"])
-        # if keep_epoch:
-        #    self.current_epoch = checkpoint["epoch"]  # redundant, but explicit
 
-    def load_baseline(self):
+
+class BaselinePPOAgent(PPOAgent):
+    def load(self):
         """Load state_dict and expand dimensions where needed"""
-        print("🔄 Loading baseline checkpoint...")
-        # Load the checkpoint
+        logger.info(
+            "Loading Baseline checkpoint from: {}".format(
+                self.storage_module.config.checkpoint_path
+            )
+        )
+
         checkpoint = torch.load(
             self.storage_module.config.checkpoint_path, map_location="cpu"
         )
+
         old_state_dict: dict[str, torch.Tensor] = (
             checkpoint["state_dict"] if "state_dict" in checkpoint else checkpoint
         )

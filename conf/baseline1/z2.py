@@ -1,4 +1,4 @@
-from src.core.agent import HRLAgentConfig
+from src.core.agents.agent import HRLAgentConfig
 from src.core.modules.reward_module import RewardConfig
 from src.core.modules.storage_module import StorageConfig
 from src.experiments.pepr import PePrConfig

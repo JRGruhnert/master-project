@@ -6,6 +6,7 @@ from src.core.skill import BaseSkill
 
 from src.integrations.calvin.observation import CalvinObservation
 from src.integrations.calvin.config import calvin_config
+from src.integrations.tapas.skill import TapasSkill
 
 
 class CalvinEnvironment(BaseEnvironment):
@@ -44,10 +45,10 @@ class CalvinEnvironment(BaseEnvironment):
 
     def step(
         self,
-        skill: BaseSkill,
+        skill: TapasSkill,
         predict_as_batch: bool = True,
         control_duration: int = -1,
-    ):
+    ) -> CalvinObservation:
         skill.reset(
             self.env,
             predict_as_batch=predict_as_batch,
@@ -63,6 +64,8 @@ class CalvinEnvironment(BaseEnvironment):
         ) is not None:
             self.current_env, _, _, _ = self.env.step(action, self.config.render)
             self.current = CalvinObservation(self.current_env)
+
+        return self.current
 
     def close(self):
         self.env.close()

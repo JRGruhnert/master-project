@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from src.core.networks.actor_critic import BaselineBase
-from src.integrations.calvin.observation import CalvinObservation as MasterObservation
+from src.core.observation import BaseObservation
 from tapas_gmm.utils.select_gpu import device
 
 
@@ -36,8 +36,8 @@ class Baseline(BaselineBase):
 
     def forward(
         self,
-        obs: list[MasterObservation],
-        goal: list[MasterObservation],
+        obs: list[BaseObservation],
+        goal: list[BaseObservation],
     ) -> tuple[torch.Tensor, torch.Tensor]:
         # obs and goal are dicts with keys 'euler', 'quat', 'scalar'
         obs_dict, goal_dict = self.to_batch(obs, goal)
