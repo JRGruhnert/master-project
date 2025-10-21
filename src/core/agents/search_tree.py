@@ -13,23 +13,20 @@ class TreeNode:
         self,
         observation: BaseObservation,
         parent: Optional["TreeNode"] = None,
-        children: list[Optional["TreeNode"]] = [],
-        depth: int = 0,
-        distance_to_skill_start: float = float("inf"),
         distance_to_goal: float = float("inf"),
+        distance_to_skill: float = float("inf"),
     ):
-        self.observation = observation
+        self.observation = observation  # Need that to calculate following distances
         self.parent = parent
-        self.children = children
-        self.depth = depth
+        self.children: dict[int, "TreeNode"] = {}
         self.distance_to_goal = distance_to_goal
+        self.distance_to_skill = distance_to_skill
 
 
 @dataclass
 class SearchTreeAgentConfig:
-    distance_threshold: float = 0.1
-    max_tree_depth: int = 5
-    num_simulated_paths: int = 50
+    distance_threshold: float = 0.5
+    max_depth: int = 5
     replan_every_step: bool = True
 
 
@@ -59,7 +56,7 @@ class SearchTreeAgent(BaseAgent):
         # Initialize root if first observation
         if self.config.replan_every_step or self.root is None:
             self.root = TreeNode(observation=obs)
-            self._expand_tree(self.root, obs)
+            self._expand_tree(0, self.root, goal)
             self._find_path(goal)
             self.path_index = 0
             self.current = self.root
@@ -73,20 +70,42 @@ class SearchTreeAgent(BaseAgent):
             raise Exception("No valid path found in search tree.")
         return skill
 
+    def _expand_tree(self, depth: int, node: TreeNode, goal: BaseObservation):
+        """Expand tree by applying skill postconditions"""
+        if depth >= self.config.max_depth:
+            return
+
+        # Try applying each available skill
+        for skill in self.storage_module.skills:
+            # Check if skill's preconditions are satisfied
+            skill_distance = self.eval_module.distance_to_skill(
+                node.observation, goal, skill
+            )
+            if skill_distance < self.config.distance_threshold:
+                # Simulate applying the skill by using its postcondition
+                simulated_obs = self._apply_skill_postcondition(node.observation, skill)
+                goal_distance = self.eval_module.distance_to_goal(simulated_obs, goal)
+                child_node = TreeNode(
+                    observation=simulated_obs,
+                    parent=node,
+                    distance_to_goal=goal_distance,
+                    distance_to_skill=skill_distance,
+                )
+                node.children.update({skill.id: child_node})
+
+                # Recursively expand (limited by depth)
+                if depth < self.config.max_depth:
+                    self._expand_tree(depth + 1, child_node, goal)
+
     def _find_path(self, goal: BaseObservation):
         """Find a path from root to the observation closest to goal in the entire tree"""
         if not self.root:
             raise Exception("Search tree root is not initialized.")
 
-        # Find the node closest to goal in the entire tree
-        closest_node = self._find_closest_node_to_goal(self.root, goal)
+        best_node = self._find_best_node(self.root, goal)
+        self.path = self._build_path_to_node(best_node)
 
-        # Build path from root to the closest node
-        self.path = self._build_path_to_node(closest_node)
-
-    def _find_closest_node_to_goal(
-        self, node: TreeNode, goal: BaseObservation
-    ) -> TreeNode:
+    def _find_best_node(self, node: TreeNode, goal: BaseObservation) -> TreeNode:
         """Recursively search entire tree to find node closest to goal"""
         closest_node = node
         is_equal = self.eval_module.is_equal(node.observation, goal)
@@ -94,7 +113,7 @@ class SearchTreeAgent(BaseAgent):
         # Check all children recursively
         for child in node.children:
             if child is not None:  # Skip None children
-                child_closest = self._find_closest_node_to_goal(child, goal)
+                child_closest = self._find_best_node(child, goal)
                 child_distance = self._compute_distance(child_closest.observation, goal)
 
                 if child_distance < min_distance:
@@ -117,36 +136,6 @@ class SearchTreeAgent(BaseAgent):
         path.reverse()
         return path
 
-    def _expand_tree(self, node: TreeNode, goal: BaseObservation):
-        """Expand tree by applying skill postconditions"""
-        if node.depth >= self.config.max_tree_depth:
-            return
-
-        # Try applying each available skill
-        for skill in self.storage_module.skills:
-            # Check if skill's preconditions are satisfied
-            start_distance = self.eval_module.skill_start_distance(
-                skill, node.observation, goal
-            )
-            distance = start_distance / len(self.storage_module.states)
-
-            if distance < self.config.distance_threshold:
-                # Simulate applying the skill by using its postcondition
-                simulated_obs = self._apply_skill_postcondition(node.observation, skill)
-
-                child_node = TreeNode(
-                    observation=simulated_obs,
-                    parent=node,
-                    depth=node.depth + 1,
-                )
-                node.children.append(child_node)
-
-                # Recursively expand (limited by depth)
-                if child_node.depth < self.config.max_tree_depth:
-                    self._expand_tree(child_node, goal)
-            else:
-                node.children.append(None)
-
     def _apply_skill_postcondition(
         self, current_obs: BaseObservation, skill: BaseSkill
     ) -> BaseObservation:
@@ -154,33 +143,6 @@ class SearchTreeAgent(BaseAgent):
         raise NotImplementedError(
             "_apply_skill_postcondition method not implemented yet."
         )
-
-    def _select_best_skill(self, node: TreeNode, goal: BaseObservation) -> BaseSkill:
-        """Select the best skill based on tree search"""
-        if not node.children:
-            # No children - return a random applicable skill
-            applicable_skills = [
-                skill
-                for skill in self.storage_module.skills
-                if skill.precondition_satisfied(node.observation)
-            ]
-            return (
-                applicable_skills[0]
-                if applicable_skills
-                else self.storage_module.skills[0]
-            )
-
-        # Evaluate each child path
-        best_skill = None
-        best_score = float("-inf")
-
-        for child in node.children:
-            score = self._evaluate_path(child, goal)
-            if score > best_score:
-                best_score = score
-                best_skill = child.skill_applied
-
-        return best_skill if best_skill else self.storage_module.skills[0]
 
     def _evaluate_path(self, node: TreeNode, goal: BaseObservation) -> float:
         """Evaluate how good a path is for reaching the goal"""

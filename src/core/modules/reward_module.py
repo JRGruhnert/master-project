@@ -69,32 +69,36 @@ class SparseRewardModule(RewardModule):
             current.top_level_observation, goal.top_level_observation
         )
 
-    def skill_start_distance(
-        self, skill: BaseSkill, current: BaseObservation, goal: BaseObservation
+    def distance_to_skill(
+        self,
+        current: BaseObservation,
+        goal: BaseObservation,
+        skill: BaseSkill,
     ) -> float:
         """Returns a distance metric indicating how far the current observation is from satisfying the skill's preconditions."""
-        distance = 0.0
+        total_distance = 0.0
         for state in self.states:
             if state.name in skill.precons:
-                dist = state.distance_to_skill(
+                distance = state.distance_to_skill(
                     current.top_level_observation[state.name],
                     goal.top_level_observation[state.name],
                     skill.precons[state.name],
                 )
-                distance += dist
-        return distance
+                total_distance += distance
+        return total_distance / len(skill.precons)
 
-    def skill_end_distance(
-        self, skill: BaseSkill, current: BaseObservation, goal: BaseObservation
+    def distance_to_goal(
+        self,
+        current: BaseObservation,
+        goal: BaseObservation,
     ) -> float:
-        """Returns a distance metric indicating how far the current observation is from satisfying the skill's postconditions."""
-        distance = 0.0
+        """Generic method to check if states match target conditions."""
+        # print(f"Checking states sparse reward module...")
+        total_distance = 0.0
         for state in self.states:
-            if state.name in skill.postcons:
-                dist = state.distance_to_skill(
-                    current.top_level_observation[state.name],
-                    goal.top_level_observation[state.name],
-                    skill.postcons[state.name],
-                )
-                distance += dist
-        return distance
+            distance = state.distance_to_goal(
+                current[state.name],
+                goal[state.name],
+            )
+            total_distance += distance
+        return total_distance / len(self.states)
