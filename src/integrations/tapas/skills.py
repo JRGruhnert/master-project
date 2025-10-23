@@ -1,4 +1,4 @@
-from src.integrations.tapas.skill import TapasSkill
+from src.core.skills.tapas import TapasSkill
 
 
 _S = {

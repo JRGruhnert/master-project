@@ -12,7 +12,7 @@ from src.core.networks.layers.encoder import (
 )
 from src.core.observation import BaseObservation
 from src.core.state import BaseState
-from src.core.skill import BaseSkill
+from src.core.skills.skill import BaseSkill
 from tapas_gmm.utils.select_gpu import device
 
 

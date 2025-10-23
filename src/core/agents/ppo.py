@@ -8,7 +8,7 @@ from src.core.modules.buffer_module import BufferModule
 from src.core.modules.storage_module import StorageModule
 from src.core.observation import BaseObservation
 from src.core.networks.actor_critic import ActorCriticBase
-from src.core.skill import BaseSkill
+from src.core.skills.skill import BaseSkill
 from loguru import logger
 
 

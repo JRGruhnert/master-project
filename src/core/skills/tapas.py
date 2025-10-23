@@ -6,9 +6,10 @@ import torch
 from calvin_env_modified.envs.observation import (
     CalvinEnvObservation,
 )
+from src.core.state import BaseState
 from src.integrations.calvin.state import CalvinState
 from src.integrations.calvin.observation import CalvinObservation
-from src.core.skill import BaseSkill
+from src.core.skills.skill import BaseSkill
 from tapas_gmm.utils.select_gpu import device
 from tapas_gmm.policy import import_policy
 from tapas_gmm.policy.gmm import GMMPolicy, GMMPolicyConfig

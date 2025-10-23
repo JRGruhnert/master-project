@@ -1,4 +1,4 @@
-from src.core.agents.ppo import PPOAgentConfig
+from src.core.agents.search_tree import SearchTreeAgentConfig
 from src.core.modules.reward_module import RewardConfig
 from src.core.modules.storage_module import StorageConfig
 from src.experiments.pepr import PePrConfig
@@ -12,13 +12,13 @@ storage = StorageConfig(
 )
 config = TrainConfig(
     tag="t1",
-    nt=NetworkType.PPO_GNN,
+    nt=NetworkType.SEARCH_TREE,
     experiment=PePrConfig(
         p_empty=0.0,
         p_rand=0.0,
     ),
-    env=EnvironmentConfig(render=False),
-    agent=PPOAgentConfig(),
+    env=EnvironmentConfig(render=True),
+    agent=SearchTreeAgentConfig(),
     reward=RewardConfig(
         step_reward=-1.0,
         success_reward=100.0,

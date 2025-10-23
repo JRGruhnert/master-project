@@ -3,6 +3,7 @@ from datetime import datetime, time
 from omegaconf import OmegaConf, SCMode
 import wandb
 
+from src.core.agents.search_tree import SearchTreeAgent, SearchTreeAgentConfig
 from src.core.modules.buffer_module import BufferModule
 from src.core.modules.reward_module import RewardConfig, SparseRewardModule
 from src.core.modules.storage_module import StorageModule, StorageConfig
@@ -54,30 +55,32 @@ def train_agent(config: TrainConfig):
         ),
     )  # Wrap environment in experiment
 
-    if config.nt in [NetworkType.PPO_GNN, NetworkType.PPO_BASELINE]:
+    if isinstance(config.agent, PPOAgentConfig):
         Net = import_network(config.nt)
         if config.nt is NetworkType.PPO_GNN:
             agent = GNNPPOAgent(
-                config.agent,  # type: ignore
+                config.agent,
                 Net(storage_module.states, storage_module.skills),
                 buffer_module,
                 storage_module,
             )
         else:
             agent = BaselinePPOAgent(
-                config.agent,  # type: ignore
+                config.agent,
                 Net(storage_module.states, storage_module.skills),
                 buffer_module,
                 storage_module,
             )
-    elif config.nt is NetworkType.SEARCH_TREE:
-        Net = import_network(config.nt)
-        agent = BaselinePPOAgent(
-            config.agent,  # type: ignore
-            Net(storage_module.states, storage_module.skills),
+    elif isinstance(config.agent, SearchTreeAgentConfig):
+        agent = SearchTreeAgent(
+            config.agent,
             buffer_module,
             storage_module,
+            reward_module,
         )
+    else:
+        raise ValueError(f"Unsupported agent config type: {type(config.agent)}")
+
     logger.info(f"Initialized agent with network type: {config.nt}")
 
     # Initialize wandb
@@ -109,13 +112,14 @@ def train_agent(config: TrainConfig):
             "train/learn_duration": 0.0,
         }
         run.log(metrics, step=0)
-        w_and_b = {
-            f"weights/{name.replace('.', '/')}": wandb.Histogram(
-                param.data.cpu().numpy()
-            )
-            for name, param in agent.policy_new.named_parameters()
-        }
-        run.log(w_and_b, step=0)
+        if isinstance(agent, BaselinePPOAgent):
+            w_and_b = {
+                f"weights/{name.replace('.', '/')}": wandb.Histogram(
+                    param.data.cpu().numpy()
+                )
+                for name, param in agent.policy_new.named_parameters()
+            }
+            run.log(w_and_b, step=0)
 
     # track total training time
     start_time = datetime.now().replace(microsecond=0)
@@ -157,13 +161,14 @@ def train_agent(config: TrainConfig):
                     / 60,
                 }
                 run.log(metrics, step=epoch)
-                w_and_b = {
-                    f"weights/{name.replace('.', '/')}": wandb.Histogram(
-                        param.data.cpu().numpy()
-                    )
-                    for name, param in agent.policy_new.named_parameters()
-                }
-                run.log(w_and_b, step=epoch)
+                if isinstance(agent, BaselinePPOAgent) and epoch % 5 == 0:
+                    w_and_b = {
+                        f"weights/{name.replace('.', '/')}": wandb.Histogram(
+                            param.data.cpu().numpy()
+                        )
+                        for name, param in agent.policy_new.named_parameters()
+                    }
+                    run.log(w_and_b, step=epoch)
                 print(f"📊 Epoch {epoch}: {metrics}")  # Debug output
 
             start_time_batch = datetime.now().replace(microsecond=0)

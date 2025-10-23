@@ -12,6 +12,6 @@ calvin_config = CalvinConfig(
     gripper_plot=False,
     postprocess_actions=False,
     eval_mode=False,
-    real_time=True,
+    real_time=False,
     pybullet_vis=False,
 )

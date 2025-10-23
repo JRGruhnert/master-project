@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 from src.core.observation import BaseObservation
-from src.core.skill import BaseSkill
+from src.core.skills.skill import BaseSkill
 from src.core.state import BaseState
 
 
@@ -57,11 +57,21 @@ class SparseRewardModule(RewardModule):
             # Success not reached
             return self.config.step_reward, False
 
-    def is_skill_start(self, skill: BaseSkill, current: BaseObservation) -> bool:
-        return self._check_states(skill.precons, current.top_level_observation)
+    def is_skill_start(
+        self, skill: BaseSkill, current: BaseObservation
+    ) -> tuple[float, bool]:
+        if self._check_states(skill.precons, current.top_level_observation):
+            return self.config.success_reward, True
+        else:
+            return self.config.step_reward, False
 
-    def is_skill_end(self, skill: BaseSkill, current: BaseObservation) -> bool:
-        return self._check_states(skill.postcons, current.top_level_observation)
+    def is_skill_end(
+        self, skill: BaseSkill, current: BaseObservation
+    ) -> tuple[float, bool]:
+        if self._check_states(skill.postcons, current.top_level_observation):
+            return self.config.success_reward, True
+        else:
+            return self.config.step_reward, False
 
     def is_equal(self, current: BaseObservation, goal: BaseObservation) -> bool:
         print(f"RewardModule is_equal check...")
@@ -80,8 +90,8 @@ class SparseRewardModule(RewardModule):
         for state in self.states:
             if state.name in skill.precons:
                 distance = state.distance_to_skill(
-                    current.top_level_observation[state.name],
-                    goal.top_level_observation[state.name],
+                    current[state.name],
+                    goal[state.name],
                     skill.precons[state.name],
                 )
                 total_distance += distance

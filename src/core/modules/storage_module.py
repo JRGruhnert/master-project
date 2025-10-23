@@ -5,7 +5,7 @@ import os
 from src.integrations.tapas.skills import SKILLS_BY_TAG
 from src.integrations.calvin.states import STATES_BY_TAG
 from src.core.state import BaseState
-from src.core.skill import BaseSkill
+from src.core.skills.skill import BaseSkill
 from src.core.networks import NetworkType
 
 

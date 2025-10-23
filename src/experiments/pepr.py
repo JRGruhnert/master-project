@@ -2,10 +2,10 @@ from dataclasses import dataclass
 import random
 
 from loguru import logger
-from src.core.skill import BaseSkill
+from src.core.skills.skill import BaseSkill
 from src.integrations.calvin.environment import CalvinEnvironment
 from src.integrations.calvin.observation import CalvinObservation
-from src.integrations.tapas.skill import TapasSkill
+from src.core.skills.tapas import TapasSkill
 
 
 @dataclass

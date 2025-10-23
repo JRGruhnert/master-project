@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from src.core.observation import BaseObservation
-from src.core.skill import BaseSkill
+from src.core.skills.skill import BaseSkill
 
 
 @dataclass
