@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, time
+from datetime import datetime
 from omegaconf import OmegaConf, SCMode
 import wandb
 
@@ -29,7 +29,6 @@ class TrainConfig:
     storage: StorageConfig
     # New wandb parameters
     use_wandb: bool
-    device_tag: str
 
 
 def train_agent(config: TrainConfig):
@@ -45,6 +44,7 @@ def train_agent(config: TrainConfig):
     )
     buffer_module = BufferModule(
         reward_module,
+        config.agent.batch_size,
     )
     experiment = PePrExperiment(
         config.experiment,
@@ -87,7 +87,8 @@ def train_agent(config: TrainConfig):
     if config.use_wandb:
         random_id = wandb_util.generate_id()
         print(f"Random ID for wandb: {random_id}")  # Debug output
-        wandb_name = config.nt.value + "_" + config.device_tag + "_" + config.tag
+        mode = "eval" if config.agent.eval else "train"
+        wandb_name = config.nt.value + "_" + mode + "_" + config.tag
         run = wandb.init(
             entity="jan-gruhnert-universit-t-freiburg",
             project="master-project",
@@ -98,7 +99,6 @@ def train_agent(config: TrainConfig):
                 "nt": config.nt.value,
                 "p_empty": config.experiment.p_empty,
                 "p_rand": config.experiment.p_rand,
-                "device": config.device_tag,
             },
             name=wandb_name,
             id=random_id,
@@ -142,7 +142,13 @@ def train_agent(config: TrainConfig):
             end_time_batch = datetime.now().replace(microsecond=0)
             start_time_learning = datetime.now().replace(microsecond=0)
             total_reward, episode_length, success_rate = agent.buffer_module.stats()
-            stop_training = agent.learn()
+            if config.agent.eval:
+                if epoch == 4:  # Stop after 5 eval epochs (0 to 4)
+                    stop_training = True
+                else:
+                    stop_training = False
+            else:  # Training mode
+                stop_training = agent.learn()
             end_time_learning = datetime.now().replace(microsecond=0)
             epoch += 1
             if config.use_wandb:

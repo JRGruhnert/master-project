@@ -14,6 +14,7 @@ from src.core.observation import BaseObservation
 from src.core.state import BaseState
 from src.core.skills.skill import BaseSkill
 from tapas_gmm.utils.select_gpu import device
+from loguru import logger
 
 
 class PPOType(Enum):
@@ -85,6 +86,7 @@ class ActorCriticBase(nn.Module, ABC):
         for module in self.modules():
             module.eval()
         self.is_eval_mode = True
+        logger.info("Network set to evaluation mode.")
 
     @abstractmethod
     def forward(

@@ -5,7 +5,7 @@ from src.core.observation import BaseObservation
 
 
 class BufferModule:
-    def __init__(self, eval_module: SparseRewardModule):
+    def __init__(self, eval_module: SparseRewardModule, batch_size: int):
         self.current: list[BaseObservation] = []
         self.goal: list[BaseObservation] = []
         self.actions: list[torch.Tensor] = []
@@ -14,6 +14,7 @@ class BufferModule:
         self.values: list[torch.Tensor] = []
         self.terminals: list[bool] = []
         self.eval_module: SparseRewardModule = eval_module
+        self.batch_size: int = batch_size
 
     def clear(self):
         self.current.clear()
@@ -35,9 +36,6 @@ class BufferModule:
             len(self.terminals),
         ]
         return all(l == lengths[0] for l in lengths)
-
-    def has_batch(self, batch_size: int):
-        return len(self.actions) == batch_size and self.health()
 
     def save(self, path: str, epoch: int):
         assert self.health(), "Buffer lengths are inconsistent!"
@@ -66,9 +64,10 @@ class BufferModule:
         self.logprobs.append(action_logprob)
         self.values.append(state_val)
 
-    def feedback_values(self, reward: float, terminal: bool):
+    def feedback(self, reward: float, terminal: bool) -> bool:
         self.rewards.append(reward)
         self.terminals.append(terminal)
+        return len(self.actions) == self.batch_size and self.health()
 
     def stats(self) -> tuple[float, float, float]:
         assert self.health(), "Buffer lengths are inconsistent!"

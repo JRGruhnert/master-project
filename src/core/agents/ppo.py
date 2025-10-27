@@ -21,7 +21,6 @@ class PPOAgentConfig(AgentConfig):
     saving_freq: int = 5  # Saving frequence of trained model
 
     save_stats: bool = True
-    batch_size: int = 2048
     mini_batch_size: int = 64  # 64 # How many steps to use in each mini-batch
     learning_epochs: int = 50  # How many passes over the collected batch per update
     lr_annealing: bool = False
@@ -45,7 +44,6 @@ class PPOAgent(BaseAgent):
         model: ActorCriticBase,
         buffer_module: BufferModule,
         storage_module: StorageModule,
-        eval_mode: bool = False,
     ):
         ### Initialize hyperparameters
         self.config = config
@@ -59,7 +57,7 @@ class PPOAgent(BaseAgent):
             self.policy_new.parameters(),
             lr=self.config.learning_rate,
         )
-        if eval_mode:
+        if self.config.eval:
             self.policy_new.eval()
             self.policy_old.eval()
 
@@ -78,9 +76,8 @@ class PPOAgent(BaseAgent):
         self.buffer_module.act_values(obs, goal, action, action_logprob, state_val)
         return self.storage_module.skills[int(action.item())]  # Can safely be accessed
 
-    def feedback(self, reward: float, terminal: bool):
-        self.buffer_module.feedback_values(reward, terminal)
-        return self.buffer_module.has_batch(self.config.batch_size)
+    def feedback(self, reward: float, terminal: bool) -> bool:
+        return self.buffer_module.feedback(reward, terminal)
 
     def compute_gae(
         self,
@@ -109,11 +106,6 @@ class PPOAgent(BaseAgent):
         )
 
     def learn(self) -> bool:
-        assert self.buffer_module.health(), "Rollout buffer not in sync"
-        assert (
-            len(self.buffer_module.current) == self.config.batch_size
-        ), "Batch size mismatch"
-
         # Saves batch values
         self.buffer_module.save(
             self.storage_module.buffer_saving_path, self.current_epoch
@@ -130,11 +122,14 @@ class PPOAgent(BaseAgent):
         else:
             self.epochs_since_improvement += 1
 
+        # Check for improvement
         if (
             self.epochs_since_improvement >= self.config.early_stop_patience
             and self.config.min_sampling_epochs <= self.current_epoch
         ):
-            print("Aborting Training cause of no improvement.")
+            logger.info(
+                f"Early stopping training after {self.current_epoch} epochs because of no improvement in the last {self.config.early_stop_patience} epochs."
+            )
             return True
 
         ### Preprocess batch values
@@ -283,7 +278,9 @@ class PPOAgent(BaseAgent):
                 )
             )
 
-        logger.info(f"Saving weights to: {checkpoint_path}")
+        logger.info(
+            f"Saving weights to: {checkpoint_path} at epoch {self.current_epoch}"
+        )
         # torch.save(self.policy_old.state_dict(), checkpoint_path)
         torch.save(
             {
@@ -306,7 +303,7 @@ class GNNPPOAgent(PPOAgent):
             )
         )
         checkpoint = torch.load(
-            self.storage_module.config.checkpoint_path, map_location="cpu"
+            self.storage_module.config.checkpoint_path, map_location=device
         )
 
         self.policy_old.load_state_dict(checkpoint["model_state"])
@@ -323,7 +320,7 @@ class BaselinePPOAgent(PPOAgent):
         )
 
         checkpoint = torch.load(
-            self.storage_module.config.checkpoint_path, map_location="cpu"
+            self.storage_module.config.checkpoint_path, map_location=device
         )
 
         old_state_dict: dict[str, torch.Tensor] = (

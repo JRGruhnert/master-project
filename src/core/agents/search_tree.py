@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Optional
 from src.core.agents.agent import AgentConfig, BaseAgent
 from src.core.modules.buffer_module import BufferModule
-from src.core.modules.reward_module import RewardModule, SparseRewardModule
+from src.core.modules.reward_module import SparseRewardModule
 from src.core.modules.storage_module import StorageModule
 from src.core.observation import BaseObservation
 from src.core.skills.skill import BaseSkill
@@ -171,7 +171,8 @@ class SearchTreeAgent(BaseAgent):
         next_obs = current.clone()
         # Apply skill postconditions
         for state_name, target_value in skill.postcons.items():
-            if skill._name in ["PressButton", "ReversePressButton"]:
+            # NOTE: HACKY for the Flip State (But this is just a baseline so not worth it to generalize)
+            if skill._name in ["PressButton", "PressButtonBack"]:
                 # Special handling for button press skills
                 if state_name == "button_state":
                     if target_value == 1:
@@ -183,25 +184,22 @@ class SearchTreeAgent(BaseAgent):
 
         return next_obs
 
-    def feedback(self, reward: float, terminal: bool):
+    def feedback(self, reward: float, terminal: bool) -> bool:
         """Update current node based on actual environment feedback"""
         if self.current and terminal:
             # Reset tree for next episode
             self.root = None
             self.current = None
-
-        # You could also update node values based on actual reward
-        # This would require storing values in TreeNode
+        return self.buffer_module.feedback(reward, terminal)
 
     def learn(self) -> bool:
-        # For search tree, learning might involve updating distance metrics
-        # or skill success probabilities
+        # No Model to train in search tree agent
         return False  # Continue training
 
     def save(self, tag: str = ""):
-        # Save tree statistics or learned parameters
+        # No parameters to save
         pass
 
     def load(self):
-        # Load saved parameters
+        # No parameters to load
         pass
