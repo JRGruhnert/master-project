@@ -127,16 +127,16 @@ def train_agent(config: TrainConfig):
     epoch = 0
     start_time_batch = datetime.now().replace(microsecond=0)
     while not stop_training:  # Training loop
-        print(f"Starting Epoch {epoch}")  # Debug output
+        # print(f"Starting Epoch {epoch}")  # Debug output
         terminal = False
         batch_rdy = False
         obs, goal = experiment.reset()
         while not terminal and not batch_rdy:
             skill = agent.act(obs, goal)
-            print(f"Chosen Skill: {skill.name}")  # Debug output
+            # print(f"Chosen Skill: {skill.name}")  # Debug output
             obs = experiment.step(skill)
             reward, terminal = experiment.evaluate()
-            print(f"Step Reward: {reward}, Terminal: {terminal}")  # Debug output
+            # print(f"Step Reward: {reward}, Terminal: {terminal}")  # Debug output
             batch_rdy = agent.feedback(reward, terminal)
         if batch_rdy:
             end_time_batch = datetime.now().replace(microsecond=0)

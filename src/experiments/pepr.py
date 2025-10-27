@@ -48,9 +48,9 @@ class PePrExperiment:
         return self.current, goal
 
     def evaluate(self) -> tuple[float, bool]:
+        self.current_step += 1
         reward, done = self.env.evaluate()
         terminal = True if self.current_step >= self.max_episode_length else done
-        self.current_step += 1
         return reward, terminal
 
     def close(self):

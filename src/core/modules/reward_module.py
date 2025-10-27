@@ -38,16 +38,16 @@ class SparseRewardModule(RewardModule):
         for state in self.states:
             if state.name in goal:
                 if not state.evaluate(current[state.name], goal[state.name]):
-                    print(
-                        f"NOPE: State {state.name} {current[state.name]} {goal[state.name]}"
-                    )
+                    # print(
+                    #     f"NOPE: State {state.name} {current[state.name]} {goal[state.name]}"
+                    # )
                     finished = False
         return finished
 
     def step(
         self, current: BaseObservation, goal: BaseObservation
     ) -> tuple[float, bool]:
-        print(f"RewardModule step check...")
+        # print(f"RewardModule step check...")
         if self._check_states(
             current.top_level_observation, goal.top_level_observation
         ):
@@ -74,7 +74,7 @@ class SparseRewardModule(RewardModule):
             return self.config.step_reward, False
 
     def is_equal(self, current: BaseObservation, goal: BaseObservation) -> bool:
-        print(f"RewardModule is_equal check...")
+        # print(f"RewardModule is_equal check...")
         return self._check_states(
             current.top_level_observation, goal.top_level_observation
         )
