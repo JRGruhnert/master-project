@@ -12,7 +12,7 @@ storage = StorageConfig(
 )
 config = TrainConfig(
     tag="test",
-    nt=NetworkType.PPO_BASELINE,
+    nt=NetworkType.PPO_GNN,
     experiment=PePrConfig(
         p_empty=0.0,
         p_rand=0.0,

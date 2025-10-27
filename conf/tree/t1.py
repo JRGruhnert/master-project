@@ -24,6 +24,5 @@ config = TrainConfig(
         success_reward=100.0,
     ),
     storage=storage,
-    use_wandb=False,
-    device_tag="gorilla",
+    use_wandb=True,
 )
