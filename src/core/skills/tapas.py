@@ -6,8 +6,9 @@ import torch
 from calvin_env_modified.envs.observation import (
     CalvinEnvObservation,
 )
+from src.core.logic.eval_condition import AreaEvalCondition
 from src.core.state import BaseState
-from src.integrations.calvin.state import CalvinState
+from src.integrations.calvin.state import AreaEulerState, CalvinState
 from src.integrations.calvin.observation import CalvinObservation
 from src.core.skills.skill import BaseSkill
 from tapas_gmm.utils.select_gpu import device
@@ -276,12 +277,16 @@ class TapasSkill(BaseSkill):
                     ee_state = torch.Tensor(state_value)
 
                 elif match_position:
+                    print(f"Overriding {state_name} in Tapas Skill {self.name}")
                     position_state_name = f"{match_position.group(1)}_position"
-                    if position_state_name not in states_dict:
+                    if position_state_name in states_dict:
                         temp_state = states_dict[position_state_name]
-                        temp_pos = temp_state.area_tapas_override(
-                            goal.top_level_observation[position_state_name],
-                        )
+                        if isinstance(temp_state._eval_condition, AreaEvalCondition):
+                            temp_pos = temp_state._eval_condition.area_tapas_override(
+                                goal.top_level_observation[position_state_name],
+                            )
+                        else:
+                            temp_pos = goal.top_level_observation[position_state_name]
                         object_poses_dict[match_position.group(1)] = np.concatenate(
                             [
                                 temp_pos.numpy(),

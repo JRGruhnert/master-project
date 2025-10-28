@@ -1,16 +1,25 @@
-from conf.master.shared.train_env import debug_env
-from conf.master.shared.agent import debug
-from tapas_gmm.master_project.networks import NetworkType
-from tapas_gmm.master_project.state import StateSpace
-from tapas_gmm.master_project.task import TaskSpace
-from tapas_gmm.master_train import TrainConfig
+from src.core.modules.reward_module import RewardConfig
+from src.core.modules.storage_module import StorageConfig
+from src.experiments.pepr import PePrConfig
+from scripts.debug import DebugConfig
+from src.core.networks import NetworkType
+from src.core.environment import EnvironmentConfig
 
-
-config = TrainConfig(
-    task_space=TaskSpace.Debug,  # Assuming task_space is not used in this context
-    state_space=StateSpace.Debug,  # Assuming state_space is not used in this context
+storage = StorageConfig(
+    skills_tag="Normal",
+    states_tag="Normal",
+)
+config = DebugConfig(
     tag="test",
-    nt=NetworkType.BASELINE_TEST,
-    env=debug_env,
-    agent=debug,
+    nt=NetworkType.PPO_GNN,
+    experiment=PePrConfig(
+        p_empty=0.0,
+        p_rand=0.0,
+    ),
+    env=EnvironmentConfig(render=True),
+    reward=RewardConfig(
+        step_reward=-1.0,
+        success_reward=100.0,
+    ),
+    storage=storage,
 )

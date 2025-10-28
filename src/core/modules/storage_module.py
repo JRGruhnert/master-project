@@ -59,6 +59,9 @@ class StorageModule:
         skills = sorted(
             SKILLS_BY_TAG.get(self.config.skills_tag, []), key=lambda s: s.id
         )
+        print(
+            f"Loaded skills for tag {self.config.skills_tag}: {[s.name for s in skills]}"
+        )
         for skill in skills:
             skill.initialize_conditions(self.states)
             skill.initialize_overrides(self.states)

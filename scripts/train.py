@@ -71,6 +71,10 @@ def train_agent(config: TrainConfig):
                 buffer_module,
                 storage_module,
             )
+        if config.agent.eval:
+            logger.info("Loading checkpoint for evaluation...")
+            agent.load()
+
     elif isinstance(config.agent, SearchTreeAgentConfig):
         agent = SearchTreeAgent(
             config.agent,

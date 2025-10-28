@@ -100,16 +100,23 @@ class AreaMixin:
         for name, (min_corner, max_corner) in self.eval_surfaces.items():
             # min_corner = min_corner.to(x.device)
             # max_corner = max_corner.to(x.device)
+            # print("Checking area:", name)
+            # print("Min corner:", min_corner)
+            # print("Max corner:", max_corner)
+            # print("Point to check:", x)
             if torch.all(x >= min_corner) and torch.all(x <= max_corner):
-                print("Area detected:", name)
                 return name
-        print("No area detected")
+            # else:
+            #    print(torch.all(x >= min_corner), torch.all(x <= max_corner))
         return None
 
     def check_area_similarity(self, current: torch.Tensor, goal: torch.Tensor) -> bool:
         """Check if both obs and goal are in the same defined area."""
         current_area = self.check_area(current)
         goal_area = self.check_area(goal)
+        print("Current area:", current_area)
+        print("Goal area:", goal_area)
+        print("Area match:", current_area == goal_area)
         return current_area == goal_area
 
     def area_tapas_override(self, x: torch.Tensor) -> torch.Tensor:

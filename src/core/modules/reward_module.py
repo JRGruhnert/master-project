@@ -37,10 +37,11 @@ class SparseRewardModule(RewardModule):
         finished = True
         for state in self.states:
             if state.name in goal:
+                # print(f"Checking state {state.name}...")
                 if not state.evaluate(current[state.name], goal[state.name]):
-                    # print(
-                    #     f"NOPE: State {state.name} {current[state.name]} {goal[state.name]}"
-                    # )
+                    print(
+                        f"NOPE: {state.name} {current[state.name]} {goal[state.name]}"
+                    )
                     finished = False
         return finished
 
