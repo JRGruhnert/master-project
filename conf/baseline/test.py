@@ -24,5 +24,5 @@ config = TrainConfig(
         success_reward=100.0,
     ),
     storage=storage,
-    use_wandb=True,
+    use_wandb=False,
 )

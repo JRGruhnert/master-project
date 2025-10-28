@@ -55,6 +55,7 @@ class SearchTreeAgent(BaseAgent):
         self.root: Optional[TreeNode] = None
         self.current: Optional[TreeNode] = None
         self.path: list[int] = []
+        self.path_index: int = 0
 
     def act(
         self,
@@ -62,22 +63,25 @@ class SearchTreeAgent(BaseAgent):
         goal: BaseObservation,
     ) -> BaseSkill:
         # Initialize root if first observation
-        if self.config.replan_every_step or self.root is None:
-            print(f"Replanning search tree...")
+        if (
+            self.config.replan_every_step
+            or self.root is None
+            or self.path_index == len(self.path)
+        ):
+            # print(f"Replanning search tree...")
             self.root = TreeNode(observation=obs)
             self._expand_tree(0, self.root, goal)
             self._find_path(goal)
             self.path_index = 0
             self.current = self.root
 
-        print(f"Current path: {self.path}")
-        if self.path_index < len(self.path):
-            skill = self.storage_module.skills[
-                self.path[self.path_index]
-            ]  # Next skill in path
-            self.path_index += 1
-        else:
-            raise Exception("No valid path found in search tree.")
+        # print(f"Current path: {self.path}")
+        # print(f"Path index: {self.path_index}")s
+        skill = self.storage_module.skills[
+            self.path[self.path_index]
+        ]  # Next skill in path
+        self.path_index += 1
+
         return skill
 
     def _expand_tree(self, depth: int, node: TreeNode, goal: BaseObservation):
@@ -128,7 +132,7 @@ class SearchTreeAgent(BaseAgent):
         """Recursively search entire tree to find node closest to goal"""
         best_node = node
         # Check all children recursively
-        for skill_id, child in node.children.items():
+        for _, child in node.children.items():
             child_closest = self._find_best_node(child, goal)
 
             if (
@@ -137,14 +141,14 @@ class SearchTreeAgent(BaseAgent):
             ):
                 best_node = child_closest
             elif child_closest.distance_to_goal < best_node.distance_to_goal:
-                logger.debug(
-                    f"Tie-breaker: prefer node with lower distance to goal {child_closest.distance_to_goal} < {best_node.distance_to_goal}"
-                )
+                # logger.debug(
+                #    f"Tie-breaker: prefer node with lower distance to goal {child_closest.distance_to_goal} < {best_node.distance_to_goal}"
+                # )
                 best_node = child_closest
             elif child_closest.distance_to_obs < best_node.distance_to_obs:
-                logger.debug(
-                    f"Tie-breaker: prefer node with lower distance to obs {child_closest.distance_to_obs} < {best_node.distance_to_obs}"
-                )
+                # logger.debug(
+                #    f"Tie-breaker: prefer node with lower distance to obs {child_closest.distance_to_obs} < {best_node.distance_to_obs}"
+                # )
                 best_node = child_closest
 
         return best_node

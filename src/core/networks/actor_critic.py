@@ -83,8 +83,7 @@ class ActorCriticBase(nn.Module, ABC):
             raise ValueError(f"Unknown state type: {type_str}")
 
     def eval(self):
-        for module in self.modules():
-            module.eval()
+        super().eval()  # Call PyTorch's nn.Module.eval() instead of iterating manually
         self.is_eval_mode = True
         logger.info("Network set to evaluation mode.")
 

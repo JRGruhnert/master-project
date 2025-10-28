@@ -18,11 +18,11 @@ config = TrainConfig(
         p_rand=0.0,
     ),
     env=EnvironmentConfig(render=False),
-    agent=PPOAgentConfig(),
+    agent=PPOAgentConfig(eval=True),
     reward=RewardConfig(
         step_reward=-1.0,
         success_reward=100.0,
     ),
     storage=storage,
-    use_wandb=True,
+    use_wandb=False,
 )
