@@ -138,8 +138,8 @@ class AreaEulerState(EulerState):
             eval_condition=AreaEvalCondition(
                 surfaces={
                     "table": [[0.0, -0.15, 0.46], [0.30, -0.03, 0.46]],
-                    "drawer_open": [[0.04, -0.35, 0.38], [0.30, -0.21, 0.38]],
-                    "drawer_closed": [[0.04, -0.16, 0.38], [0.30, -0.03, 0.38]],
+                    "drawer_open": [[0.04, -0.35, 0.36], [0.30, -0.21, 0.36]],
+                    "drawer_closed": [[0.04, -0.16, 0.36], [0.30, -0.03, 0.36]],
                 },
             ),
         )

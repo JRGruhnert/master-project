@@ -98,12 +98,24 @@ class AreaMixin:
     def check_area(self, x: torch.Tensor) -> Optional[str]:
         """Check if the point x is in any of the defined areas."""
         for name, (min_corner, max_corner) in self.eval_surfaces.items():
-            # min_corner = min_corner.to(x.device)
-            # max_corner = max_corner.to(x.device)
+            # min_corner = min_corner.to(x.device, dtype=x.dtype)
+            # max_corner = max_corner.to(x.device, dtype=x.dtype)
             # print("Checking area:", name)
             # print("Min corner:", min_corner)
             # print("Max corner:", max_corner)
             # print("Point to check:", x)
+            # print(
+            #    "Check result:", torch.all(x >= min_corner), torch.all(x <= max_corner)
+            # )
+            # ✅ Let's manually check each element
+            # for i in range(len(x)):
+            #    print(
+            #        f"  Element {i}: {x[i]} >= {min_corner[i]} = {x[i] >= min_corner[i]}"
+            #    )
+            #    print(
+            #        f"  Element {i}: {x[i]} <= {max_corner[i]} = {x[i] <= max_corner[i]}"
+            #    )
+
             if torch.all(x >= min_corner) and torch.all(x <= max_corner):
                 return name
             # else:
@@ -113,10 +125,10 @@ class AreaMixin:
     def check_area_similarity(self, current: torch.Tensor, goal: torch.Tensor) -> bool:
         """Check if both obs and goal are in the same defined area."""
         current_area = self.check_area(current)
+        # print("Current area:", current_area)
         goal_area = self.check_area(goal)
-        print("Current area:", current_area)
-        print("Goal area:", goal_area)
-        print("Area match:", current_area == goal_area)
+        # print("Goal area:", goal_area)
+        # print("Area match:", current_area == goal_area)
         return current_area == goal_area
 
     def area_tapas_override(self, x: torch.Tensor) -> torch.Tensor:
@@ -124,6 +136,7 @@ class AreaMixin:
         Override the area check for TAPAS.
         """
         area = self.check_area(x)
+        # print("Override area:", area)
         if area == self.drawer_closed:
             x[1] -= 0.17  # Drawer Offset
         return x  # Return original point if no area match
@@ -145,6 +158,14 @@ class AreaMixin:
         eval_surfaces[self.drawer_open][1][1] += 0.02
         eval_surfaces[self.drawer_closed][0][1] -= 0.02
         eval_surfaces[self.drawer_closed][1][1] += 0.02
+        eval_surfaces[self.drawer_open][0][2] -= 0.02
+        eval_surfaces[self.drawer_open][1][2] += 0.02
+        eval_surfaces[self.drawer_closed][0][2] -= 0.02
+        eval_surfaces[self.drawer_closed][1][2] += 0.02
+        eval_surfaces[self.table][0][2] -= 0.02
+        eval_surfaces[self.table][1][2] += 0.02
+        eval_surfaces[self.table][0][1] -= 0.02
+        eval_surfaces[self.table][1][1] += 0.02
 
         return {k: torch.from_numpy(np.array(v)) for k, v in eval_surfaces.items()}
 

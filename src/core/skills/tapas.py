@@ -277,7 +277,7 @@ class TapasSkill(BaseSkill):
                     ee_state = torch.Tensor(state_value)
 
                 elif match_position:
-                    print(f"Overriding {state_name} in Tapas Skill {self.name}")
+                    # print(f"Overriding {state_name} in Tapas Skill {self.name}")
                     position_state_name = f"{match_position.group(1)}_position"
                     if position_state_name in states_dict:
                         temp_state = states_dict[position_state_name]
