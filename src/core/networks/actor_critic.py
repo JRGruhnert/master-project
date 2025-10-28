@@ -38,7 +38,8 @@ class ActorCriticBase(nn.Module, ABC):
         self.dim_encoder = 32
         self.encoder_obs = nn.ModuleDict(
             {
-                "Euler": PositionEncoder(self.dim_encoder),
+                "EulerPrecise": PositionEncoder(self.dim_encoder),
+                "EulerArea": PositionEncoder(self.dim_encoder),
                 "Quat": QuaternionEncoder(self.dim_encoder),
                 "Range": ScalarEncoder(self.dim_encoder),
                 "Bool": ScalarEncoder(self.dim_encoder),
@@ -48,7 +49,8 @@ class ActorCriticBase(nn.Module, ABC):
 
         self.encoder_goal = nn.ModuleDict(
             {
-                "Euler": PositionEncoder(self.dim_encoder),
+                "EulerPrecise": PositionEncoder(self.dim_encoder),
+                "EulerArea": PositionEncoder(self.dim_encoder),
                 "Quat": QuaternionEncoder(self.dim_encoder),
                 "Range": ScalarEncoder(self.dim_encoder),
                 "Bool": ScalarEncoder(self.dim_encoder),

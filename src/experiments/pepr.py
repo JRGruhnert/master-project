@@ -19,22 +19,22 @@ class PePrExperiment:
 
     def __init__(self, config: PePrConfig, env: CalvinEnvironment):
         # We sort based on Id for the baseline network to be consistent
-
-        self.p_empty = config.p_empty
-        self.p_rand = config.p_rand
+        self.config = config
         self.env = env
         num_skills = len(env.storage_module.skills)
         self.max_episode_length = int(
-            num_skills + num_skills * self.p_empty + num_skills * self.p_rand
+            num_skills
+            + num_skills * self.config.p_empty
+            + num_skills * self.config.p_rand
         )
         self.current_step = 0
 
     def step(self, skill: BaseSkill) -> CalvinObservation:
         sample = random.random()
-        if sample < self.p_empty:  # 0-p_empty>
+        if sample < self.config.p_empty:  # 0-p_empty>
             logger.warning("Taking Empty Step")
             pass
-        elif sample < self.p_empty + self.p_rand:  # 0-p_empty + p_rand>
+        elif sample < self.config.p_empty + self.config.p_rand:  # 0-p_empty + p_rand>
             logger.warning("Taking Random Step")
             self.current = self.env.step(random.choice(self.env.storage_module.skills))
         else:  # The rest

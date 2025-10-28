@@ -75,6 +75,7 @@ class EulerState(CalvinState):
         self,
         name,
         id,
+        type_str,
         ignore: bool = False,
         lower_bound=[-1.0, -1.0, -1.0],
         upper_bound=[1.0, 1.0, 1.0],
@@ -88,7 +89,7 @@ class EulerState(CalvinState):
         super().__init__(
             name=name,
             id=id,
-            type_str="Euler",
+            type_str=type_str,
             value_condition=LinearValueNormalizer(
                 lower_bound=lower_bound,
                 upper_bound=upper_bound,
@@ -116,6 +117,7 @@ class PreciseEulerState(EulerState):
         super().__init__(
             name=name,
             id=id,
+            type_str="EulerPrecise",
             ignore=ignore,
             eval_condition=PreciseEvalCondition(
                 condition=EulerDistanceCondition(
@@ -135,6 +137,7 @@ class AreaEulerState(EulerState):
         super().__init__(
             name=name,
             id=id,
+            type_str="EulerArea",
             eval_condition=AreaEvalCondition(
                 surfaces={
                     "table": [[0.0, -0.15, 0.46], [0.30, -0.03, 0.46]],
