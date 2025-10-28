@@ -98,8 +98,12 @@ class AreaMixin:
     def check_area(self, x: torch.Tensor) -> Optional[str]:
         """Check if the point x is in any of the defined areas."""
         for name, (min_corner, max_corner) in self.eval_surfaces.items():
+            # min_corner = min_corner.to(x.device)
+            # max_corner = max_corner.to(x.device)
             if torch.all(x >= min_corner) and torch.all(x <= max_corner):
+                print("Area detected:", name)
                 return name
+        print("No area detected")
         return None
 
     def check_area_similarity(self, current: torch.Tensor, goal: torch.Tensor) -> bool:

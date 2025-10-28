@@ -3,7 +3,6 @@ import torch
 
 from src.core.logic.mixin import (
     AreaMixin,
-    BoundedMixin,
     ThresholdMixin,
 )
 from src.core.logic.distance_condition import DistanceCondition

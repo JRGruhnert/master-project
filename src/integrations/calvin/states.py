@@ -29,18 +29,6 @@ _S = {
         name="led_position",
         id=4,
     ),
-    "block_red_position": AreaEulerState(
-        name="block_red_position",
-        id=14,
-    ),
-    "block_blue_position": AreaEulerState(
-        name="block_blue_position",
-        id=15,
-    ),
-    "block_pink_position": AreaEulerState(
-        name="block_pink_position",
-        id=16,
-    ),
     "ee_rotation": QuatState(
         name="ee_rotation",
         id=5,
@@ -61,6 +49,38 @@ _S = {
         name="led_rotation",
         id=9,
     ),
+    "ee_scalar": BoolState(
+        name="ee_scalar",
+        id=10,
+    ),
+    "base__slide_scalar": RangeState(
+        name="base__slide_scalar",
+        id=11,
+        lower_bound=0.0,
+        upper_bound=0.28,
+    ),
+    "base__drawer_scalar": RangeState(
+        name="base__drawer_scalar",
+        id=12,
+        lower_bound=0.0,
+        upper_bound=0.22,
+    ),
+    "base__button_scalar": FlipState(
+        name="base__button_scalar",
+        id=13,
+    ),
+    "block_red_position": AreaEulerState(
+        name="block_red_position",
+        id=14,
+    ),
+    "block_blue_position": AreaEulerState(
+        name="block_blue_position",
+        id=15,
+    ),
+    "block_pink_position": AreaEulerState(
+        name="block_pink_position",
+        id=16,
+    ),
     "block_red_rotation": QuatState(
         name="block_red_rotation",
         id=17,
@@ -75,26 +95,6 @@ _S = {
         name="block_pink_rotation",
         id=19,
         ignore=True,
-    ),
-    "ee_scalar": BoolState(
-        name="ee_scalar",
-        id=10,
-    ),
-    "base__slide_scalar": RangeState(
-        name="base__slide_scalar",
-        id=11,
-        lower_bound=[0.0],
-        upper_bound=[0.28],
-    ),
-    "base__drawer_scalar": RangeState(
-        name="base__drawer_scalar",
-        id=12,
-        lower_bound=[0.0],
-        upper_bound=[0.22],
-    ),
-    "base__button_scalar": FlipState(
-        name="base__button_scalar",
-        id=13,
     ),
     "block_red_scalar": BoolState(
         name="block_red_scalar",
