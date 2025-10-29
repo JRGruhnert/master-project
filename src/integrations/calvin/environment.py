@@ -1,6 +1,6 @@
 from typing import Optional
 from tapas_gmm.env.calvin import Calvin
-from src.core.modules.reward_module import SparseRewardModule
+from src.core.modules.reward_module import RewardModule
 from src.core.modules.storage_module import StorageModule
 from src.core.environment import BaseEnvironment, EnvironmentConfig
 from src.core.skills.skill import BaseSkill
@@ -14,7 +14,7 @@ class CalvinEnvironment(BaseEnvironment):
     def __init__(
         self,
         config: EnvironmentConfig,
-        reward_module: SparseRewardModule,
+        reward_module: RewardModule,
         storage_module: StorageModule,
     ):
         self.config = config

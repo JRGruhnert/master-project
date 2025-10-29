@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Optional
 from src.core.agents.agent import AgentConfig, BaseAgent
 from src.core.modules.buffer_module import BufferModule
-from src.core.modules.reward_module import SparseRewardModule
+from src.core.modules.reward_module import RewardModule
 from src.core.modules.storage_module import StorageModule
 from src.core.observation import BaseObservation
 from src.core.skills.skill import BaseSkill
@@ -45,12 +45,12 @@ class SearchTreeAgent(BaseAgent):
         config: SearchTreeAgentConfig,
         buffer_module: BufferModule,
         storage_module: StorageModule,
-        reward_module: SparseRewardModule,
+        reward_module: RewardModule,
     ):
         self.config: SearchTreeAgentConfig = config
         self.buffer_module: BufferModule = buffer_module
         self.storage_module: StorageModule = storage_module  # Access to skills
-        self.eval_module: SparseRewardModule = reward_module
+        self.eval_module: RewardModule = reward_module
 
         self.root: Optional[TreeNode] = None
         self.current: Optional[TreeNode] = None

@@ -1,11 +1,11 @@
 import torch
 
-from src.core.modules.reward_module import SparseRewardModule
+from src.core.modules.reward_module import RewardModule
 from src.core.observation import BaseObservation
 
 
 class BufferModule:
-    def __init__(self, eval_module: SparseRewardModule, batch_size: int):
+    def __init__(self, eval_module: RewardModule, batch_size: int):
         self.current: list[BaseObservation] = []
         self.goal: list[BaseObservation] = []
         self.actions: list[torch.Tensor] = []
@@ -13,7 +13,7 @@ class BufferModule:
         self.rewards: list[float] = []
         self.values: list[torch.Tensor] = []
         self.terminals: list[bool] = []
-        self.eval_module: SparseRewardModule = eval_module
+        self.eval_module: RewardModule = eval_module
         self.batch_size: int = batch_size
 
     def clear(self):
