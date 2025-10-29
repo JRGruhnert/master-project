@@ -117,7 +117,7 @@ class PreciseEulerState(EulerState):
         super().__init__(
             name=name,
             id=id,
-            type_str="EulerPrecise",
+            type_str="Euler",
             ignore=ignore,
             eval_condition=PreciseEvalCondition(
                 condition=EulerDistanceCondition(
@@ -137,12 +137,21 @@ class AreaEulerState(EulerState):
         super().__init__(
             name=name,
             id=id,
-            type_str="EulerArea",
+            type_str="Euler",
             eval_condition=AreaEvalCondition(
-                surfaces={
-                    "table": [[0.0, -0.15, 0.46], [0.30, -0.03, 0.46]],
-                    "drawer_open": [[0.04, -0.35, 0.36], [0.30, -0.21, 0.36]],
-                    "drawer_closed": [[0.04, -0.16, 0.36], [0.30, -0.03, 0.36]],
+                spawn_surfaces={
+                    "table": [[0.0, -0.15, 0.44], [0.30, -0.03, 0.48]],
+                    "drawer_open": [[0.04, -0.35, 0.34], [0.30, -0.21, 0.38]],
+                    "drawer_closed": [[0.04, -0.16, 0.34], [0.30, -0.03, 0.38]],
+                },
+                # surfaces={
+                #    "table": [[0.0, -0.15, 0.46], [0.30, -0.03, 0.46]],
+                #    "drawer_open": [[0.04, -0.35, 0.36], [0.30, -0.21, 0.36]],
+                #    "drawer_closed": [[0.04, -0.16, 0.36], [0.30, -0.03, 0.36]],
+                # },
+                eval_surfaces={
+                    "table": [[-0.02, -0.17, 0.44], [0.32, -0.01, 0.54]],
+                    "drawer": [[0.02, -0.37, 0.34], [0.32, -0.23, 0.44]],
                 },
             ),
         )

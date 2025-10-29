@@ -42,7 +42,7 @@ def train_agent(config: TrainConfig):
         config.tag,
         config.nt,
     )
-    reward_module = DenseRewardModule(
+    reward_module = SparseRewardModule(
         config.reward,
         storage_module.states,
     )
