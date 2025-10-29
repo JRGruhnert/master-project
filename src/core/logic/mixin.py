@@ -159,30 +159,8 @@ class AreaMixin:
     def make_surfaces(
         self,
         surfaces: dict[str, list[list[float]]],
-        padding_percent: float = 0.1,
     ):
-        eval_surfaces = surfaces.copy()
-        eval_surfaces[self.table] = self.add_surface_padding(
-            eval_surfaces[self.table], padding_percent
-        )
-        eval_surfaces[self.drawer_open][0][0] -= 0.02
-        eval_surfaces[self.drawer_open][1][0] += 0.02
-        eval_surfaces[self.drawer_closed][0][0] -= 0.02
-        eval_surfaces[self.drawer_closed][1][0] += 0.02
-        eval_surfaces[self.drawer_open][0][1] -= 0.02
-        eval_surfaces[self.drawer_open][1][1] += 0.02
-        eval_surfaces[self.drawer_closed][0][1] -= 0.02
-        eval_surfaces[self.drawer_closed][1][1] += 0.02
-        eval_surfaces[self.drawer_open][0][2] -= 0.02
-        eval_surfaces[self.drawer_open][1][2] += 0.02
-        eval_surfaces[self.drawer_closed][0][2] -= 0.02
-        eval_surfaces[self.drawer_closed][1][2] += 0.02
-        eval_surfaces[self.table][0][2] -= 0.02
-        eval_surfaces[self.table][1][2] += 0.02
-        eval_surfaces[self.table][0][1] -= 0.02
-        eval_surfaces[self.table][1][1] += 0.02
-
-        return {k: torch.from_numpy(np.array(v)) for k, v in eval_surfaces.items()}
+        return {k: torch.from_numpy(np.array(v)) for k, v in surfaces.items()}
 
     def add_surface_padding(
         self,
