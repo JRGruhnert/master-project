@@ -130,7 +130,7 @@ class DenseRewardModule(RewardModule):
             return self.config.success_reward, True
         else:
             # Success not reached
-            progress_reward = self.config.success_reward * (
-                self.percentage - old_percentage
+            progress_reward = (
+                self.config.success_reward * 0.01 * (self.percentage - old_percentage)
             )
             return progress_reward, False

@@ -100,3 +100,27 @@ class BaseSkill(ABC):
         Serialize the skill to a dictionary format.
         """
         raise NotImplementedError("Subclasses must implement to_format method.")
+
+
+class EmptySkill(BaseSkill):
+    def __init__(self):
+        super().__init__(name="EmptySkill", id=-1)
+
+    def predict(
+        self,
+        current: BaseObservation,
+        goal: BaseObservation,
+    ) -> torch.Tensor | None:
+        return None
+
+    def to_skill_format(
+        self,
+        current: BaseObservation,
+        goal: BaseObservation,
+        states: list[BaseState],
+    ) -> dict:
+        return {
+            "skill_name": self.name,
+            "skill_id": self.id,
+            "parameters": {},
+        }

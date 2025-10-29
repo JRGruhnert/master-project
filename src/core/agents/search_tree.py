@@ -5,7 +5,7 @@ from src.core.modules.buffer_module import BufferModule
 from src.core.modules.reward_module import RewardModule
 from src.core.modules.storage_module import StorageModule
 from src.core.observation import BaseObservation
-from src.core.skills.skill import BaseSkill
+from src.core.skills.skill import BaseSkill, EmptySkill
 from loguru import logger
 
 
@@ -75,6 +75,12 @@ class SearchTreeAgent(BaseAgent):
             self.path_index = 0
             self.current = self.root
 
+            # If no path found, choose random skill
+            if len(self.path) == 0:
+                logger.warning("No path found in search tree.")
+
+        if self.path_index == len(self.path):
+            return EmptySkill()
         # print(f"Current path: {self.path}")
         # print(f"Path index: {self.path_index}")s
         skill = self.storage_module.skills[
@@ -198,6 +204,8 @@ class SearchTreeAgent(BaseAgent):
 
     def learn(self) -> bool:
         # No Model to train in search tree agent
+        self.root = None
+        self.current = None
         return False  # Continue training
 
     def save(self, tag: str = ""):

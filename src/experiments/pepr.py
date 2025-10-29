@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import random
 
 from loguru import logger
-from src.core.skills.skill import BaseSkill
+from src.core.skills.skill import BaseSkill, EmptySkill
 from src.integrations.calvin.environment import CalvinEnvironment
 from src.integrations.calvin.observation import CalvinObservation
 from src.core.skills.tapas import TapasSkill
@@ -31,7 +31,7 @@ class PePrExperiment:
 
     def step(self, skill: BaseSkill) -> CalvinObservation:
         sample = random.random()
-        if sample < self.config.p_empty:  # 0-p_empty>
+        if sample < self.config.p_empty or isinstance(skill, EmptySkill):  # 0-p_empty>
             logger.warning("Taking Empty Step")
             pass
         elif sample < self.config.p_empty + self.config.p_rand:  # 0-p_empty + p_rand>
