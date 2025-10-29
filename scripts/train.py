@@ -5,7 +5,11 @@ import wandb
 
 from src.core.agents.search_tree import SearchTreeAgent, SearchTreeAgentConfig
 from src.core.modules.buffer_module import BufferModule
-from src.core.modules.reward_module import RewardConfig, SparseRewardModule
+from src.core.modules.reward_module import (
+    DenseRewardModule,
+    RewardConfig,
+    SparseRewardModule,
+)
 from src.core.modules.storage_module import StorageModule, StorageConfig
 from src.core.environment import EnvironmentConfig
 from src.core.agents.agent import AgentConfig
@@ -38,7 +42,7 @@ def train_agent(config: TrainConfig):
         config.tag,
         config.nt,
     )
-    reward_module = SparseRewardModule(
+    reward_module = DenseRewardModule(
         config.reward,
         storage_module.states,
     )
@@ -155,21 +159,21 @@ def train_agent(config: TrainConfig):
                 stop_training = agent.learn()
             end_time_learning = datetime.now().replace(microsecond=0)
             epoch += 1
+            metrics = {
+                "train/reward": total_reward,
+                "train/episode_length": episode_length,
+                "train/success_rate": success_rate,
+                "train/batch_duration": (
+                    end_time_batch - start_time_batch
+                ).total_seconds()
+                / 60,
+                "train/learn_duration": (
+                    end_time_learning - start_time_learning
+                ).total_seconds()
+                / 60,
+            }
             if config.use_wandb:
                 # Log weights every 5 epochs (not every epoch to reduce data)
-                metrics = {
-                    "train/reward": total_reward,
-                    "train/episode_length": episode_length,
-                    "train/success_rate": success_rate,
-                    "train/batch_duration": (
-                        end_time_batch - start_time_batch
-                    ).total_seconds()
-                    / 60,
-                    "train/learn_duration": (
-                        end_time_learning - start_time_learning
-                    ).total_seconds()
-                    / 60,
-                }
                 run.log(metrics, step=epoch)
                 if isinstance(agent, BaselinePPOAgent) and epoch % 5 == 0:
                     w_and_b = {
@@ -179,7 +183,7 @@ def train_agent(config: TrainConfig):
                         for name, param in agent.policy_new.named_parameters()
                     }
                     run.log(w_and_b, step=epoch)
-                print(f"📊 Epoch {epoch}: {metrics}")  # Debug output
+            print(f"📊 Epoch {epoch}: {metrics}")  # Debug output
 
             start_time_batch = datetime.now().replace(microsecond=0)
     experiment.close()
