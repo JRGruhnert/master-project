@@ -64,6 +64,18 @@ class BufferModule:
         self.logprobs.append(action_logprob)
         self.values.append(state_val)
 
+    def act_values_tree(
+        self,
+        current: BaseObservation,
+        goal: BaseObservation,
+        action: int,
+    ):
+        self.current.append(current)
+        self.goal.append(goal)
+        self.actions.append(torch.tensor(action))
+        self.logprobs.append(torch.tensor(0.0))
+        self.values.append(torch.tensor(0.0))
+
     def feedback(self, reward: float, terminal: bool) -> bool:
         self.rewards.append(reward)
         self.terminals.append(terminal)

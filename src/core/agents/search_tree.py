@@ -87,7 +87,7 @@ class SearchTreeAgent(BaseAgent):
             self.path[self.path_index]
         ]  # Next skill in path
         self.path_index += 1
-
+        self.buffer_module.act_values_tree(obs, goal, skill.id)
         return skill
 
     def _expand_tree(self, depth: int, node: TreeNode, goal: BaseObservation):
@@ -141,20 +141,7 @@ class SearchTreeAgent(BaseAgent):
         for _, child in node.children.items():
             child_closest = self._find_best_node(child, goal)
 
-            if (
-                child_closest.distance_to_goal < best_node.distance_to_goal
-                and child_closest.distance_to_obs < best_node.distance_to_obs
-            ):
-                best_node = child_closest
-            elif child_closest.distance_to_goal < best_node.distance_to_goal:
-                # logger.debug(
-                #    f"Tie-breaker: prefer node with lower distance to goal {child_closest.distance_to_goal} < {best_node.distance_to_goal}"
-                # )
-                best_node = child_closest
-            elif child_closest.distance_to_obs < best_node.distance_to_obs:
-                # logger.debug(
-                #    f"Tie-breaker: prefer node with lower distance to obs {child_closest.distance_to_obs} < {best_node.distance_to_obs}"
-                # )
+            if child_closest.distance_to_goal < best_node.distance_to_goal:
                 best_node = child_closest
 
         return best_node
@@ -206,7 +193,7 @@ class SearchTreeAgent(BaseAgent):
         # No Model to train in search tree agent
         self.root = None
         self.current = None
-        return False  # Continue training
+        return False
 
     def save(self, tag: str = ""):
         # No parameters to save
