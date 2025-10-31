@@ -130,7 +130,7 @@ class SearchTreeAgent(BaseAgent):
         """Find a path from root to the observation closest to goal in the entire tree"""
         if not self.root:
             raise Exception("Search tree root is not initialized.")
-        print(f"Finding path to goal...")
+        # print(f"Finding path to goal...")
         best_node = self._find_best_node(self.root, goal)
         self.path = self._build_path_to_node(best_node)
 
