@@ -77,15 +77,18 @@ class SearchTreeAgent(BaseAgent):
 
             # If no path found, choose random skill
             if len(self.path) == 0:
-                logger.warning("No path found in search tree.")
+                print("No path found in search tree.")
+                # logger.warning("No path found in search tree.")
 
         if self.path_index == len(self.path):
-            return EmptySkill()
-        # print(f"Current path: {self.path}")
-        # print(f"Path index: {self.path_index}")s
-        skill = self.storage_module.skills[
-            self.path[self.path_index]
-        ]  # Next skill in path
+            print("Empty Skill taken cause of index too high.")
+            skill = EmptySkill()
+        else:
+            # print(f"Current path: {self.path}")
+            # print(f"Path index: {self.path_index}")s
+            skill = self.storage_module.skills[
+                self.path[self.path_index]
+            ]  # Next skill in path
         self.path_index += 1
         self.buffer_module.act_values_tree(obs, goal, skill.id)
         return skill

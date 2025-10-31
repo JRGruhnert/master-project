@@ -79,7 +79,8 @@ class BufferModule:
     def feedback(self, reward: float, terminal: bool) -> bool:
         self.rewards.append(reward)
         self.terminals.append(terminal)
-        return len(self.actions) == self.batch_size and self.health()
+        assert self.health(), "Buffer lengths are inconsistent!"
+        return len(self.actions) == self.batch_size
 
     def stats(self) -> tuple[float, float, float]:
         assert self.health(), "Buffer lengths are inconsistent!"
