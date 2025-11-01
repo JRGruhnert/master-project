@@ -19,7 +19,9 @@ class RewardModule(ABC):
         self.first_step = True
         self.percentage = 0.0
 
-    def _check_states(self, current: dict, goal: dict) -> tuple[float, bool]:
+    def _check_states(
+        self, current: BaseObservation | dict, goal: BaseObservation
+    ) -> tuple[float, bool]:
         """Generic method to check if states match target conditions."""
         # print(f"Checking states dense reward module...")
         not_finished_states = 0
@@ -42,15 +44,13 @@ class RewardModule(ABC):
 
     def is_equal(self, current: BaseObservation, goal: BaseObservation) -> bool:
         # print(f"RewardModule is_equal check...")
-        self.percentage, done = self._check_states(
-            current.top_level_observation, goal.top_level_observation
-        )
+        self.percentage, done = self._check_states(current, goal)
         return done
 
     def is_skill_start(
         self, skill: BaseSkill, current: BaseObservation
     ) -> tuple[float, bool]:
-        if self._check_states(skill.precons, current.top_level_observation):
+        if self._check_states(skill.precons, current):
             return self.config.success_reward, True
         else:
             return self.config.step_reward, False
@@ -58,7 +58,7 @@ class RewardModule(ABC):
     def is_skill_end(
         self, skill: BaseSkill, current: BaseObservation
     ) -> tuple[float, bool]:
-        if self._check_states(skill.postcons, current.top_level_observation):
+        if self._check_states(skill.postcons, current):
             return self.config.success_reward, True
         else:
             return self.config.step_reward, False
@@ -104,9 +104,7 @@ class SparseRewardModule(RewardModule):
         self, current: BaseObservation, goal: BaseObservation
     ) -> tuple[float, bool]:
         # print(f"RewardModule step check...")
-        self.percentage, done = self._check_states(
-            current.top_level_observation, goal.top_level_observation
-        )
+        self.percentage, done = self._check_states(current, goal)
         if done:
             # Success reached
             return self.config.success_reward, True
@@ -122,9 +120,7 @@ class DenseRewardModule(RewardModule):
     ) -> tuple[float, bool]:
         # print(f"RewardModule step check...")
         old_percentage = self.percentage
-        self.percentage, done = self._check_states(
-            current.top_level_observation, goal.top_level_observation
-        )
+        self.percentage, done = self._check_states(current, goal)
         if done:
             # Success reached
             return self.config.success_reward, True

@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torch_geometric.data import Batch, HeteroData
 from torch_geometric.nn import GINConv, GINEConv
-from src.integrations.calvin.observation import CalvinObservation as MasterObservation
+from src.core.observation import BaseObservation
 from src.core.networks.actor_critic import GnnBase, PPOType
 from src.core.networks.layers.mlp import (
     GinStandardMLP,
@@ -106,15 +106,17 @@ class Gnn(GnnBase):
 
     def forward(
         self,
-        obs: list[MasterObservation],
-        goal: list[MasterObservation],
+        obs: list[BaseObservation],
+        goal: list[BaseObservation],
     ) -> tuple[torch.Tensor, torch.Tensor]:
         batch: Batch = self.to_batch(obs, goal)
         logits = self.actor(batch)
         value = self.critic(batch)
         return logits, value
 
-    def to_data(self, obs: MasterObservation, goal: MasterObservation) -> HeteroData:
+    def to_data(self, obs: BaseObservation, goal: BaseObservation) -> HeteroData:
+        obs.to(device)
+        goal.to(device)
         obs_tensor, goal_tensor = self.encode_states(obs, goal)
         data = HeteroData()
         data["goal"].x = goal_tensor

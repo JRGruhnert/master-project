@@ -166,7 +166,7 @@ class BaselineBase(ActorCriticBase):
             "Flip": [],
         }
         for state in self.states:
-            value = state.value(x.top_level_observation[state.name])
+            value = state.value(x[state.name])
             grouped[state.type_str].append(value)
         return {
             t: torch.stack(vals).float()
@@ -213,16 +213,10 @@ class GnnBase(ActorCriticBase, ABC):
         self, obs: BaseObservation, goal: BaseObservation
     ) -> tuple[torch.Tensor, torch.Tensor]:
         obs_encoded = [
-            self.encoder_obs[state.type_str](
-                obs.top_level_observation[state.name].to(device)
-            )
-            for state in self.states
+            self.encoder_obs[state.type_str](obs[state.name]) for state in self.states
         ]
         goal_encoded = [
-            self.encoder_goal[state.type_str](
-                goal.top_level_observation[state.name].to(device)
-            )
-            for state in self.states
+            self.encoder_goal[state.type_str](goal[state.name]) for state in self.states
         ]
         obs_tensor = torch.stack(obs_encoded, dim=0)  # [num_states, feature_size]
         goal_tensor = torch.stack(goal_encoded, dim=0)  # [num_states, feature_size]
