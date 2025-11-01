@@ -32,7 +32,7 @@ class TreeNode:
 
 @dataclass
 class SearchTreeAgentConfig(AgentConfig):
-    distance_threshold: float = 0.05
+    distance_threshold: float = 0.1
     max_depth: int = -1
     allow_skill_reuse: bool = False
     replan_every_step: bool = False
@@ -143,7 +143,8 @@ class SearchTreeAgent(BaseAgent):
                     candidate_children.append((skill.id, child_node, goal_distance))
         # Beam search: Sort candidates by distance to goal and keep top N
         candidate_children.sort(key=lambda x: x[2])  # Sort by distance to goal
-        best_candidates = candidate_children[: self.config.beam_size]
+        # best_candidates = candidate_children[: self.config.beam_size]
+        best_candidates = candidate_children
         for skill_id, child_node, _ in best_candidates:
             node.children.update({skill_id: child_node})
             # Recursively expand (limited by depth)
