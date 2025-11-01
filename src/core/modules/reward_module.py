@@ -66,7 +66,7 @@ class RewardModule(ABC):
         skill: BaseSkill,
     ) -> float:
         """Returns a distance metric indicating how far the current observation is from satisfying the skill's preconditions."""
-        max_distance = 0.0
+        total_distance = 0.0
         for state in self.states:
             if state.name in skill.precons:
                 distance = state.distance_to_skill(
@@ -74,8 +74,8 @@ class RewardModule(ABC):
                     goal[state.name],
                     skill.precons[state.name],
                 )
-                max_distance = distance if max_distance < distance else max_distance
-        return max_distance
+                total_distance += distance
+        return total_distance / len(skill.precons)
 
     def distance_to_goal(
         self,
