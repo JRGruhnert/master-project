@@ -71,6 +71,7 @@ class SearchTreeAgent(BaseAgent):
             candidate = self._expand_tree(0, self.node, goal)
             if candidate:
                 self.node = candidate
+                print(f"Path: {candidate.path}")
             # If no path found, choose random skill
             if len(self.node.path) == 0:
                 print("No path found in search tree.")
@@ -80,8 +81,6 @@ class SearchTreeAgent(BaseAgent):
             print("Empty Skill taken cause of index too high.")
             skill = EmptySkill()
         else:
-            # print(f"Current path: {self.path}")
-            # print(f"Path index: {self.path_index}")s
             skill = self.storage_module.skills[
                 self.node.path[self.path_index]
             ]  # Next skill in path
@@ -169,10 +168,9 @@ class SearchTreeAgent(BaseAgent):
 
     def feedback(self, reward: float, terminal: bool) -> bool:
         """Update current node based on actual environment feedback"""
-        if self.current and terminal:
+        if terminal:
             # Reset tree for next episode
             self.node = None
-            self.current = None
         return self.buffer_module.feedback(reward, terminal)
 
     def learn(self) -> bool:
@@ -185,7 +183,6 @@ class SearchTreeAgent(BaseAgent):
         # Clear buffer
         self.buffer_module.clear()
 
-        self.node = None
         return self.config.max_epochs == self.current_epoch - 1
 
     def save(self, tag: str = ""):
