@@ -80,6 +80,8 @@ class BufferModule:
         self.rewards.append(reward)
         self.terminals.append(terminal)
         assert self.health(), "Buffer lengths are inconsistent!"
+        print(len(self.actions))
+        print(self.batch_size)
         return len(self.actions) == self.batch_size
 
     def stats(self) -> tuple[float, float, float]:

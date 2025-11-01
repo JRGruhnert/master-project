@@ -85,6 +85,8 @@ def train_agent(config: TrainConfig):
             buffer_module,
             storage_module,
             reward_module,
+            # experiment.max_episode_length,
+            16,
         )
     else:
         raise ValueError(f"Unsupported agent config type: {type(config.agent)}")

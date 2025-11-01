@@ -33,9 +33,10 @@ class TreeNode:
 @dataclass
 class SearchTreeAgentConfig(AgentConfig):
     distance_threshold: float = 0.1
-    max_depth: int = 6
+    max_depth: int = -1
     allow_skill_reuse: bool = False
     replan_every_step: bool = False
+    max_epochs: int = 5
 
 
 class SearchTreeAgent(BaseAgent):
@@ -46,8 +47,10 @@ class SearchTreeAgent(BaseAgent):
         buffer_module: BufferModule,
         storage_module: StorageModule,
         reward_module: RewardModule,
+        max_depth: int,
     ):
         self.config: SearchTreeAgentConfig = config
+        self.config.max_depth = max_depth
         self.buffer_module: BufferModule = buffer_module
         self.storage_module: StorageModule = storage_module  # Access to skills
         self.eval_module: RewardModule = reward_module
@@ -56,6 +59,7 @@ class SearchTreeAgent(BaseAgent):
         self.current: Optional[TreeNode] = None
         self.path: list[int] = []
         self.path_index: int = 0
+        self.current_epoch = 0
 
     def act(
         self,
@@ -97,7 +101,7 @@ class SearchTreeAgent(BaseAgent):
         """Expand tree by applying skill postconditions"""
         # print(f"Expanding tree at depth {depth}...")
         if depth >= self.config.max_depth:
-            # print(f"Max depth reached, stopping expansion.")
+            logger.debug(f"Max depth reached, stopping expansion.")
             return
 
         # Try applying each available skill
@@ -128,9 +132,11 @@ class SearchTreeAgent(BaseAgent):
 
                     # Recursively expand (limited by depth)
                     self._expand_tree(depth + 1, child_node, goal)
+        logger.debug(f"Current depth is: {depth}")
 
     def _find_path(self, goal: BaseObservation):
         """Find a path from root to the observation closest to goal in the entire tree"""
+        logger.debug("Searching a path in tree.")
         if not self.root:
             raise Exception("Search tree root is not initialized.")
         # print(f"Finding path to goal...")
@@ -151,6 +157,7 @@ class SearchTreeAgent(BaseAgent):
 
     def _build_path_to_node(self, node: TreeNode) -> list[int]:
         """Build path from root to target node by traversing parent pointers"""
+        logger.debug("Building the path.")
         path = []
         current = node
 
@@ -194,9 +201,17 @@ class SearchTreeAgent(BaseAgent):
 
     def learn(self) -> bool:
         # No Model to train in search tree agent
+        self.buffer_module.save(
+            self.storage_module.buffer_saving_path, self.current_epoch
+        )
+        # Update Epoch
+        self.current_epoch += 1
+        # Clear buffer
+        self.buffer_module.clear()
+
         self.root = None
         self.current = None
-        return False
+        return self.config.max_epochs == self.current_epoch - 1
 
     def save(self, tag: str = ""):
         # No parameters to save

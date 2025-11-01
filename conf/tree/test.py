@@ -11,7 +11,7 @@ storage = StorageConfig(
     states_tag="Normal",
 )
 config = TrainConfig(
-    tag="test",
+    tag="tree_big",
     nt=NetworkType.SEARCH_TREE,
     experiment=PePrConfig(
         p_empty=0.0,
@@ -20,9 +20,9 @@ config = TrainConfig(
     env=EnvironmentConfig(render=False),
     agent=SearchTreeAgentConfig(),
     reward=RewardConfig(
-        step_reward=-1.0,
-        success_reward=100.0,
+        step_reward=-0.01,
+        success_reward=1.0,
     ),
     storage=storage,
-    use_wandb=True,
+    use_wandb=False,
 )
