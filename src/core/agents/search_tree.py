@@ -63,12 +63,13 @@ class SearchTreeAgent(BaseAgent):
         # Initialize root if first observation
         if (
             self.config.replan_every_step
-            or self.node is None
+            or not self.node
             or self.path_index == len(self.node.path)
         ):
             self.path_index = 0
             self.node = TreeNode(obs=obs)
             candidate = self._expand_tree(0, self.node, goal)
+            print(f"Candidate: {candidate}")
             if candidate:
                 self.node = candidate
                 print(f"Path: {candidate.path}")
