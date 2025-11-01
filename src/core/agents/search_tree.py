@@ -27,7 +27,7 @@ class TreeNode:
 
 @dataclass
 class SearchTreeAgentConfig(AgentConfig):
-    distance_threshold: float = 0.05
+    distance_threshold: float = 0.2
     max_depth: int = -1
     allow_skill_reuse: bool = False
     replan_every_step: bool = False
@@ -36,7 +36,6 @@ class SearchTreeAgentConfig(AgentConfig):
 
 
 class SearchTreeAgent(BaseAgent):
-
     def __init__(
         self,
         config: SearchTreeAgentConfig,
@@ -69,7 +68,7 @@ class SearchTreeAgent(BaseAgent):
             self.index = 0
             self.node = TreeNode(obs=obs)
             candidate = self.expand_tree(0, self.node, goal)
-            print(f"Candidate: {candidate}")
+            # print(f"Candidate: {candidate}")
             if candidate:
                 self.node = candidate
                 print(f"Path: {candidate.path}")
@@ -78,8 +77,8 @@ class SearchTreeAgent(BaseAgent):
                 print("No path found in search tree.")
                 logger.warning("No path found in search tree.")
 
-        if self.index == len(self.node.path):
-            print("Empty Skill taken cause of index too high.")
+        if self.index >= len(self.node.path):
+            # print("Empty Skill taken cause of index too high.")
             skill = EmptySkill()
         else:
             skill = self.storage_module.skills[

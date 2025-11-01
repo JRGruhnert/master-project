@@ -7,11 +7,11 @@ from src.core.networks import NetworkType
 from src.core.environment import EnvironmentConfig
 
 storage = StorageConfig(
-    skills_tag="Normal",
-    states_tag="Normal",
+    skills_tag="Minimal",
+    states_tag="Minimal",
 )
 config = TrainConfig(
-    tag="tree_big",
+    tag="tree_small",
     nt=NetworkType.SEARCH_TREE,
     experiment=PePrConfig(
         p_empty=0.0,
