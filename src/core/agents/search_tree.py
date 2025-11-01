@@ -27,7 +27,7 @@ class TreeNode:
 
 @dataclass
 class SearchTreeAgentConfig(AgentConfig):
-    distance_threshold: float = 0.1
+    distance_threshold: float = 0.05
     max_depth: int = -1
     allow_skill_reuse: bool = False
     replan_every_step: bool = False
@@ -182,6 +182,7 @@ class SearchTreeAgent(BaseAgent):
         # Clear buffer
         self.buffer_module.clear()
 
+        self.node = None
         return self.config.max_epochs == self.current_epoch - 1
 
     def save(self, tag: str = ""):
