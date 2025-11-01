@@ -54,8 +54,8 @@ class BaseSkill(ABC):
         for state in states:
             if state.name in self.precons.keys():
                 value = state.distance_to_skill(
-                    obs.top_level_observation[state.name],
-                    goal.top_level_observation[state.name],
+                    obs[state.name],
+                    goal[state.name],
                     self.precons[state.name],
                 )
                 value = torch.tensor([value, 0.0]) if pad else torch.tensor([value])

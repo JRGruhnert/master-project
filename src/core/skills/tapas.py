@@ -283,10 +283,10 @@ class TapasSkill(BaseSkill):
                         temp_state = states_dict[position_state_name]
                         if isinstance(temp_state._eval_condition, AreaEvalCondition):
                             temp_pos = temp_state._eval_condition.area_tapas_override(
-                                goal.top_level_observation[position_state_name],
+                                goal[position_state_name],
                             )
                         else:
-                            temp_pos = goal.top_level_observation[position_state_name]
+                            temp_pos = goal[position_state_name]
                         object_poses_dict[match_position.group(1)] = np.concatenate(
                             [
                                 temp_pos.numpy(),
@@ -297,17 +297,13 @@ class TapasSkill(BaseSkill):
                     object_poses_dict[match_rotation.group(1)] = np.concatenate(
                         [
                             object_poses_dict[match_rotation.group(1)][:3],
-                            goal.top_level_observation[
-                                f"{match_rotation.group(1)}_rotation"
-                            ].numpy(),
+                            goal[f"{match_rotation.group(1)}_rotation"].numpy(),
                         ]
                     )
                 elif match_scalar:
-                    object_states_dict[match_scalar.group(1)] = (
-                        goal.top_level_observation[
-                            f"{match_scalar.group(1)}_scalar"
-                        ].numpy()
-                    )
+                    object_states_dict[match_scalar.group(1)] = goal[
+                        f"{match_scalar.group(1)}_scalar"
+                    ].numpy()
                 else:
                     raise ValueError(f"Unknown state name: {state_name}")
 
