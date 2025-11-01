@@ -52,7 +52,7 @@ class SearchTreeAgent(BaseAgent):
         self.reward_module: RewardModule = reward_module
 
         self.node: Optional[TreeNode] = None
-        self.path_index: int = 0
+        self.index: int = 0
         self.current_epoch = 0
 
     def act(
@@ -64,11 +64,11 @@ class SearchTreeAgent(BaseAgent):
         if (
             self.config.replan_every_step
             or not self.node
-            or self.path_index == len(self.node.path)
+            or self.index == len(self.node.path)
         ):
-            self.path_index = 0
+            self.index = 0
             self.node = TreeNode(obs=obs)
-            candidate = self._expand_tree(0, self.node, goal)
+            candidate = self.expand_tree(0, self.node, goal)
             print(f"Candidate: {candidate}")
             if candidate:
                 self.node = candidate
@@ -78,24 +78,28 @@ class SearchTreeAgent(BaseAgent):
                 print("No path found in search tree.")
                 logger.warning("No path found in search tree.")
 
-        if self.path_index == len(self.node.path):
+        if self.index == len(self.node.path):
             print("Empty Skill taken cause of index too high.")
             skill = EmptySkill()
         else:
             skill = self.storage_module.skills[
-                self.node.path[self.path_index]
+                self.node.path[self.index]
             ]  # Next skill in path
-        assert (
-            skill.id == self.node.path[self.path_index]
-        )  # Just for checking if its really the same
-        self.path_index += 1
+            assert (
+                skill.id == self.node.path[self.index]
+            )  # Just for checking if its really the same
+        self.index += 1
         self.buffer_module.act_values_tree(obs, goal, skill.id)
         return skill
 
-    def _expand_tree(
+    def expand_tree(
         self, depth: int, origin: TreeNode, goal: BaseObservation
     ) -> TreeNode | None:
         """Expand tree by applying skill postconditions"""
+        if depth + 1 >= self.config.max_depth:
+            logger.debug(f"Max depth reached, stopping expansion.")
+            return None
+
         _, done = self.reward_module.step(origin.obs, goal)
         if done:
             logger.debug(f"Goal reached. Stopping search.")
@@ -121,30 +125,24 @@ class SearchTreeAgent(BaseAgent):
                         simulated_obs,
                         goal,
                     )
-                    path = origin.path
-                    path.append(skill.id)
-                    candidate = TreeNode(
-                        obs=simulated_obs,
-                        path=path,
-                        distance_to_obs=origin.distance_to_obs + skill_distance,
-                        distance_to_goal=goal_distance,
-                        distance_to_skill=skill_distance,
+                    candidates.append(
+                        TreeNode(
+                            obs=simulated_obs,
+                            path=origin.path + [skill.id],
+                            distance_to_obs=origin.distance_to_obs + skill_distance,
+                            distance_to_goal=goal_distance,
+                            distance_to_skill=skill_distance,
+                        )
                     )
-                    # Add child node to candidates
-                    candidates.append(candidate)
 
         for candidate in candidates:
-            # Recursively expand (limited by depth)
-            if depth + 1 >= self.config.max_depth:
-                logger.debug(f"Max depth reached, stopping expansion.")
-                return None
+            branch_candidate = self.expand_tree(depth + 1, candidate, goal)
 
-            branch_candidate = self._expand_tree(depth + 1, candidate, goal)
-
-            if branch_candidate:  # Stops searchingthe tree if a candidate was found
+            if branch_candidate:  # Stops searching the tree if a candidate was found
                 return branch_candidate
 
         logger.debug(f"Current depth is: {depth}")
+        return None  # No candidate in that branch
 
     def _apply_skill_postcondition(
         self, current: BaseObservation, skill: BaseSkill
