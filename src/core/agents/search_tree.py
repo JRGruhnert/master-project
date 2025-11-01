@@ -12,7 +12,7 @@ from loguru import logger
 class TreeNode:
     def __init__(
         self,
-        observation: BaseObservation,
+        obs: BaseObservation,
         parent: Optional["TreeNode"] = None,
         skill_id: Optional[int] = None,
         burnt_skills: Optional[set[int]] = None,
@@ -20,7 +20,7 @@ class TreeNode:
         distance_to_goal: float = float("inf"),
         distance_to_skill: float = float("inf"),
     ):
-        self.observation = observation  # Need that to calculate following distances
+        self.obs = obs  # Need that to calculate following distances
         self.parent = parent
         self.skill_id = skill_id  # Skill that led to this node
         self.burnt_skills = burnt_skills if burnt_skills is not None else set()
@@ -32,11 +32,12 @@ class TreeNode:
 
 @dataclass
 class SearchTreeAgentConfig(AgentConfig):
-    distance_threshold: float = 0.1
+    distance_threshold: float = 0.05
     max_depth: int = -1
     allow_skill_reuse: bool = False
     replan_every_step: bool = False
     max_epochs: int = 5
+    beam_size: int = 5
 
 
 class SearchTreeAgent(BaseAgent):
@@ -53,7 +54,7 @@ class SearchTreeAgent(BaseAgent):
         self.config.max_depth = max_depth
         self.buffer_module: BufferModule = buffer_module
         self.storage_module: StorageModule = storage_module  # Access to skills
-        self.eval_module: RewardModule = reward_module
+        self.reward_module: RewardModule = reward_module
 
         self.root: Optional[TreeNode] = None
         self.current: Optional[TreeNode] = None
@@ -73,7 +74,7 @@ class SearchTreeAgent(BaseAgent):
             or self.path_index == len(self.path)
         ):
             # print(f"Replanning search tree...")
-            self.root = TreeNode(observation=obs)
+            self.root = TreeNode(obs=obs)
             self._expand_tree(0, self.root, goal)
             self._find_path(goal)
             self.path_index = 0
@@ -104,23 +105,32 @@ class SearchTreeAgent(BaseAgent):
             logger.debug(f"Max depth reached, stopping expansion.")
             return
 
+        if self.reward_module.step(node.obs, goal):  # Very close to goal
+            logger.debug(f"Goal reached. Stopping expansion in this branch.")
+            return
+
+        candidate_children = []
         # Try applying each available skill
         for skill in self.storage_module.skills:
             # Check if skill's preconditions are satisfied
             if self.config.allow_skill_reuse or skill.id not in node.burnt_skills:
-                skill_distance = self.eval_module.distance_to_skill(
-                    node.observation, goal, skill
+                skill_distance = self.reward_module.distance_to_skill(
+                    node.obs,
+                    goal,
+                    skill,
                 )
                 if skill_distance < self.config.distance_threshold:
                     # Simulate applying the skill by using its postcondition
                     simulated_obs = self._apply_skill_postcondition(
-                        node.observation, skill
+                        node.obs,
+                        skill,
                     )
-                    goal_distance = self.eval_module.distance_to_goal(
-                        simulated_obs, goal
+                    goal_distance = self.reward_module.distance_to_goal(
+                        simulated_obs,
+                        goal,
                     )
                     child_node = TreeNode(
-                        observation=simulated_obs,
+                        obs=simulated_obs,
                         parent=node,
                         skill_id=skill.id,
                         burnt_skills=node.burnt_skills.union({skill.id}),
@@ -128,10 +138,15 @@ class SearchTreeAgent(BaseAgent):
                         distance_to_goal=goal_distance,
                         distance_to_skill=skill_distance,
                     )
-                    node.children.update({skill.id: child_node})
-
-                    # Recursively expand (limited by depth)
-                    self._expand_tree(depth + 1, child_node, goal)
+                    # Add child node to candidates
+                    candidate_children.append((skill.id, child_node, goal_distance))
+        # Beam search: Sort candidates by distance to goal and keep top N
+        candidate_children.sort(key=lambda x: x[2])  # Sort by distance to goal
+        best_candidates = candidate_children[: self.config.beam_size]
+        for skill_id, child_node, _ in best_candidates:
+            node.children.update({skill_id: child_node})
+            # Recursively expand (limited by depth)
+            self._expand_tree(depth + 1, child_node, goal)
         logger.debug(f"Current depth is: {depth}")
 
     def _find_path(self, goal: BaseObservation):
