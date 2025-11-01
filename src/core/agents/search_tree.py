@@ -105,7 +105,8 @@ class SearchTreeAgent(BaseAgent):
             logger.debug(f"Max depth reached, stopping expansion.")
             return
 
-        if self.reward_module.step(node.obs, goal):  # Very close to goal
+        _, done = self.reward_module.step(node.obs, goal)
+        if done:  # Very close to goal
             logger.debug(f"Goal reached. Stopping expansion in this branch.")
             return
 
