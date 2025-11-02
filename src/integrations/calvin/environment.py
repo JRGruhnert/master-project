@@ -1,4 +1,3 @@
-from typing import Optional
 from tapas_gmm.env.calvin import Calvin
 from src.core.modules.reward_module import RewardModule
 from src.core.modules.storage_module import StorageModule
@@ -24,7 +23,7 @@ class CalvinEnvironment(BaseEnvironment):
         self.env = Calvin(calvin_config)
 
     def reset(
-        self, skill: Optional[BaseSkill] = None
+        self, skill: BaseSkill | None = None
     ) -> tuple[CalvinObservation, CalvinObservation]:
         goal_calvin, _, _, _ = self.env.reset(settle_time=50)
         self.goal = CalvinObservation(goal_calvin)
@@ -44,6 +43,10 @@ class CalvinEnvironment(BaseEnvironment):
 
         return self.current, self.goal
 
+    def is_good_sample(self):
+        """This checks if the sampled Task is reasonable big."""
+        pass
+
     def step(
         self,
         skill: BaseSkill,
@@ -56,31 +59,24 @@ class CalvinEnvironment(BaseEnvironment):
                 predict_as_batch=predict_as_batch,
                 control_duration=control_duration,
             )
+            while (
+                action := skill.predict(
+                    self.current_env,
+                    self.goal,
+                )
+            ) is not None:
+                self.current_env, _, _, _ = self.env.step(action, self.config.render)
+                self.current = CalvinObservation(self.current_env)
         else:
-            skill.reset(
-                predict_as_batch=predict_as_batch,
-                control_duration=control_duration,
+            raise NotImplementedError(
+                "Only TapasSkill is implemented for CalvinEnvironment."
             )
-        # try:
-        while (
-            action := skill.predict(
-                self.current_env,
-                self.goal,
-                self.storage_module.states,
-            )
-        ) is not None:
-            # print(f"Action: {action[0:3]}")
-            self.current_env, _, _, _ = self.env.step(action, self.config.render)
-            # print(f"EE 1: {self.current['ee_position']}")
-            self.current = CalvinObservation(self.current_env)
-            # print(f"EE 2: {self.current['ee_position']}")
-
         return self.current
 
     def close(self):
         self.env.close()
 
-    def evaluate(self, skill: Optional[BaseSkill] = None) -> tuple[float, bool]:
+    def evaluate(self, skill: BaseSkill | None = None) -> tuple[float, bool]:
         if skill:
             return self.reward_module.is_skill_end(skill, self.current)
         else:

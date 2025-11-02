@@ -7,23 +7,23 @@ from src.core.networks import NetworkType
 from src.core.environment import EnvironmentConfig
 
 storage = StorageConfig(
-    skills_tag="Minimal",
-    states_tag="Minimal",
+    skills_tag="Normal",
+    states_tag="Normal",
     checkpoint_path="results/gnn4/t1_pe_0.0_pr_0.0/model_cp_best.pth",
 )
 config = TrainConfig(
-    tag="test_small_reward",
+    tag="test_normal",
     nt=NetworkType.PPO_GNN,
     experiment=PePrConfig(
         p_empty=0.0,
         p_rand=0.0,
     ),
     env=EnvironmentConfig(render=False),
-    agent=PPOAgentConfig(),
+    agent=PPOAgentConfig(batch_size=4096),
     reward=RewardConfig(
         step_reward=-0.01,
         success_reward=1.0,
     ),
     storage=storage,
-    use_wandb=True,
+    use_wandb=False,
 )

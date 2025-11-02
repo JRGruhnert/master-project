@@ -65,7 +65,7 @@ class StorageModule:
         for skill in skills:
             skill.initialize_conditions(self.states)
             skill.initialize_overrides(self.states)
-        return skills
+        return skills  # type: ignore
 
     @cached_property
     def states(self) -> list[BaseState]:

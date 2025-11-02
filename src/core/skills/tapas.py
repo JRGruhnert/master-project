@@ -28,6 +28,8 @@ from tapas_gmm.utils.observation import (
     empty_batchsize,
 )
 
+from tapas_gmm.utils.robot_trajectory import RobotTrajectory, TrajectoryPoint
+
 
 class TapasSkill(BaseSkill):
     def __init__(
@@ -44,7 +46,8 @@ class TapasSkill(BaseSkill):
         self.overrides_dict: dict[str, np.ndarray] = {}
         self.policy: GMMPolicy = self._load_policy()
         self.first_prediction = True
-        self.predictions: list = []
+        self.predictions: RobotTrajectory | None = None
+        self.states: list[BaseState] = []
 
     def _policy_checkpoint_name(self) -> pathlib.Path:
         return (
@@ -107,18 +110,19 @@ class TapasSkill(BaseSkill):
 
         file_name = self._policy_checkpoint_name()  # type: ignore
         logger.info("Loading policy checkpoint from {}", file_name)
-        policy.from_disk(file_name)
+        policy.from_disk(file_name)  # type: ignore
         policy.eval()
         return policy
 
-    def initialize_conditions(self, states: list[CalvinState]):
+    def initialize_conditions(self, states: list[BaseState]):
         """
         Initialize the task parameters based on the active states.
         """
-        tpgmm: AutoTPGMM = self.policy.model
+        self.states = states
+        tpgmm: AutoTPGMM = self.policy.model  # type: ignore
         # Taskparameters of the AutoTPGMM model
         tapas_tp: set[str] = set()
-        for _, segment in enumerate(tpgmm.segment_frames):
+        for _, segment in enumerate(tpgmm.segment_frames):  # type: ignore
             for _, frame_idx in enumerate(segment):
                 pos_str, rot_str = tpgmm.frame_mapping[frame_idx]
                 tapas_tp.add(pos_str)
@@ -127,12 +131,14 @@ class TapasSkill(BaseSkill):
         # My whole code does not generalize to other Task Parameterized models and state types
         for state in states:
             pre_value = state.run_addon(
+                "tapas",
                 tpgmm.start_values[state.name],
                 tpgmm.end_values[state.name],
                 self.reversed,
                 True if state.name in tapas_tp else False,
             )
             post_value = state.run_addon(
+                "tapas",
                 tpgmm.start_values[state.name],
                 tpgmm.end_values[state.name],
                 not self.reversed,
@@ -143,16 +149,17 @@ class TapasSkill(BaseSkill):
             if post_value is not None:
                 self.postcons[state.name] = post_value
 
-    def initialize_overrides(self, states: list[CalvinState]):
+    def initialize_overrides(self, states: list[BaseState]):
         """
         Initialize the task parameters based on the active states.
         """
         # NOTE: Its a copy of initialize_task_parameters but only override states get loaded and also in reverse
         # So basically normal since reversed is True
-        tpgmm: AutoTPGMM = self.policy.model
+        tpgmm: AutoTPGMM = self.policy.model  # type: ignore
         for state in states:
             if state.name in self.overrides:
                 value = state.run_addon(
+                    "tapas",
                     tpgmm.start_values[state.name],
                     tpgmm.end_values[state.name],
                     not self.reversed,  # NOTE: We want the opposite of the reverse trajectory
@@ -168,20 +175,19 @@ class TapasSkill(BaseSkill):
         super().reset(predict_as_batch, control_duration)
         self.policy.reset_episode(env)
         self.first_prediction = True
-        self.predictions = []
+        self.predictions = None
 
     def predict(
         self,
         current: CalvinEnvObservation,
         goal: CalvinObservation,
-        states: list[CalvinState],
-    ) -> np.ndarray:
+    ) -> np.ndarray | None:
         if self.predict_as_batch:
             if self.first_prediction:
                 # NOTE: Could use control_duration later to enforce certain length
                 try:
-                    self.predictions, _ = self.policy.predict(
-                        self.to_skill_format(current, goal, states)
+                    self.predictions, _ = self.policy.predict(  # type: ignore
+                        self._to_skill_format(current, goal)
                     )
                 except FloatingPointError as e:
                     logger.error(f"Numerical error in GMM prediction: {e}")
@@ -191,22 +197,26 @@ class TapasSkill(BaseSkill):
                     logger.error(f"Error in skill prediction: {e}")
                     return None
                 self.first_prediction = False
-            if self.predictions.is_finished:
+            if self.predictions is None or self.predictions.is_finished:
                 return None
             return self._to_action(self.predictions.step())
         else:
             # NOTE: DID NOT TEST YET but is theoretical available in Tapas
             raise NotImplementedError("Non-batch prediction not implemented yet.")
 
-    def _to_action(self, prediction) -> np.ndarray:
+    def _to_action(self, prediction: TrajectoryPoint) -> np.ndarray:
         return np.concatenate(
             (
                 prediction.ee,
                 prediction.gripper,
-            )
-        )
+            )  # type: ignore
+        )  # type: ignore
 
-    def to_skill_format(self, obs: CalvinEnvObservation, goal: CalvinObservation = None, states: list[CalvinState] = None) -> SceneObservation:  # type: ignore
+    def _to_skill_format(
+        self,
+        obs: CalvinEnvObservation,
+        goal: CalvinObservation | None = None,
+    ) -> SceneObservation:  # type: ignore
         """
         Convert the observation from the environment to a SceneObservation. This format is used for TAPAS.
 
@@ -246,12 +256,14 @@ class TapasSkill(BaseSkill):
             )
 
         multicam_obs = dict_to_tensordict(
-            {"_order": CameraOrder._create(obs.camera_names)} | camera_obs
+            {"_order": CameraOrder._create(obs.camera_names)} | camera_obs  # type: ignore
         )
         object_poses_dict = obs.object_poses
         object_states_dict = obs.object_states
         if goal is not None and self.reversed:
-            states_dict = {state.name: state for state in states} if states else {}
+            states_dict = (
+                {state.name: state for state in self.states} if self.states else {}
+            )
             # NOTE: This is only a hack to make reversed tapas models work
             # TODO: Update this when possible
             # logger.debug(f"Overriding Tapas Task {task.name}")

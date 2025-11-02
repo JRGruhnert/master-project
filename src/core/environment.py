@@ -11,7 +11,10 @@ class EnvironmentConfig:
 
 class BaseEnvironment(ABC):
     @abstractmethod
-    def reset(self, skill: BaseSkill = None) -> tuple[BaseObservation, BaseObservation]:
+    def reset(
+        self,
+        skill: BaseSkill | None = None,
+    ) -> tuple[BaseObservation, BaseObservation]:
         """Resets the environment for a new episode. Returns the initial observation and goal observation."""
         raise NotImplementedError("Reset method not implemented yet.")
 

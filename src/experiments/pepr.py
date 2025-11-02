@@ -21,12 +21,13 @@ class PePrExperiment:
         # We sort based on Id for the baseline network to be consistent
         self.config = config
         self.env = env
-        num_skills = len(env.storage_module.skills)
+        num_skills = 6 if len(env.storage_module.skills) < 12 else 16
         self.max_episode_length = int(
             num_skills
             + num_skills * self.config.p_empty
             + num_skills * self.config.p_rand
         )
+        # 6 or 16
         self.current_step = 0
 
     def step(self, skill: BaseSkill) -> CalvinObservation:

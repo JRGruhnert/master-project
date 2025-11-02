@@ -83,6 +83,9 @@ class BaseState:
         name: str,
         *args,
         **kwargs,
-    ) -> torch.Tensor:
+    ) -> torch.Tensor | None:
         """Returns the mean of the given tensor values."""
-        return self._addons.get(name).run(*args, **kwargs)
+        addon = self._addons.get(name)
+        if addon:
+            return addon.run(*args, **kwargs)
+        return None

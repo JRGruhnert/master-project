@@ -90,11 +90,10 @@ class BaseSkill(ABC):
         raise NotImplementedError("Subclasses must implement predict method.")
 
     @abstractmethod
-    def to_skill_format(
+    def _to_skill_format(
         self,
         current: BaseObservation,
         goal: BaseObservation,
-        states: list[BaseState],
     ) -> dict:
         """
         Serialize the skill to a dictionary format.
@@ -113,11 +112,10 @@ class EmptySkill(BaseSkill):
     ) -> torch.Tensor | None:
         return None
 
-    def to_skill_format(
+    def _to_skill_format(
         self,
         current: BaseObservation,
-        goal: BaseObservation,
-        states: list[BaseState],
+        goal: BaseObservation | None = None,
     ) -> dict:
         return {
             "skill_name": self.name,

@@ -52,22 +52,6 @@ class CalvinState(BaseState):
             {"tapas": addon},
         )
 
-    def run_addon(
-        self,
-        start: torch.Tensor,
-        end: torch.Tensor,
-        reversed: bool,
-        selected_by_tapas: bool = False,
-    ) -> torch.Tensor:
-        """Returns the mean of the given tensor values."""
-        return super().run_addon(
-            "tapas",
-            start=start,
-            end=end,
-            reversed=reversed,
-            selected_by_tapas=selected_by_tapas,
-        )
-
 
 class EulerState(CalvinState):
 
