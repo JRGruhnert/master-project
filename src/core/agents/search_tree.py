@@ -71,6 +71,7 @@ class SearchTreeAgent(BaseAgent):
         self.reward_module: RewardModule = reward_module
 
         self.heap: list[TreeNode] = []
+        self.solution = None
         self.index: int = 0
         self.current_epoch = 0
 
@@ -85,17 +86,17 @@ class SearchTreeAgent(BaseAgent):
             self.index = 0
             self.heap: list[TreeNode] = [TreeNode(obs=obs)]
             heapify(self.heap)
-            solution = self.best_first_search()
+            self.solution = self.best_first_search()
 
-        if not solution or self.index >= len(solution.path):
+        if not self.solution or self.index >= len(self.solution.path):
             # print("Empty Skill taken cause of index too high.")
             skill = EmptySkill()
         else:
             skill = self.storage_module.skills[
-                solution.path[self.index]
+                self.solution.path[self.index]
             ]  # Next skill in path
             assert (
-                skill.id == solution.path[self.index]
+                skill.id == self.solution.path[self.index]
             )  # Just for checking if its really the same
         self.index += 1
         self.buffer_module.act_values_tree(obs, goal, skill.id)
