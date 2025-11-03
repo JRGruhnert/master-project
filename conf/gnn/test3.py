@@ -9,7 +9,7 @@ from src.core.environment import EnvironmentConfig
 storage = StorageConfig(
     skills_tag="Normal",
     states_tag="Normal",
-    checkpoint_path="results/gnn4/test_small_pe_0.0_pr_0.0/model_cp_best.pth",
+    checkpoint_path="results/gnn4/gnn_small_pe_0.0_pr_0.0/model_cp_best.pth",
 )
 config = TrainConfig(
     tag="test_retrain_gnn4",
