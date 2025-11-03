@@ -28,6 +28,17 @@ class TreeNode:
     def __lt__(self, other: "TreeNode") -> bool:
         # Compare based on distance to goal, then distance to obs, then distance to skill
         return (
+            self.distance_to_obs,
+            self.distance_to_goal,
+            self.distance_to_skill,
+            self.depth,
+        ) < (
+            other.distance_to_obs,
+            other.distance_to_goal,
+            other.distance_to_skill,
+            other.depth,
+        )
+        return (
             self.distance_to_goal,
             self.distance_to_skill,
             self.distance_to_obs,
