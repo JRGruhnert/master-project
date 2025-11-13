@@ -148,6 +148,7 @@ def train_agent(config: TrainConfig):
             # print(f"Step Reward: {reward}, Terminal: {terminal}")  # Debug output
             batch_rdy = agent.feedback(reward, terminal)
         if batch_rdy:
+            print(f"🏁 Batch ready")  # Debug output
             end_time_batch = datetime.now().replace(microsecond=0)
             start_time_learning = datetime.now().replace(microsecond=0)
             total_reward, episode_length, success_rate = agent.buffer_module.stats()
