@@ -46,7 +46,8 @@ class RewardModule(ABC):
     def is_skill_start(
         self, skill: BaseSkill, current: BaseObservation
     ) -> tuple[float, bool]:
-        if self._check_states(skill.precons, current):
+        _, done = self._check_states(skill.precons, current)
+        if done:
             return self.config.success_reward, True
         else:
             return self.config.step_reward, False
@@ -54,7 +55,8 @@ class RewardModule(ABC):
     def is_skill_end(
         self, skill: BaseSkill, current: BaseObservation
     ) -> tuple[float, bool]:
-        if self._check_states(skill.postcons, current):
+        _, done = self._check_states(skill.postcons, current)
+        if done:
             return self.config.success_reward, True
         else:
             return self.config.step_reward, False
