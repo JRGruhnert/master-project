@@ -33,11 +33,10 @@ def evaluate_conditional_skill(
     counter = 0
     for i in range(iterations):
         # Execute prerequisite skill until completion
-        while not good_start:
+        while not experiment.eval_start(main_skill):
             _, _ = experiment.reset(pre_skill)
             _ = experiment.step(pre_skill)
             _ = experiment.eval_end(pre_skill)
-            good_start = experiment.eval_start(main_skill)
 
         # Execute main skill and check success
         _ = experiment.step(main_skill)
