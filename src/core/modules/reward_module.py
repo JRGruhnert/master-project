@@ -28,8 +28,10 @@ class RewardModule(ABC):
         for state in self.states:
             if state.name in current.keys():
                 if not state.evaluate(current[state.name], goal[state.name]):
+                    print(f"Wrong: \t {state.name}")
+                    print(f"{current[state.name]} is not {goal[state.name]}")
                     not_finished_states += 1
-        return not_finished_states / len(self.states), not_finished_states == 0
+        return not_finished_states / max(len(self.states), 1), not_finished_states == 0
 
     @abstractmethod
     def step(
@@ -77,7 +79,7 @@ class RewardModule(ABC):
                     skill.precons[state.name],
                 )
                 total_distance += distance
-        return total_distance / len(skill.precons)
+        return total_distance / max(len(skill.precons), 1)
 
     def distance_to_goal(
         self,
@@ -93,7 +95,7 @@ class RewardModule(ABC):
                 goal[state.name],
             )
             total_distance += distance
-        return total_distance / len(self.states)
+        return total_distance / max(len(self.states), 1)
 
 
 class SparseRewardModule(RewardModule):

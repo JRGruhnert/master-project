@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from datetime import datetime
 from omegaconf import OmegaConf, SCMode
 
 from src.core.modules.reward_module import (
@@ -8,29 +7,27 @@ from src.core.modules.reward_module import (
 )
 from src.core.modules.storage_module import StorageModule, StorageConfig
 from src.core.environment import EnvironmentConfig
-from src.core.agents.agent import AgentConfig
 from src.core.networks import NetworkType
 from src.core.skills.skill import BaseSkill
-from src.experiments.skill_pre_post import SkillEvalExperiment, SkillEvalConfig
+from src.experiments.skill_check import SkillCheckExperiment
 from src.integrations.calvin.environment import CalvinEnvironment
 from tapas_gmm.utils.argparse import parse_and_build_config
-from loguru import logger
 
 
 @dataclass
-class EvalConfig:
+class SkillEvalConfig:
     tag: str
-    experiment: SkillEvalConfig
     env: EnvironmentConfig
     reward: RewardConfig
     storage: StorageConfig
+    iterations: int
 
 
 def evaluate_conditional_skill(
-    experiment: SkillEvalExperiment,
+    experiment: SkillCheckExperiment,
     pre_skill: BaseSkill,
     main_skill: BaseSkill,
-    iterations: int = 100,
+    iterations: int,
 ) -> float:
     """Evaluate a skill that requires a prerequisite skill to be executed first"""
     counter = 0
@@ -51,9 +48,9 @@ def evaluate_conditional_skill(
 
 
 def evaluate_single_skill(
-    experiment: SkillEvalExperiment,
+    experiment: SkillCheckExperiment,
     skill: BaseSkill,
-    iterations: int = 100,
+    iterations: int,
 ) -> float:
     """Evaluate a standalone skill"""
     counter = 0
@@ -77,7 +74,7 @@ def get_prerequisite_skill(skill_name: str) -> tuple[bool, str]:
     return False, ""
 
 
-def train_agent(config: EvalConfig):
+def train_agent(config: SkillEvalConfig):
     # Initialize the environment and agent
     storage_module = StorageModule(
         config.storage,
@@ -89,8 +86,7 @@ def train_agent(config: EvalConfig):
         storage_module.states,
     )
 
-    experiment = SkillEvalExperiment(
-        config.experiment,
+    experiment = SkillCheckExperiment(
         CalvinEnvironment(
             config.env,
             reward_module,
@@ -108,23 +104,27 @@ def train_agent(config: EvalConfig):
         has_prerequisite, pre_skill_name = get_prerequisite_skill(skill_name)
 
         if has_prerequisite:
-            print(f"Requires prerequisite: {pre_skill_name}")
             pre_skill = skills_dict.get(pre_skill_name)
             if pre_skill:
                 result_dict[skill_name] = evaluate_conditional_skill(
                     experiment,
                     pre_skill,
                     skill,
+                    config.iterations,
                 )
             else:
-                print("This message shouldn't happen!!!")
+                print("This message shouldn't appear!!!")
         else:
-            result_dict[skill_name] = evaluate_single_skill(experiment, skill)
+            result_dict[skill_name] = evaluate_single_skill(
+                experiment,
+                skill,
+                config.iterations,
+            )
 
         print(f"✅ Success rate: {result_dict[skill_name]:.1%}")
 
     for key, value in result_dict.items():
-        print(f"{key} has successrate: \t {value/100}")
+        print(f"✅ {key} has successrate: \t {value:.1%}")
     experiment.close()
 
 

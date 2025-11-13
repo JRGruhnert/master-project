@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-import numpy as np
 import torch
 
 from src.core.logic.mixin import BoundedMixin, QuaternionMixin

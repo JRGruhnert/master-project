@@ -14,6 +14,7 @@ class TapasAddon(BaseAddon):
         reversed: bool,
         selected_by_tapas: bool = False,
     ) -> torch.Tensor | None:
+        """Returns the Taskparameter or None"""
         raise NotImplementedError("Subclasses must implement the run method.")
 
 

@@ -32,9 +32,12 @@ class CalvinEnvironment(BaseEnvironment):
         self.current = CalvinObservation(self.current_env)
         if skill:
             # Should fullfill preconditions for skill
-            while not self.reward_module.is_skill_start(skill, self.current):
+            while True:
                 self.current_env, _, _, _ = self.env.reset(settle_time=50)
                 self.current = CalvinObservation(self.current_env)
+                _, skill_ready = self.reward_module.is_skill_start(skill, self.current)
+                if skill_ready:
+                    break
         else:
             # Current and goal should not be equal
             while self.reward_module.is_equal(self.current, self.goal):

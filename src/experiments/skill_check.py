@@ -1,22 +1,13 @@
-from dataclasses import dataclass
-
 from src.core.skills.skill import BaseSkill
 from src.integrations.calvin.environment import CalvinEnvironment
 from src.integrations.calvin.observation import CalvinObservation
 
 
-@dataclass
-class SkillEvalConfig:
-    p_empty: float
-    p_rand: float
-
-
-class SkillEvalExperiment:
+class SkillCheckExperiment:
     """Simple Wrapper for centralized data loading and initialisation."""
 
-    def __init__(self, config: SkillEvalConfig, env: CalvinEnvironment):
+    def __init__(self, env: CalvinEnvironment):
         # We sort based on Id for the baseline network to be consistent
-        self.config = config
         self.env = env
 
     def step(self, skill: BaseSkill) -> CalvinObservation:
