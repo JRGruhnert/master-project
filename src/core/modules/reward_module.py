@@ -26,7 +26,7 @@ class RewardModule(ABC):
         # print(f"Checking states dense reward module...")
         not_finished_states = 0
         for state in self.states:
-            if state.name in goal.keys():
+            if state.name in current.keys():
                 if not state.evaluate(current[state.name], goal[state.name]):
                     not_finished_states += 1
         return not_finished_states / len(self.states), not_finished_states == 0
