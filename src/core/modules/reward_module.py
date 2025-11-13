@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+import torch
+
 from src.core.observation import BaseObservation
 from src.core.skills.skill import BaseSkill
 from src.core.state import BaseState
@@ -27,7 +29,7 @@ class RewardModule(ABC):
         self,
         current: BaseObservation | dict,
         goal: BaseObservation,
-    ) -> tuple[float, bool]:
+    ) -> bool:
         """Generic method to check if states match target conditions."""
         # print(f"Checking states dense reward module...")
         not_finished_states = 0
@@ -37,7 +39,17 @@ class RewardModule(ABC):
                     print(f"Wrong: \t {state.name}")
                     print(f"{current[state.name]} is not {goal[state.name]}")
                     not_finished_states += 1
-        return not_finished_states / max(len(self.states), 1), not_finished_states == 0
+        self.percentage = not_finished_states / max(len(self.states), 1)
+        return not_finished_states == 0
+
+    def _check_custom_states(
+        self, original: dict[str, torch.Tensor], current: BaseObservation
+    ) -> bool:
+        values = original.copy()  # Python passes by reference so..
+        # NOTE: Again an exception for the Flip State...
+        if values.get("base__button_scalar"):
+            values["base__button_scalar"] = current["base__button_scalar"]
+        return self._check_states(values, current)
 
     @abstractmethod
     def step(
@@ -53,34 +65,12 @@ class RewardModule(ABC):
         current: BaseObservation,
         goal: BaseObservation,
     ) -> bool:
-        # print(f"RewardModule is_equal check...")
-        self.percentage, done = self._check_states(current, goal)
-        return done
+        return self._check_states(current, goal)
 
-    def is_skill_start(
-        self,
-        skill: BaseSkill,
-        current: BaseObservation,
+    def is_skill_equal(
+        self, values: dict[str, torch.Tensor], current: BaseObservation
     ) -> bool:
-        # NOTE: Again an exception for the Flip State...
-        altered_precons = skill.precons
-        if skill.precons.get("base__button_scalar"):
-            altered_precons["base__button_scalar"] = current["base__button_scalar"]
-
-        _, done = self._check_states(altered_precons, current)
-        return done
-
-    def is_skill_end(
-        self,
-        skill: BaseSkill,
-        current: BaseObservation,
-    ) -> bool:
-        # NOTE: Again an exception for the Flip State...
-        altered_precons = skill.postcons
-        if skill.precons.get("base__button_scalar"):
-            altered_precons["base__button_scalar"] = current["base__button_scalar"]
-        _, done = self._check_states(altered_precons, current)
-        return done
+        return self._check_custom_states(values, current)
 
     def distance_to_skill(
         self,
@@ -123,9 +113,7 @@ class SparseRewardModule(RewardModule):
         current: BaseObservation,
         goal: BaseObservation,
     ) -> tuple[float, bool]:
-        # print(f"RewardModule step check...")
-        self.percentage, done = self._check_states(current, goal)
-        if done:
+        if self._check_states(current, goal):
             # Success reached
             return self.config.success_reward, True
         else:
@@ -134,16 +122,13 @@ class SparseRewardModule(RewardModule):
 
 
 class DenseRewardModule(RewardModule):
-
     def step(
         self,
         current: BaseObservation,
         goal: BaseObservation,
     ) -> tuple[float, bool]:
-        # print(f"RewardModule step check...")
         old_percentage = self.percentage
-        self.percentage, done = self._check_states(current, goal)
-        if done:
+        if self._check_states(current, goal):
             # Success reached
             return self.config.success_reward, True
         else:

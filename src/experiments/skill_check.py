@@ -17,10 +17,10 @@ class SkillCheckExperiment:
         return self.env.reset(skill)
 
     def eval_start(self, skill: BaseSkill) -> bool:
-        return self.env.evaluate_skill_start(skill)
+        return self.env.evaluate_skill(skill.precons)
 
     def eval_end(self, skill: BaseSkill) -> bool:
-        return self.env.evaluate_skill_end(skill)
+        return self.env.evaluate_skill(skill.postcons)
 
     def close(self):
         self.env.close()

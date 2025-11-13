@@ -1,4 +1,5 @@
 from tapas_gmm.env.calvin import Calvin
+import torch
 from src.core.modules.reward_module import RewardModule
 from src.core.modules.storage_module import StorageModule
 from src.core.environment import BaseEnvironment, EnvironmentConfig
@@ -35,7 +36,7 @@ class CalvinEnvironment(BaseEnvironment):
             while True:
                 self.current_env, _, _, _ = self.env.reset(settle_time=50)
                 self.current = CalvinObservation(self.current_env)
-                if self.evaluate_skill_start(skill):
+                if self.evaluate_skill(skill.precons):
                     break
         else:
             # Current and goal should not be equal
@@ -81,8 +82,5 @@ class CalvinEnvironment(BaseEnvironment):
     def evaluate(self) -> tuple[float, bool]:
         return self.reward_module.step(self.current, self.goal)
 
-    def evaluate_skill_start(self, skill: BaseSkill) -> bool:
-        return self.reward_module.is_skill_start(skill, self.current)
-
-    def evaluate_skill_end(self, skill: BaseSkill) -> bool:
-        return self.reward_module.is_skill_end(skill, self.current)
+    def evaluate_skill(self, values: dict[str, torch.Tensor]) -> bool:
+        return self.reward_module.is_skill_equal(values, self.current)
