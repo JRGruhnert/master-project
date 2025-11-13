@@ -35,8 +35,7 @@ class CalvinEnvironment(BaseEnvironment):
             while True:
                 self.current_env, _, _, _ = self.env.reset(settle_time=50)
                 self.current = CalvinObservation(self.current_env)
-                _, skill_ready = self.reward_module.is_skill_start(skill, self.current)
-                if skill_ready:
+                if self.evaluate_skill_start(skill):
                     break
         else:
             # Current and goal should not be equal
@@ -79,8 +78,11 @@ class CalvinEnvironment(BaseEnvironment):
     def close(self):
         self.env.close()
 
-    def evaluate(self, skill: BaseSkill | None = None) -> tuple[float, bool]:
-        if skill:
-            return self.reward_module.is_skill_end(skill, self.current)
-        else:
-            return self.reward_module.step(self.current, self.goal)
+    def evaluate(self) -> tuple[float, bool]:
+        return self.reward_module.step(self.current, self.goal)
+
+    def evaluate_skill_start(self, skill: BaseSkill) -> bool:
+        return self.reward_module.is_skill_start(skill, self.current)
+
+    def evaluate_skill_end(self, skill: BaseSkill) -> bool:
+        return self.reward_module.is_skill_end(skill, self.current)

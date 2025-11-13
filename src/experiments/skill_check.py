@@ -16,8 +16,11 @@ class SkillCheckExperiment:
     def reset(self, skill: BaseSkill) -> tuple[CalvinObservation, CalvinObservation]:
         return self.env.reset(skill)
 
-    def evaluate(self, skill: BaseSkill) -> tuple[float, bool]:
-        return self.env.evaluate(skill)
+    def eval_start(self, skill: BaseSkill) -> bool:
+        return self.env.evaluate_skill_start(skill)
+
+    def eval_end(self, skill: BaseSkill) -> bool:
+        return self.env.evaluate_skill_end(skill)
 
     def close(self):
         self.env.close()

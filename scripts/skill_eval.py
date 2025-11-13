@@ -33,16 +33,15 @@ def evaluate_conditional_skill(
     counter = 0
     for i in range(iterations):
         # Execute prerequisite skill until completion
-        terminal = False
-        while not terminal:
+        while not good_start:
             _, _ = experiment.reset(pre_skill)
             _ = experiment.step(pre_skill)
-            _, terminal = experiment.evaluate(pre_skill)
+            _ = experiment.eval_end(pre_skill)
+            good_start = experiment.eval_start(main_skill)
 
         # Execute main skill and check success
         _ = experiment.step(main_skill)
-        _, terminal = experiment.evaluate(main_skill)
-        if terminal:
+        if experiment.eval_end(main_skill):
             counter += 1
     return counter / iterations
 
@@ -57,8 +56,7 @@ def evaluate_single_skill(
     for i in range(iterations):
         _, _ = experiment.reset(skill)
         _ = experiment.step(skill)
-        _, terminal = experiment.evaluate(skill)
-        if terminal:
+        if experiment.eval_end(skill):
             counter += 1
     return counter / iterations
 
