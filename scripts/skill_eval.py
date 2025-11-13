@@ -26,6 +26,57 @@ class EvalConfig:
     storage: StorageConfig
 
 
+def evaluate_conditional_skill(
+    experiment: SkillEvalExperiment,
+    pre_skill: BaseSkill,
+    main_skill: BaseSkill,
+    iterations: int = 100,
+) -> float:
+    """Evaluate a skill that requires a prerequisite skill to be executed first"""
+    counter = 0
+    for i in range(iterations):
+        # Execute prerequisite skill until completion
+        terminal = False
+        while not terminal:
+            _, _ = experiment.reset(pre_skill)
+            _ = experiment.step(pre_skill)
+            _, terminal = experiment.evaluate(pre_skill)
+
+        # Execute main skill and check success
+        _ = experiment.step(main_skill)
+        _, terminal = experiment.evaluate(main_skill)
+        if terminal:
+            counter += 1
+    return counter / iterations
+
+
+def evaluate_single_skill(
+    experiment: SkillEvalExperiment,
+    skill: BaseSkill,
+    iterations: int = 100,
+) -> float:
+    """Evaluate a standalone skill"""
+    counter = 0
+    for i in range(iterations):
+        _, _ = experiment.reset(skill)
+        _ = experiment.step(skill)
+        _, terminal = experiment.evaluate(skill)
+        if terminal:
+            counter += 1
+    return counter / iterations
+
+
+def get_prerequisite_skill(skill_name: str) -> tuple[bool, str]:
+    """Get the prerequisite skill for a given skill name"""
+    if skill_name.endswith("Back"):
+        return True, skill_name.removesuffix("Back")
+    elif skill_name.startswith("Place"):
+        base_name = skill_name.removeprefix("Place")
+        grab_name = "Grab" + base_name
+        return True, grab_name
+    return False, ""
+
+
 def train_agent(config: EvalConfig):
     # Initialize the environment and agent
     storage_module = StorageModule(
@@ -47,55 +98,30 @@ def train_agent(config: EvalConfig):
         ),
     )  # Wrap environment in experiment
 
-    result_dict: dict[str, int] = {}
+    result_dict: dict[str, float] = {}
     skills_dict: dict[str, BaseSkill] = {
         skill.name: skill for skill in storage_module.skills
     }
     for skill_name, skill in skills_dict.items():
-        counter = 0
-        if skill_name.endswith("Back"):
-            base_name = skill_name.removesuffix("Back")
-            pre_skill = skills_dict.get(base_name)
+        print(f"🔄 Evaluating: {skill_name}")
+
+        has_prerequisite, pre_skill_name = get_prerequisite_skill(skill_name)
+
+        if has_prerequisite:
+            print(f"Requires prerequisite: {pre_skill_name}")
+            pre_skill = skills_dict.get(pre_skill_name)
             if pre_skill:
-                for i in range(100):
-                    terminal = False
-                    while not terminal:
-                        _, _ = experiment.reset(pre_skill)
-                        _ = experiment.step(pre_skill)
-                        _, terminal = experiment.evaluate(pre_skill)
-                    _ = experiment.step(skill)
-                    _, terminal2 = experiment.evaluate(skill)
-                    if terminal2:
-                        counter += 1
-                result_dict[pre_skill.name] = counter
+                result_dict[skill_name] = evaluate_conditional_skill(
+                    experiment,
+                    pre_skill,
+                    skill,
+                )
             else:
-                print(f"Couldn't find {base_name}")
-        elif skill_name.startswith("Place"):
-            base_name = skill_name.removeprefix("Place")
-            base_name = "Grab" + base_name
-            pre_skill = skills_dict.get(base_name)
-            if pre_skill:
-                for i in range(100):
-                    terminal = False
-                    while not terminal:
-                        _, _ = experiment.reset(pre_skill)
-                        _ = experiment.step(pre_skill)
-                        _, terminal = experiment.evaluate(pre_skill)
-                    _ = experiment.step(skill)
-                    _, terminal2 = experiment.evaluate(skill)
-                    if terminal2:
-                        counter += 1
-                result_dict[pre_skill.name] = counter
-            else:
-                print(f"Couldn't find {base_name}")
+                print("This message shouldn't happen!!!")
         else:
-            for i in range(100):
-                _, _ = experiment.reset(skill)
-                _ = experiment.step(skill)
-                _, terminal = experiment.evaluate(skill)
-                if terminal:
-                    counter += 1
-            result_dict[skill.name] = counter
+            result_dict[skill_name] = evaluate_single_skill(experiment, skill)
+
+        print(f"✅ Success rate: {result_dict[skill_name]:.1%}")
 
     for key, value in result_dict.items():
         print(f"{key} has successrate: \t {value/100}")
