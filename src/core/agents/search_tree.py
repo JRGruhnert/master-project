@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
+
+import torch
 from src.core.agents.agent import AgentConfig, BaseAgent
 from src.core.modules.buffer_module import BufferModule
 from src.core.modules.reward_module import RewardModule
@@ -170,13 +172,14 @@ class SearchTreeAgent(BaseAgent):
         # Apply skill postconditions
         for state_name, target_value in skill.postcons.items():
             # NOTE: HACKY for the Flip State (But this is just a baseline so not worth it to generalize)
-            if skill._name in ["PressButton", "PressButtonBack"]:
-                # Special handling for button press skills
-                if state_name == "button_state":
-                    if target_value == 1:
-                        next_obs[state_name] = 0  # Toggle button state
-                    else:
-                        next_obs[state_name] = 1
+            if state_name == "base__button_scalar":
+                if skill.name is "PressButton":
+                    next_obs[state_name] = (
+                        torch.Tensor([1.0])
+                        if next_obs[state_name] < 1.0
+                        else torch.Tensor([0.0])
+                    )
+
             else:
                 next_obs[state_name] = target_value
 
