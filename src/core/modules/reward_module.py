@@ -36,8 +36,8 @@ class RewardModule(ABC):
         for state in self.states:
             if state.name in current.keys():
                 if not state.evaluate(current[state.name], goal[state.name]):
-                    print(f"Wrong: \t {state.name}")
-                    print(f"{current[state.name]} is not {goal[state.name]}")
+                    # print(f"Wrong: \t {state.name}")
+                    # print(f"{current[state.name]} is not {goal[state.name]}")
                     not_finished_states += 1
         self.percentage = not_finished_states / max(len(self.states), 1)
         return not_finished_states == 0

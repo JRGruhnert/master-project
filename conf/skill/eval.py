@@ -19,5 +19,5 @@ config = SkillEvalConfig(
         success_reward=1.0,
     ),
     storage=storage,
-    iterations=5,
+    iterations=100,
 )
