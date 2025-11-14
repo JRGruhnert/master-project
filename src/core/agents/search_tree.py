@@ -173,7 +173,7 @@ class SearchTreeAgent(BaseAgent):
         for state_name, target_value in skill.postcons.items():
             # NOTE: HACKY for the Flip State (But this is just a baseline so not worth it to generalize)
             if state_name == "base__button_scalar":
-                if skill.name is "PressButton":
+                if skill.name == "PressButton":
                     next_obs[state_name] = (
                         torch.Tensor([1.0])
                         if next_obs[state_name] < 1.0
