@@ -218,7 +218,7 @@ class TapasSkill(BaseSkill):
                 return None
             if self.prediction is None:
                 return None
-            return self._to_action(self.prediction)
+            return self._to_action(self.prediction)  # type: ignore
 
     def _to_action(self, prediction: TrajectoryPoint | np.ndarray) -> np.ndarray:
         if isinstance(prediction, np.ndarray):
