@@ -53,15 +53,9 @@ class CalvinEnvironment(BaseEnvironment):
     def step(
         self,
         skill: BaseSkill,
-        predict_as_batch: bool = True,
-        control_duration: int = -1,
     ) -> CalvinObservation:
         if isinstance(skill, TapasSkill):
-            skill.reset(
-                self.env,
-                predict_as_batch=predict_as_batch,
-                control_duration=control_duration,
-            )
+            skill.reset(self.env)
             while (
                 action := skill.predict(
                     self.current_env,
@@ -73,7 +67,7 @@ class CalvinEnvironment(BaseEnvironment):
         else:
             raise NotImplementedError(
                 "Only TapasSkill is implemented for CalvinEnvironment."
-            )
+            )  # NOTE: This is not good. Need to make it generalize
         return self.current
 
     def close(self):

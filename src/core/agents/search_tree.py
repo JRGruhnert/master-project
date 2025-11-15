@@ -179,7 +179,6 @@ class SearchTreeAgent(BaseAgent):
                         if next_obs[state_name] < 1.0
                         else torch.Tensor([0.0])
                     )
-
             else:
                 next_obs[state_name] = target_value
 

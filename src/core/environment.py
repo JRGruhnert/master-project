@@ -7,6 +7,8 @@ from src.core.skills.skill import BaseSkill
 @dataclass
 class EnvironmentConfig:
     render: bool = False
+    predict_as_batch: bool = True
+    control_duration: int = -1
 
 
 class BaseEnvironment(ABC):

@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from datetime import datetime
+import json
 from omegaconf import OmegaConf, SCMode
 
 from src.core.modules.reward_module import (
@@ -12,6 +14,8 @@ from src.core.skills.skill import BaseSkill
 from src.experiments.skill_check import SkillCheckExperiment
 from src.integrations.calvin.environment import CalvinEnvironment
 from tapas_gmm.utils.argparse import parse_and_build_config
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 @dataclass
@@ -76,7 +80,7 @@ def train_agent(config: SkillEvalConfig):
     storage_module = StorageModule(
         config.storage,
         config.tag,
-        NetworkType.NONE,
+        NetworkType.SKILLS,
     )
     reward_module = SparseRewardModule(
         config.reward,
@@ -122,6 +126,14 @@ def train_agent(config: SkillEvalConfig):
 
     for key, value in result_dict.items():
         print(f"✅ {key} has successrate: \t {value:.1%}")
+
+    filename = f"{storage_module.plots_saving_path}/results.json"
+
+    with open(filename, "w") as f:
+        json.dump(result_dict, f, indent=2)
+
+    print(f"\n💾 Results saved to: {filename}")
+
     experiment.close()
 
 
@@ -134,8 +146,3 @@ def entry_point():
     )
 
     train_agent(config)  # type: ignore
-
-
-if __name__ == "__main__":
-    print("Starting training script...")
-    entry_point()

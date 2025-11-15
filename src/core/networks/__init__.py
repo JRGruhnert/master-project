@@ -8,7 +8,7 @@ class NetworkType(Enum):
     BASELINE_V2 = "baseline2"
     GNN_V1 = "gnn1"
     GNN_V2 = "gnn2"
-    NONE = "gnn3"
+    SKILLS = "skills"
     GNN_V5 = "gnn5"
     GNN_V6 = "gnn6"
     GNN_V7 = "gnn7"
@@ -27,7 +27,7 @@ def import_network(network_type):
         from src.core.networks.gnn.gnn1 import Gnn as Network
     elif network_type is NetworkType.GNN_V2:
         from src.core.networks.gnn.gnn2 import Gnn as Network
-    elif network_type is NetworkType.NONE:
+    elif network_type is NetworkType.SKILLS:
         from src.core.networks.gnn.gnn3 import Gnn as Network
     elif network_type is NetworkType.PPO_GNN:
         from src.core.networks.gnn.gnn4 import Gnn as Network

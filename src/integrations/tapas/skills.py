@@ -1,107 +1,125 @@
 from src.core.skills.tapas import TapasSkill
 
+predict_as_batch = False
 
 _S = {
     "CloseDrawer": TapasSkill(
         name="CloseDrawer",
         id=0,
         reversed=False,
+        predict_as_batch=predict_as_batch,
         overrides=[],
     ),
     "CloseDrawerBack": TapasSkill(
         name="CloseDrawerBack",
         id=1,
         reversed=True,
+        predict_as_batch=predict_as_batch,
         overrides=["ee_scalar", "ee_rotation", "ee_position"],
     ),
     "OpenDrawer": TapasSkill(
         name="OpenDrawer",
         id=2,
         reversed=False,
+        predict_as_batch=predict_as_batch,
         overrides=[],
     ),
     "OpenDrawerBack": TapasSkill(
         name="OpenDrawerBack",
         id=3,
         reversed=True,
+        predict_as_batch=predict_as_batch,
         overrides=["ee_scalar", "ee_rotation", "ee_position"],
     ),
     "PressButton": TapasSkill(
         name="PressButton",
         id=4,
         reversed=False,
+        predict_as_batch=predict_as_batch,
         overrides=[],
     ),
     "PressButtonBack": TapasSkill(
         name="PressButtonBack",
         id=5,
         reversed=True,
+        predict_as_batch=predict_as_batch,
         overrides=["ee_scalar", "ee_rotation", "ee_position"],
     ),
     "OpenSlide": TapasSkill(
         name="OpenSlide",
         id=6,
         reversed=False,
+        predict_as_batch=predict_as_batch,
         overrides=[],
     ),
     "CloseSlide": TapasSkill(
         name="CloseSlide",
         id=7,
         reversed=False,
+        predict_as_batch=predict_as_batch,
         overrides=[],
     ),
     "OpenSlideBack": TapasSkill(
         name="OpenSlideBack",
         id=8,
         reversed=True,
+        predict_as_batch=predict_as_batch,
         overrides=["ee_scalar", "ee_rotation", "ee_position"],
     ),
     "CloseSlideBack": TapasSkill(
         name="CloseSlideBack",
         id=9,
         reversed=True,
+        predict_as_batch=predict_as_batch,
         overrides=["ee_scalar", "ee_rotation", "ee_position"],
     ),
     "GrabRedTable": TapasSkill(
         name="GrabRedTable",
         id=10,
         reversed=False,
+        predict_as_batch=predict_as_batch,
         overrides=[],
     ),
     "GrabPinkTable": TapasSkill(
         name="GrabPinkTable",
         id=11,
         reversed=False,
+        predict_as_batch=predict_as_batch,
         overrides=[],
     ),
     "GrabBlueTable": TapasSkill(
         name="GrabBlueTable",
         id=12,
         reversed=False,
+        predict_as_batch=predict_as_batch,
         overrides=[],
     ),
     "GrabRedDrawer": TapasSkill(
         name="GrabRedDrawer",
         id=13,
         reversed=False,
+        predict_as_batch=predict_as_batch,
         overrides=[],
     ),
     "GrabPinkDrawer": TapasSkill(
         name="GrabPinkDrawer",
         id=14,
         reversed=False,
+        predict_as_batch=predict_as_batch,
         overrides=[],
     ),
     "GrabBlueDrawer": TapasSkill(
         name="GrabBlueDrawer",
         id=15,
         reversed=False,
+        predict_as_batch=predict_as_batch,
         overrides=[],
     ),
     "PlaceRedTable": TapasSkill(
         name="PlaceRedTable",
         id=16,
         reversed=True,
+        predict_as_batch=predict_as_batch,
         overrides=[
             "ee_scalar",
             "ee_rotation",
@@ -115,6 +133,7 @@ _S = {
         name="PlacePinkTable",
         id=17,
         reversed=True,
+        predict_as_batch=predict_as_batch,
         overrides=[
             "ee_scalar",
             "ee_rotation",
@@ -128,6 +147,7 @@ _S = {
         name="PlaceBlueTable",
         id=18,
         reversed=True,
+        predict_as_batch=predict_as_batch,
         overrides=[
             "ee_scalar",
             "ee_rotation",
@@ -141,6 +161,7 @@ _S = {
         name="PlaceRedDrawer",
         id=19,
         reversed=True,
+        predict_as_batch=predict_as_batch,
         overrides=[
             "ee_scalar",
             "ee_rotation",
@@ -154,6 +175,7 @@ _S = {
         name="PlacePinkDrawer",
         id=20,
         reversed=True,
+        predict_as_batch=predict_as_batch,
         overrides=[
             "ee_scalar",
             "ee_rotation",
@@ -167,6 +189,7 @@ _S = {
         name="PlaceBlueDrawer",
         id=21,
         reversed=True,
+        predict_as_batch=predict_as_batch,
         overrides=[
             "ee_scalar",
             "ee_rotation",

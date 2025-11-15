@@ -8,7 +8,6 @@ from calvin_env_modified.envs.observation import (
 )
 from src.core.logic.eval_condition import AreaEvalCondition
 from src.core.state import BaseState
-from src.integrations.calvin.state import AreaEulerState, CalvinState
 from src.integrations.calvin.observation import CalvinObservation
 from src.core.skills.skill import BaseSkill
 from tapas_gmm.utils.select_gpu import device
@@ -37,16 +36,19 @@ class TapasSkill(BaseSkill):
         name: str,
         id: int,
         reversed: bool,
+        predict_as_batch: bool,
         overrides: list[str],
     ):
         super().__init__(name, id)
         self.reversed = reversed
+        self.predict_as_batch = predict_as_batch
         self.overrides = overrides
         self.policy_name = "gmm"
         self.overrides_dict: dict[str, np.ndarray] = {}
         self.policy: GMMPolicy = self._load_policy()
         self.first_prediction = True
         self.predictions: RobotTrajectory | None = None
+        self.prediction = None
         self.states: list[BaseState] = []
 
     def _policy_checkpoint_name(self) -> pathlib.Path:
@@ -98,7 +100,7 @@ class TapasSkill(BaseSkill):
             time_scale=1.0,
             # ---- Changing often ----
             postprocess_prediction=False,  # TODO:  abs quaternions if False else delta quaternions
-            return_full_batch=True,
+            return_full_batch=self.predict_as_batch,
             batch_predict_in_t_models=True,  # Change if visualization is needed
             invert_prediction_batch=self.reversed,
         )
@@ -171,11 +173,13 @@ class TapasSkill(BaseSkill):
                     )
                 self.overrides_dict[state.name] = value.numpy()
 
-    def reset(self, env, predict_as_batch: bool = True, control_duration: int = -1):
-        super().reset(predict_as_batch, control_duration)
+    def reset(self, env):
         self.policy.reset_episode(env)
         self.first_prediction = True
         self.predictions = None
+        self.current_step = -1  # Will be increased at first prediction
+        self.predictions = None
+        self.prediction = None
 
     def predict(
         self,
@@ -201,8 +205,20 @@ class TapasSkill(BaseSkill):
                 return None
             return self._to_action(self.predictions.step())
         else:
-            # NOTE: DID NOT TEST YET but is theoretical available in Tapas
-            raise NotImplementedError("Non-batch prediction not implemented yet.")
+            try:
+                self.prediction, _ = self.policy.predict(  # type: ignore
+                    self._to_skill_format(current, goal)
+                )
+            except FloatingPointError as e:
+                logger.error(f"Numerical error in GMM prediction: {e}")
+                # Return a safe default action (e.g., no movement)
+                return None  # TODO: I think its just cause of a bad robot position
+            except Exception as e:
+                logger.error(f"Error in skill prediction: {e}")
+                return None
+            if self.prediction is None:
+                return None
+            return self._to_action(self.prediction)
 
     def _to_action(self, prediction: TrajectoryPoint) -> np.ndarray:
         return np.concatenate(

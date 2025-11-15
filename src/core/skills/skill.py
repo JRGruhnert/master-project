@@ -67,16 +67,12 @@ class BaseSkill(ABC):
             task_features.append(value)
         return torch.stack(task_features, dim=0)
 
+    @abstractmethod
     def reset(
         self,
-        predict_as_batch: bool,
-        control_duration: int,
     ):
         """Prepare the skill for execution. Before each use."""
-        self.control_duration = control_duration
-        self.predict_as_batch = predict_as_batch
-        self.current_step = -1  # Will be increased at first prediction
-        self.predictions = None
+        raise NotImplementedError("Subclasses must implement method.")
 
     @abstractmethod
     def predict(
@@ -87,7 +83,7 @@ class BaseSkill(ABC):
         """
         Get the action for the skill.
         """
-        raise NotImplementedError("Subclasses must implement predict method.")
+        raise NotImplementedError("Subclasses must implement method.")
 
     @abstractmethod
     def _to_skill_format(
@@ -98,12 +94,15 @@ class BaseSkill(ABC):
         """
         Serialize the skill to a dictionary format.
         """
-        raise NotImplementedError("Subclasses must implement to_format method.")
+        raise NotImplementedError("Subclasses must implement method.")
 
 
 class EmptySkill(BaseSkill):
     def __init__(self):
         super().__init__(name="EmptySkill", id=-1)
+
+    def reset(self):
+        pass
 
     def predict(
         self,
