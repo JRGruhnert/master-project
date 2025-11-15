@@ -122,17 +122,17 @@ def train_agent(config: SkillEvalConfig):
                 config.iterations,
             )
 
-        print(f"✅ Success rate: {result_dict[skill_name]:.1%}")
+        print(f"Success rate: {result_dict[skill_name]:.1%}")
 
     for key, value in result_dict.items():
-        print(f"✅ {key} has successrate: \t {value:.1%}")
+        print(f"{key} has successrate: \t {value:.1%}")
 
     filename = f"{storage_module.plots_saving_path}/results.json"
 
     with open(filename, "w") as f:
         json.dump(result_dict, f, indent=2)
 
-    print(f"\n💾 Results saved to: {filename}")
+    print(f"Results saved to: {filename}")
 
     experiment.close()
 

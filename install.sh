@@ -19,22 +19,6 @@ else
 fi
 pip install .
 
-# Install TACO-RL (handles its own dependencies via install.sh)
-export TACORL_ROOT="$HRL_ROOT/dependencies/tacorl"
-if [ ! -d "$TACORL_ROOT" ] ; then
-    echo "Cloning tacorl..."
-    git clone https://github.com/JRGruhnert/tacorl.git $TACORL_ROOT
-    cd "$TACORL_ROOT"
-    echo "Running tacorl's install.sh..."
-    bash install.sh
-else
-    echo "Updating tacorl..."
-    cd "$TACORL_ROOT"
-    git pull
-    # Optionally re-run install.sh on updates
-    # bash install.sh
-fi
-
 
 # Install riepybdlib
 export RIEPYBDLIB_ROOT="$HRL_ROOT/dependencies/riepybdlib"
@@ -49,13 +33,14 @@ else
 fi
 pip install .
 
-# Install TAPAS
+# Install TAPAS (with separation branch)
 export TAPAS_ROOT="$HRL_ROOT/dependencies/tapas"
 if [ ! -d "$TAPAS_ROOT" ] ; then
     echo "Cloning tapas..."
     git clone https://github.com/JRGruhnert/TapasCalvin.git $TAPAS_ROOT
     cd "$TAPAS_ROOT"
-    git checkout seperation
+    git checkout separation
+    #pip install .  # Install after cloning
 else
     echo "Updating tapas..."
     cd "$TAPAS_ROOT"

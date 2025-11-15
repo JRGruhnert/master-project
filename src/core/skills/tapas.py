@@ -101,7 +101,7 @@ class TapasSkill(BaseSkill):
             # ---- Changing often ----
             postprocess_prediction=False,  # TODO:  abs quaternions if False else delta quaternions
             return_full_batch=self.predict_as_batch,
-            batch_predict_in_t_models=True,  # Change if visualization is needed
+            batch_predict_in_t_models=self.predict_as_batch,  # Change if visualization is needed
             invert_prediction_batch=self.reversed,
         )
 
@@ -220,7 +220,9 @@ class TapasSkill(BaseSkill):
                 return None
             return self._to_action(self.prediction)
 
-    def _to_action(self, prediction: TrajectoryPoint) -> np.ndarray:
+    def _to_action(self, prediction: TrajectoryPoint | np.ndarray) -> np.ndarray:
+        if isinstance(prediction, np.ndarray):
+            return prediction
         return np.concatenate(
             (
                 prediction.ee,
