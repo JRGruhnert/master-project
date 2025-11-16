@@ -1,7 +1,5 @@
 import os
 import glob
-import os
-import glob
 import re
 from typing import Any
 import torch
@@ -9,7 +7,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Set a global style for all plots
-print(plt.style.available)
 plt.style.use("seaborn-v0_8")
 
 
@@ -304,33 +301,135 @@ class RolloutAnalyzer:
         plt.savefig(plot_path, dpi=300, bbox_inches="tight")
 
 
-def plot_sr_vs_epoch(
-    data: dict[str, dict[str, dict[str, list[float] | float]]],
+def find_matching_rollout(
+    target: dict, rollout_list: list[dict], match_keys: list[str] = ["tag", "pe", "pr"]
+) -> dict | None:
+    """Find rollout with matching key values"""
+    for rollout in rollout_list:
+        if all(rollout.get(key) == target.get(key) for key in match_keys):
+            return rollout
+    return None
+
+
+def plot_agents_together_sr_vs_epoch(
+    data: dict[str, dict[str, list[dict]]],
     save_path: str,
-    nt: str,
 ):
-    for name, rows in data[tag].items():
-        plt.figure(figsize=(8, 5))
-        x = rows["p"]
-        for label, y in rows.items():
+    """Compare all networks for same experiment parameters"""
+
+    networks = ["gnn", "baseline", "search_tree"]
+    colors = {"gnn": "blue", "baseline": "orange", "search_tree": "green"}
+
+    # Use GNN as reference
+    for ident, gnn_rollouts in data.get("gnn", {}).items():
+        for gnn_rollout in gnn_rollouts:
+            plt.figure(figsize=(12, 6))
+
+            tag = gnn_rollout.get("tag")
+            pe = gnn_rollout.get("pe")
+            pr = gnn_rollout.get("pr")
+
+            # ✅ Find and plot matching rollout from each network
+            for network in networks:
+                network_rollouts = data.get(network, {}).get(ident, [])
+
+                matching_rollout = next(
+                    (
+                        r
+                        for r in network_rollouts
+                        if r.get("tag") == tag
+                        and r.get("pe") == pe
+                        and r.get("pr") == pr
+                    ),
+                    None,
+                )
+
+                if matching_rollout:
+                    sr = matching_rollout.get("sr_until_max", [])
+                    if sr:
+                        plt.plot(
+                            range(len(sr)),
+                            sr,
+                            label=network.upper(),
+                            color=colors[network],
+                            linewidth=2,
+                            alpha=0.7,
+                        )
+
+            # Add threshold lines
+            plt.axhline(
+                y=0.9, color="orange", linestyle="--", alpha=0.5, label="90% threshold"
+            )
+            plt.axhline(
+                y=0.95, color="red", linestyle="--", alpha=0.5, label="95% threshold"
+            )
+
+            plt.xlabel("Epoch", fontsize=12)
+            plt.ylabel("Success Rate", fontsize=12)
+            plt.title(
+                f"Network Comparison: {tag} (pe={pe}, pr={pr})",
+                fontsize=14,
+                fontweight="bold",
+            )
+            plt.grid(True, alpha=0.3)
+            plt.legend(fontsize=11)
+            plt.ylim(0, 1)
+            plt.tight_layout()
+
+            plot_path = os.path.join(save_path, f"compare_all_{tag}_pe{pe}_pr{pr}.png")
+            plt.savefig(plot_path, dpi=300, bbox_inches="tight")
+            plt.close()
+
+
+"""
+# agent vs epoch together
+def plot_agents_together_sr_vs_epoch(
+    data: dict[str, dict[str, list[dict[str, list[list[float] | float]]]]],
+    save_path: str,
+):
+    # nt -> (t,r,e) -> tag,pe,pr,origin,dest,analzer values
+    # nt -> gnn, baseline, search-tree
+
+    for ident, gnn_rollouts in data["gnn"].items():
+        baseline_rollouts = data.get("baseline", {}).get(ident, [])
+        for gnn_rollout in gnn_rollouts:
+            baseline_rollout = find_matching_rollout(gnn_rollout, baseline_rollouts)
+            if baseline_rollout is None:
+                continue
+
+            plt.figure(figsize=(8, 5))
+            plt.scatter(
+                rollout[""],
+                rollout[""],
+                label="gnn",
+            )
+
+            plt.scatter(
+                matching_rollout[""],
+                rollout[""],
+                label="baseline",
+            )
+
             if label != "p":
                 plt.scatter(
-                    x,
+                    gnn_rollouts["p"],
                     y,
-                    label=label,
+                    label=nt,
                 )
-        plt.xlabel("p")
+        plt.xlabel("Epoch")
         plt.ylabel("%")
-        plt.title(f"{nt} Success Rate vs {name}")
-        plt.legend()
+        plt.title(f"Success Rate vs {name}")
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
-        plot_path = os.path.join(save_path, f"{nt}_{tag}_sr_vs_{name}.png")
+        plt.legend()
+        plot_path = os.path.join(save_path, f"{nt}_{nt_data}_sr_vs_{name}.png")
         plt.savefig(plot_path, dpi=300, bbox_inches="tight")
 
+"""
 
+"""
 def plot_sr_vs_epoch_r(
-    data: dict[str,dict[str, dict[str, dict[str, list[float] | float]]]],
+    data: dict[str, dict[str, dict[str, dict[str, list[float] | float]]]],
     save_path: str,
 ):
     # data: gnn4 baseline1
@@ -344,15 +443,25 @@ def plot_sr_vs_epoch_r(
             ident = "t"
             tag = f"{ident}{origin}{dest}"
             i_data = n_data.get(ident, {})
-            i_data = [v for v in i_data.items() if v.get("tag") == tag and v.get("pe") == 0.0 and v.get("pr") == 0.0]
-            i_data.sort(key=lambda x: x["batch"])
+            i_data = [
+                v
+                for v, k in i_data.items()
+                if isinstance(v, dict)
+                and v.get("tag") == tag
+                and v.get("pe") == 0.0
+                and v.get("pr") == 0.0
+            ]
+            i_data.sort(key=lambda x: x.get("batch", 0))
             # Convert to dict of lists
-            i_data = {key: [d[key] for d in i_data] for key in i_data[0]}
+            i_data = {key: [d.get(key) for d in i_data] for key in i_data[0]}
 
             sr_until_max = i_data.get("sr_until_max", [])
-            start = sum(len(n_data[f"{ident}{o}{d}"].get("sr_until_max", [])) for o, d in pairs[:idx])
+            start = sum(
+                len(n_data[f"{ident}{o}{d}"].get("sr_until_max", []))
+                for o, d in pairs[:idx]
+            )
             end = start + len(sr_until_max)
-                    plt.figure(figsize=(8, 5))
+            plt.figure(figsize=(8, 5))
             plt.scatter(
                 range(start, end),
                 sr_until_max,
@@ -360,23 +469,30 @@ def plot_sr_vs_epoch_r(
             )
 
             # Add horizontal threshold lines
-    for y, color, label in [(0.9, "red", "90% Threshold"), (0.95, "orange", "95% Threshold")]:
-        plt.axhline(y=y, color=color, linestyle="--", label=label)
+        for y, color, label in [
+            (0.9, "red", "90% Threshold"),
+            (0.95, "orange", "95% Threshold"),
+        ]:
+            plt.axhline(y=y, color=color, linestyle="--", label=label)
 
-    plt.xlabel("Epoch")
-    plt.ylabel("SR %")
-    plt.title(f"{nt} Retraining Success Rate by Transition")
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plot_path = os.path.join(save_path, f"re_{nt}_retraining.png")
-    plt.savefig(plot_path, dpi=300, bbox_inches="tight")
-    plt.close()
+        plt.xlabel("Epoch")
+        plt.ylabel("SR %")
+        plt.title(f"{nt} Retraining Success Rate by Transition")
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plot_path = os.path.join(save_path, f"re_{nt}_retraining.png")
+        plt.savefig(plot_path, dpi=300, bbox_inches="tight")
+        plt.close()
+
+"""
+
 
 def plot_sr_vs_p(
     data: dict[str, dict[str, dict[str, list[float] | float]]],
     save_path: str,
     nt: str,
+    tag: str,
 ):
     # Plot max success rate vs all p
     plt.figure(figsize=(8, 5))
@@ -400,57 +516,127 @@ def plot_sr_vs_p(
     plt.savefig(plot_path, dpi=300, bbox_inches="tight")
 
 
-def entry_point():
-    t_tags = ["t1", "t2", "t3"]
-    r_tags = ["r12", "r21", "r13", "r23", "r31", "r32"]
-    e_tags = ["e11", "e12", "e13", "e21", "e22", "e23", "e31", "e32", "e33"]
-    tags = t_tags + r_tags + e_tags
-    result_path = f"results/plots"
-    # Create directories if they don't exist
-    for tag in tags:
-        os.makedirs(result_path + f"/{tag}", exist_ok=True)
+def plot_sr_vs_p_comparison(
+    data: dict[str, dict[str, list[dict]]],
+    save_path: str,
+):
+    """Compare max_sr vs parameter across all networks for each tag"""
 
-    all_data: dict[str, Any] = {}
-    networks: list[str] = ["gnn4", "baseline1"]
-    for network in networks:
-        read_path = f"results/{network}/"
-        files = glob.glob(f"{read_path}/*", recursive=True)
+    networks = ["gnn", "baseline", "search_tree"]
+    colors = {"gnn": "blue", "baseline": "orange", "search_tree": "green"}
+    markers = {"gnn": "o", "baseline": "s", "search_tree": "^"}
 
+    # Collect all unique tags across all networks
+    all_tags = set()
+    for network_data in data.values():
+        for rollouts in network_data.values():
+            for rollout in rollouts:
+                all_tags.add(rollout.get("tag"))
 
-        file_pattern = re.compile(
-            rf"(?P<tag>{"|".join(tags)})_pe_(?P<pe>[0-9.]+)_pr_(?P<pr>[0-9.]+)"
-        )
-        tag_pattern = re.compile(rf"(?P<ident>{"|".join(["t", "r", "e"])})?(?P<origin>\d)(?P<dest>\d)?")
+    # Plot each tag with all networks
+    for tag in sorted(all_tags):
+        plt.figure(figsize=(12, 7))
 
-        data = {"t": [], "r": [], "e": []}
-        for file in files:
-            file_match = file_pattern.search(file)
-            if file_match:
-                analyzer = RolloutAnalyzer(file)
-                analyzer.print_analysis()
-                analyzer.plot_training_curves()
-                tag_match = tag_pattern.search(file_match.group("tag"))
-                data[tag_match.group("ident")].append(
-                    {
-                        **analyzer.summary_stats["overall"],
-                        "pe": float(file_match.group("pe")),
-                        "pr": float(file_match.group("pr")),
-                        "origin": tag_match.group("origin"),
-                        "dest": tag_match.group("dest") if tag_match.group("dest") else tag_match.group("origin"),
-                        "tag": file_match.group("tag"), # for searching
-                    }
-                )
-        all_data[network] = data
+        plotted_any = False
+        param_name = None
 
-    plot_sr_vs_p(data,result_path)
-    plot_sr_vs_epoch(data, result_path)
-    plot_sr_vs_epoch_r(data, result_path)
-    plot_sr_vs_epoch_r(data, result_path)
-    plot_sr_vs_epoch_r(data, result_path)
-    #plot_sr_vs_category(data, result_path)
+        for network in networks:
+            if network not in data:
+                continue
 
-if __name__ == "__main__":
-    entry_point()
+            # Collect rollouts for this tag across all identifiers
+            tag_rollouts = []
+            for ident_rollouts in data[network].values():
+                tag_rollouts.extend([r for r in ident_rollouts if r.get("tag") == tag])
+
+            if not tag_rollouts:
+                continue
+
+            # Determine varying parameter
+            pe_values = [r.get("pe", 0) for r in tag_rollouts]
+            pr_values = [r.get("pr", 0) for r in tag_rollouts]
+
+            pe_varies = len(set(pe_values)) > 1
+            pr_varies = len(set(pr_values)) > 1
+
+            if pe_varies:
+                param_name = "pe"
+                x_values = pe_values
+            elif pr_varies:
+                param_name = "pr"
+                x_values = pr_values
+            else:
+                continue
+
+            # Extract max_sr
+            max_sr_values = [r.get("max_sr", 0) for r in tag_rollouts]
+
+            # Sort
+            sorted_pairs = sorted(zip(x_values, max_sr_values))
+            x_sorted = [x for x, _ in sorted_pairs]
+            y_sorted = [y for _, y in sorted_pairs]
+
+            # ✅ Use plot instead of scatter
+            plt.plot(
+                x_sorted,
+                y_sorted,
+                marker=markers[network],
+                markersize=10,
+                linewidth=2.5,
+                alpha=0.7,
+                color=colors[network],
+                markerfacecolor=colors[network],
+                markeredgecolor="black",
+                markeredgewidth=1.5,
+                label=network.upper(),
+            )
+
+            plotted_any = True
+
+        if plotted_any and param_name:
+            # Add threshold lines
+            plt.axhline(
+                y=0.9,
+                color="orange",
+                linestyle="--",
+                alpha=0.5,
+                linewidth=2,
+                label="90% Threshold",
+            )
+            plt.axhline(
+                y=0.95,
+                color="red",
+                linestyle="--",
+                alpha=0.5,
+                linewidth=2,
+                label="95% Threshold",
+            )
+
+            plt.xlabel(
+                f"{param_name.upper()} (Parameter Value)",
+                fontsize=13,
+                fontweight="bold",
+            )
+            plt.ylabel("Maximum Success Rate", fontsize=13, fontweight="bold")
+            plt.title(
+                f"Network Comparison: {tag} - Max SR vs {param_name.upper()}",
+                fontsize=15,
+                fontweight="bold",
+            )
+            plt.grid(True, alpha=0.3)
+            plt.ylim(0, 1.05)
+            plt.legend(fontsize=11, loc="best")
+            plt.tight_layout()
+
+            # Save plot
+            plot_path = os.path.join(
+                save_path, tag, f"comparison_{tag}_maxsr_vs_{param_name}.png"
+            )
+            plt.savefig(plot_path, dpi=300, bbox_inches="tight")
+            plt.close()
+
+            print(f"✅ Saved comparison: {plot_path}")
+
 
 def plot_stats_direct(
     data: dict[str, dict[str, dict[str, list[float]]]],
@@ -487,6 +673,7 @@ def plot_stats_direct(
     plot_path = os.path.join(save_path, f"{tag}_sr_vs_p.png")
     plt.savefig(plot_path, dpi=300, bbox_inches="tight")
 
+
 def plot_retrain(
     x1: list[float],
     x2: list[float],
@@ -515,3 +702,59 @@ def plot_retrain(
     plot_path = os.path.join(save_path, f"{name}.png")
     plt.savefig(plot_path, dpi=300, bbox_inches="tight")
 
+
+def entry_point():
+    networks = ["gnn", "baseline", "search_tree"]
+    t_tags = ["t1", "t2", "t3"]
+    # r_tags = ["r12", "r21", "r13", "r23", "r31", "r32"]
+    r_tags = []
+    e_tags = ["e11", "e12", "e13", "e21", "e22", "e23", "e31", "e32", "e33"]
+    tags = t_tags + r_tags + e_tags
+    result_path = f"results/plots"
+    # Create directories if they don't exist
+    for tag in tags:
+        os.makedirs(result_path + f"/{tag}", exist_ok=True)
+
+    all_data: dict[str, Any] = {}
+    for nt in networks:
+        read_path = f"results/{nt}/"
+        all_results = glob.glob(f"{read_path}/*", recursive=True)
+
+        file_pattern = re.compile(
+            rf"(?P<tag>{'|'.join(tags)})_pe_(?P<pe>[0-9.]+)_pr_(?P<pr>[0-9.]+)"
+        )
+        tag_pattern = re.compile(
+            rf"(?P<ident>{'|'.join(['t', 'r', 'e'])})?(?P<origin>\d)(?P<dest>\d)?"
+        )
+
+        data = {"t": [], "r": [], "e": []}
+        for path in all_results:
+            file_match = file_pattern.search(path)
+            if file_match:
+                analyzer = RolloutAnalyzer(path)
+                analyzer.print_analysis()
+                analyzer.plot_training_curves()
+                tag_match = tag_pattern.search(file_match.group("tag"))
+                if tag_match:
+                    data[tag_match.group("ident")].append(
+                        {
+                            **analyzer.summary_stats["overall"],
+                            "pe": float(file_match.group("pe")),
+                            "pr": float(file_match.group("pr")),
+                            "origin": tag_match.group("origin"),
+                            "dest": (
+                                tag_match.group("dest")
+                                if tag_match.group("dest")
+                                else tag_match.group("origin")
+                            ),
+                            "tag": file_match.group("tag"),  # for searching
+                        }
+                    )
+        all_data[nt] = data
+    plot_agents_together_sr_vs_epoch(all_data, result_path)  # type: ignore
+    plot_sr_vs_p_comparison(all_data, result_path)
+    # plot_sr_vs_p(all_data, result_path)
+    # plot_sr_vs_epoch_r(all_data, result_path)
+    # plot_sr_vs_epoch_r(data, result_path, network)
+    # plot_sr_vs_epoch_r(data, result_path, network)
+    # plot_sr_vs_category(all_data, result_path)

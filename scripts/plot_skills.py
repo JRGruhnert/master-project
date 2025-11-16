@@ -4,7 +4,6 @@ import json
 
 
 # Set a global style for all plots
-print(plt.style.available)
 plt.style.use("seaborn-v0_8")
 
 
