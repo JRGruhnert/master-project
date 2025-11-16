@@ -19,8 +19,17 @@ def plot_skill_results(result_dict: dict[str, float]):
     # Create figure
     fig, ax = plt.subplots(figsize=(12, 6))
 
-    # Create bar positions
-    x = np.arange(len(skills))
+    # Create bar positions with gap after CloseSlideBack
+    x = np.arange(len(skills), dtype=float)
+    gap_after_skill = "CloseSlideBack"
+
+    # Find the index of CloseSlideBack and add gap after it
+    if gap_after_skill in skills:
+        gap_index = skills.index(gap_after_skill)
+        # Add 0.8 extra spacing to all bars after CloseSlideBack to create a visible gap
+        for i in range(gap_index + 1, len(x)):
+            x[i] += 0.8
+
     width = 0.6
 
     # Create stacked bars
@@ -36,26 +45,18 @@ def plot_skill_results(result_dict: dict[str, float]):
     ax.set_xticks(x)
     ax.set_xticklabels(skills, rotation=45, ha="right")
     ax.set_ylim(0, 1)
-    ax.legend()
+    legend = ax.legend(
+        frameon=True, facecolor="white", edgecolor="gray", framealpha=0.9
+    )
     ax.grid(axis="y", alpha=0.3)
 
-    # Add percentage labels on bars
-    for i, (success, failure) in enumerate(zip(success_rates, failure_rates)):
-        if success > 0.05:  # Only show if bar is visible
+    # Add float labels only on failure bars
+    for i, failure in enumerate(failure_rates):
+        if failure > 0.05:  # Only show if bar is visible enough
             ax.text(
-                i,
-                success / 2,
-                f"{success:.1%}",
-                ha="center",
-                va="center",
-                color="white",
-                fontweight="bold",
-            )
-        if failure > 0.05:
-            ax.text(
-                i,
-                success + failure / 2,
-                f"{failure:.1%}",
+                x[i],  # Use the modified x position instead of i
+                success_rates[i] + failure / 2,
+                f"{failure:.2f}",
                 ha="center",
                 va="center",
                 color="white",
@@ -68,7 +69,7 @@ def plot_skill_results(result_dict: dict[str, float]):
 
 def plot_skill_results_from_file(file: str):
     """Load results from JSON file and plot"""
-    path = "results/skills/eval/" + file
+    path = "results/skills/eval/plots/" + file
     # ✅ Load JSON file
     with open(path, "r") as f:
         data = json.load(f)

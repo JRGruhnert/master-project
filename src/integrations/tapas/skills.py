@@ -1,6 +1,6 @@
 from src.core.skills.tapas import TapasSkill
 
-predict_as_batch = False
+predict_as_batch = True
 
 _S = {
     "CloseDrawer": TapasSkill(

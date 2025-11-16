@@ -39,7 +39,7 @@ if [ ! -d "$TAPAS_ROOT" ] ; then
     echo "Cloning tapas..."
     git clone https://github.com/JRGruhnert/TapasCalvin.git $TAPAS_ROOT
     cd "$TAPAS_ROOT"
-    git checkout separation
+    git checkout seperation
     #pip install .  # Install after cloning
 else
     echo "Updating tapas..."
