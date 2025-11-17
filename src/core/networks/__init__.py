@@ -2,8 +2,8 @@ from enum import Enum
 
 
 class NetworkType(Enum):
-    PPO_GNN = "gnn4"
-    PPO_BASELINE = "baseline1"
+    PPO_GNN = "gnn"
+    PPO_BASELINE = "baseline"
     SEARCH_TREE = "search_tree"
     BASELINE_V2 = "baseline2"
     GNN_V1 = "gnn1"

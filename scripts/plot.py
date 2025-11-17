@@ -522,19 +522,32 @@ def plot_sr_vs_p_comparison(
 ):
     """Compare max_sr vs parameter across all networks for each tag"""
 
+    print(f"🔍 DEBUG: Starting plot_sr_vs_p_comparison")
+    print(f"🔍 DEBUG: Available networks: {list(data.keys())}")
+
     networks = ["gnn", "baseline", "search_tree"]
     colors = {"gnn": "blue", "baseline": "orange", "search_tree": "green"}
     markers = {"gnn": "o", "baseline": "s", "search_tree": "^"}
 
     # Collect all unique tags across all networks
     all_tags = set()
-    for network_data in data.values():
-        for rollouts in network_data.values():
+    for network, network_data in data.items():
+        print(f"🔍 DEBUG: Network {network} has {len(network_data)} identifiers")
+        for ident, rollouts in network_data.items():
+            print(
+                f"🔍 DEBUG: Network {network}, ident {ident} has {len(rollouts)} rollouts"
+            )
             for rollout in rollouts:
-                all_tags.add(rollout.get("tag"))
+                tag = rollout.get("tag")
+                if tag:
+                    all_tags.add(tag)
+                    print(f"🔍 DEBUG: Found tag: {tag}")
+
+    print(f"🔍 DEBUG: All unique tags: {sorted(all_tags)}")
 
     # Plot each tag with all networks
     for tag in sorted(all_tags):
+        print(f"🔍 DEBUG: Processing tag: {tag}")
         plt.figure(figsize=(12, 7))
 
         plotted_any = False
@@ -542,12 +555,17 @@ def plot_sr_vs_p_comparison(
 
         for network in networks:
             if network not in data:
+                print(f"🔍 DEBUG: Network {network} not found in data")
                 continue
 
             # Collect rollouts for this tag across all identifiers
             tag_rollouts = []
             for ident_rollouts in data[network].values():
                 tag_rollouts.extend([r for r in ident_rollouts if r.get("tag") == tag])
+
+            print(
+                f"🔍 DEBUG: Network {network}, tag {tag}: found {len(tag_rollouts)} rollouts"
+            )
 
             if not tag_rollouts:
                 continue
@@ -559,6 +577,13 @@ def plot_sr_vs_p_comparison(
             pe_varies = len(set(pe_values)) > 1
             pr_varies = len(set(pr_values)) > 1
 
+            print(
+                f"🔍 DEBUG: Network {network}, tag {tag}: pe_values={pe_values}, pr_values={pr_values}"
+            )
+            print(
+                f"🔍 DEBUG: Network {network}, tag {tag}: pe_varies={pe_varies}, pr_varies={pr_varies}"
+            )
+
             if pe_varies:
                 param_name = "pe"
                 x_values = pe_values
@@ -566,6 +591,9 @@ def plot_sr_vs_p_comparison(
                 param_name = "pr"
                 x_values = pr_values
             else:
+                print(
+                    f"🔍 DEBUG: Network {network}, tag {tag}: No varying parameters, skipping"
+                )
                 continue
 
             # Extract max_sr
@@ -628,9 +656,11 @@ def plot_sr_vs_p_comparison(
             plt.legend(fontsize=11, loc="best")
             plt.tight_layout()
 
-            # Save plot
+            # Save plot - ensure directory exists
+            tag_dir = os.path.join(save_path, tag)
+            os.makedirs(tag_dir, exist_ok=True)
             plot_path = os.path.join(
-                save_path, tag, f"comparison_{tag}_maxsr_vs_{param_name}.png"
+                tag_dir, f"comparison_{tag}_maxsr_vs_{param_name}.png"
             )
             plt.savefig(plot_path, dpi=300, bbox_inches="tight")
             plt.close()
@@ -705,11 +735,10 @@ def plot_retrain(
 
 def entry_point():
     networks = ["gnn", "baseline", "search_tree"]
-    t_tags = ["t1", "t2", "t3"]
-    # r_tags = ["r12", "r21", "r13", "r23", "r31", "r32"]
-    r_tags = []
-    e_tags = ["e11", "e12", "e13", "e21", "e22", "e23", "e31", "e32", "e33"]
-    tags = t_tags + r_tags + e_tags
+    training_tags = ["t1", "t2"]
+    retraining_tags = []  # ["r12", "r21", "r13", "r23", "r31", "r32"]
+    eval_tags = []  # ["e11", "e12", "e13", "e21", "e22", "e23", "e31", "e32", "e33"]
+    tags = training_tags + retraining_tags + eval_tags
     result_path = f"results/plots"
     # Create directories if they don't exist
     for tag in tags:
@@ -751,7 +780,7 @@ def entry_point():
                         }
                     )
         all_data[nt] = data
-    plot_agents_together_sr_vs_epoch(all_data, result_path)  # type: ignore
+    plot_agents_together_sr_vs_epoch(all_data, result_path)
     plot_sr_vs_p_comparison(all_data, result_path)
     # plot_sr_vs_p(all_data, result_path)
     # plot_sr_vs_epoch_r(all_data, result_path)

@@ -64,6 +64,7 @@ def plot_skill_results(result_dict: dict[str, float]):
 
     plt.tight_layout()
     plt.show()
+    plt.savefig("results/skills/eval/plots/skill_evaluation_results.png", dpi=300)
 
 
 def plot_skill_results_from_file(file: str):

@@ -8,6 +8,7 @@ from src.core.skills.skill import BaseSkill
 class AgentConfig:
     batch_size: int = 2048
     eval: bool = False
+    retrain: bool = False
 
 
 class BaseAgent(ABC):
