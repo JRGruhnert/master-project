@@ -1,5 +1,5 @@
 from src.core.agents.ppo import PPOAgentConfig
-from src.core.modules.reward_module import RewardConfig
+from src.core.modules.reward_module import RewardConfig, RewardMode
 from src.core.modules.storage_module import StorageConfig
 from src.experiments.pepr import PePrConfig
 from scripts.train import TrainConfig
@@ -22,6 +22,7 @@ config = TrainConfig(
     reward=RewardConfig(
         step_reward=-0.01,
         success_reward=1.0,
+        mode=RewardMode.SPARSE,
     ),
     storage=storage,
     use_wandb=False,

@@ -11,7 +11,7 @@ storage = StorageConfig(
     states_tag="Minimal",
 )
 config = TrainConfig(
-    tag="t1",
+    tag="t1_dense",
     nt=NetworkType.PPO_BASELINE,
     experiment=PePrConfig(
         p_empty=0.0,
@@ -22,7 +22,7 @@ config = TrainConfig(
     reward=RewardConfig(
         step_reward=-0.01,
         success_reward=1.0,
-        mode=RewardMode.SPARSE,
+        mode=RewardMode.DENSE,
     ),
     storage=storage,
     use_wandb=False,

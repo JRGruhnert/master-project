@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from enum import Enum
 
 import torch
 
@@ -8,10 +9,17 @@ from src.core.skills.skill import BaseSkill
 from src.core.state import BaseState
 
 
+class RewardMode(Enum):
+    SPARSE = "sparse"
+    DENSE = "dense"
+    SKILL_EVAL = "skill_eval"
+
+
 @dataclass
 class RewardConfig:
     step_reward: float
     success_reward: float
+    mode: RewardMode
 
 
 class RewardModule(ABC):

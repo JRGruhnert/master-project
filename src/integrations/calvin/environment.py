@@ -23,26 +23,18 @@ class CalvinEnvironment(BaseEnvironment):
 
         self.env = Calvin(calvin_config)
 
-    def reset(
-        self, skill: BaseSkill | None = None
-    ) -> tuple[CalvinObservation, CalvinObservation]:
+    def reset(self):
         goal_calvin, _, _, _ = self.env.reset(settle_time=50)
         self.goal = CalvinObservation(goal_calvin)
-
         self.current_env, _, _, _ = self.env.reset(settle_time=50)
         self.current = CalvinObservation(self.current_env)
-        if skill:
-            # Should fullfill preconditions for skill
-            while True:
-                self.current_env, _, _, _ = self.env.reset(settle_time=50)
-                self.current = CalvinObservation(self.current_env)
-                if self.evaluate_skill(skill.precons):
-                    break
-        else:
-            # Current and goal should not be equal
-            while self.reward_module.is_equal(self.current, self.goal):
-                self.current_env, _, _, _ = self.env.reset(settle_time=50)
-                self.current = CalvinObservation(self.current_env)
+
+    def sample_task(self) -> tuple[CalvinObservation, CalvinObservation]:
+        self.reset()
+        # Current and goal should not be equal
+        while self.reward_module.is_equal(self.current, self.goal):
+            self.current_env, _, _, _ = self.env.reset(settle_time=50)
+            self.current = CalvinObservation(self.current_env)
 
         return self.current, self.goal
 
@@ -78,3 +70,16 @@ class CalvinEnvironment(BaseEnvironment):
 
     def evaluate_skill(self, values: dict[str, torch.Tensor]) -> bool:
         return self.reward_module.is_skill_equal(values, self.current)
+
+    def sample_skill_prerequisites(
+        self,
+        skill: BaseSkill,
+        prerequisites: tuple[str, torch.Tensor] | None = None,
+    ) -> tuple[CalvinObservation, CalvinObservation]:
+        self.reset()
+        while True:
+            self.current_env, _, _, _ = self.env.reset(settle_time=50)
+            self.current = CalvinObservation(self.current_env)
+            if self.evaluate_skill(skill.precons):
+                break
+        return self.current, self.goal

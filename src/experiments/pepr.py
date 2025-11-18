@@ -3,6 +3,7 @@ import random
 
 from loguru import logger
 from src.core.skills.skill import BaseSkill, EmptySkill
+from src.experiments.experiment import Experiment
 from src.integrations.calvin.environment import CalvinEnvironment
 from src.integrations.calvin.observation import CalvinObservation
 from src.core.skills.tapas import TapasSkill
@@ -14,13 +15,13 @@ class PePrConfig:
     p_rand: float
 
 
-class PePrExperiment:
+class PePrExperiment(Experiment):
     """Simple Wrapper for centralized data loading and initialisation."""
 
     def __init__(self, config: PePrConfig, env: CalvinEnvironment):
         # We sort based on Id for the baseline network to be consistent
+        super().__init__(env)
         self.config = config
-        self.env = env
         num_skills = 6 if len(env.storage_module.skills) < 12 else 16
         self.max_episode_length = int(
             num_skills
@@ -43,9 +44,9 @@ class PePrExperiment:
 
         return self.current
 
-    def reset(self) -> tuple[CalvinObservation, CalvinObservation]:
+    def sample(self) -> tuple[CalvinObservation, CalvinObservation]:
         self.current_step = 0
-        self.current, goal = self.env.reset()
+        self.current, goal = self.env.sample_task()
         return self.current, goal
 
     def evaluate(self) -> tuple[float, bool]:

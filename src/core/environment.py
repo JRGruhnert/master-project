@@ -13,7 +13,7 @@ class EnvironmentConfig:
 
 class BaseEnvironment(ABC):
     @abstractmethod
-    def reset(
+    def sample_task(
         self,
         skill: BaseSkill | None = None,
     ) -> tuple[BaseObservation, BaseObservation]:

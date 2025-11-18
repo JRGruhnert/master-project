@@ -8,6 +8,7 @@ from src.core.modules.buffer_module import BufferModule
 from src.core.modules.reward_module import (
     DenseRewardModule,
     RewardConfig,
+    RewardMode,
     SparseRewardModule,
 )
 from src.core.modules.storage_module import StorageModule, StorageConfig
@@ -42,10 +43,19 @@ def train_agent(config: TrainConfig):
         config.tag,
         config.nt,
     )
-    reward_module = SparseRewardModule(
-        config.reward,
-        storage_module.states,
-    )
+    if config.reward.mode == RewardMode.DENSE:
+        reward_module = DenseRewardModule(
+            config.reward,
+            storage_module.states,
+        )
+    elif config.reward.mode == RewardMode.SPARSE:
+        reward_module = SparseRewardModule(
+            config.reward,
+            storage_module.states,
+        )
+    else:
+        raise ValueError(f"Unsupported reward mode: {config.reward.mode}")
+
     buffer_module = BufferModule(
         reward_module,
         config.agent.batch_size,
@@ -139,7 +149,7 @@ def train_agent(config: TrainConfig):
         # print(f"Starting Epoch {epoch}")  # Debug output
         terminal = False
         batch_rdy = False
-        obs, goal = experiment.reset()
+        obs, goal = experiment.sample()
         while not terminal and not batch_rdy:
             skill = agent.act(obs, goal)
             # print(f"Chosen Skill: {skill.name}")  # Debug output

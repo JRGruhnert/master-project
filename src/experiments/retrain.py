@@ -21,7 +21,7 @@ class RetrainExperiment:
         return self.env.step(skill)
 
     def reset(self) -> tuple[CalvinObservation, CalvinObservation]:
-        return self.env.reset()
+        return self.env.sample_task()
 
     def evaluate(self) -> tuple[float, bool]:
         return self.env.evaluate()
