@@ -10,7 +10,7 @@ from src.modules.evaluators.sparse import SparseEvaluator, SparseEvaluatorConfig
 from src.modules.storage import Storage
 from src.experiments.experiment import Experiment, ExperimentConfig
 from src.experiments.pepr import PePrExperiment, PePrConfig
-from src.experiments.skill_check import SkillCheckExperiment, SkillCheckConfig
+from src.experiments.skill_check import SkillCheckExperiment, SkillCheckExperimentConfig
 from src.environments.calvin import (
     CalvinEnvironment,
     CalvinEnvironmentConfig,
@@ -27,7 +27,7 @@ def select_experiment(
 
     if isinstance(config, PePrConfig):
         return PePrExperiment(config, env, storage)
-    elif isinstance(config, SkillCheckConfig):
+    elif isinstance(config, SkillCheckExperimentConfig):
         return SkillCheckExperiment(config, env, storage)
     else:
         raise ValueError(f"Unknown experiment type: {type(config)}")
