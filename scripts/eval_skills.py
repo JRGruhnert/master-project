@@ -44,8 +44,13 @@ class SkillEvaluator:
         self.logger.start({"iterations_per_skill": self.config.iterations})
 
         # Evaluate all skills
-        for skill in self.storage.skills:
+        for index, skill in enumerate(self.storage.skills):
             self.results[skill.name] = self.evaluate_skill(skill)
+            metrics = {
+                "skill_name": skill.name,
+                "success_rate": self.results[skill.name],
+            }
+            self.logger.log_metrics(metrics, epoch=index)
 
         # Save results to a JSON file
         with open(f"{self.storage.plots_saving_path}/results.json", "w") as f:
