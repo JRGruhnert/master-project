@@ -7,6 +7,7 @@ from src.experiments.pepr import PePrConfig
 from scripts.train import TrainConfig
 from src.environments.environment import EnvironmentConfig
 
+mode = LogMode.TERMINAL
 render = False
 eval = False
 tag = "t1_sparse"
@@ -15,7 +16,7 @@ config = TrainConfig(
     agent=BaselineAgentConfig(eval=eval),
     buffer=BufferConfig(),
     logger=LoggerConfig(
-        mode=LogMode.WANDB,
+        mode=mode,
         wandb_tag=tag,
     ),
     storage=StorageConfig(
