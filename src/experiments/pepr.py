@@ -39,6 +39,7 @@ class PePrExperiment(Experiment):
         return self.current, goal
 
     def step(self, skill: Skill) -> tuple[StateValueDict, float, bool, bool]:
+        self.current_step += 1
         sample = random.random()
         if sample < self.config.p_empty:  # 0-p_empty>
             logger.info("Taking Empty Step")
