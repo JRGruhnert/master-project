@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import torch
 from src.modules.evaluators.skill import SkillEvaluator, SkillEvaluatorConfig
 from src.modules.storage import Storage
@@ -7,6 +8,7 @@ from src.environments.environment import Environment
 from src.observation.observation import StateValueDict
 
 
+@dataclass
 class SkillCheckExperimentConfig(ExperimentConfig):
     evaluator: SkillEvaluatorConfig
 

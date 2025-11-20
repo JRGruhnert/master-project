@@ -10,7 +10,7 @@ from scripts.train import TrainConfig
 mode = LogMode.TERMINAL
 render = False
 eval = False
-tag = "t1_sparse"
+tag = "t1_s"
 
 config = TrainConfig(
     agent=BaselineAgentConfig(eval=eval),

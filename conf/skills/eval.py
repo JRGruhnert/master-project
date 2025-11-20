@@ -1,23 +1,35 @@
 from scripts.eval_skills import SkillEvalConfig
-from src.modules.rewards.reward import EvaluatorConfig
+from src.environments.calvin import CalvinEnvironmentConfig
+from src.experiments.skill_check import SkillCheckExperimentConfig
+from src.modules.evaluators.skill import SkillEvaluatorConfig
+from src.modules.evaluators.sparse import SparseEvaluatorConfig
+from src.modules.logger import LogMode, LoggerConfig
 from src.modules.storage import StorageConfig
-from src.environments.environment import EnvironmentConfig
-from src.environments.environment import EnvironmentConfig
 
-storage = StorageConfig(
-    skills_tag="Normal",
-    states_tag="Normal",
-    checkpoint_path="results/gnn4/gnn_small_pe_0.0_pr_0.0/model_cp_best.pth",
-)
+mode = LogMode.TERMINAL
+render = False
+eval = False
+tag = "eval"
+
 config = SkillEvalConfig(
-    tag="eval",
-    env=EnvironmentConfig(
-        render=False,
-    ),
-    evaluator=EvaluatorConfig(
-        step_reward=-0.01,
-        success_reward=1.0,
-    ),
-    storage=storage,
+    tag=tag,
     iterations=100,
+    logger=LoggerConfig(
+        mode=mode,
+        wandb_tag=tag,
+    ),
+    storage=StorageConfig(
+        skills_tag="Normal",
+        states_tag="Normal",
+        tag=tag,
+        network="none",
+    ),
+    experiment=SkillCheckExperimentConfig(
+        evaluator=SkillEvaluatorConfig(),
+    ),
+    environment=CalvinEnvironmentConfig(render=render),
+    evaluator=SparseEvaluatorConfig(
+        step_reward=0.0,
+        success_reward=0.0,
+    ),
 )
