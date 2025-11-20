@@ -1,7 +1,6 @@
 from src.agents.ppo.baseline import BaselineAgentConfig
 from src.modules.buffer import BufferConfig
 from src.modules.evaluators.dense import DenseEvaluatorConfig
-from src.modules.evaluators.sparse import SparseEvaluatorConfig
 from src.modules.logger import LogMode, LoggerConfig
 from src.modules.storage import StorageConfig
 from src.experiments.pepr import PePrConfig
