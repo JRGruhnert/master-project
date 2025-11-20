@@ -38,7 +38,7 @@ class SkillCheckExperiment(Experiment):
                 )
                 if not self.evaluator.is_equal(obs_like, current):
                     continue  # Prerequisite not met, resample
-                self.env.step(pre_skill)
+                current = self.env.step(pre_skill)[0]  # Execute prerequisite skill
             obs_like2 = self._get_conditions_as_observation(skill.precons, current)
             equal = self.evaluator.is_equal(obs_like2, current)
             obs_like3 = self._get_conditions_as_observation(skill.postcons, goal)
@@ -48,7 +48,7 @@ class SkillCheckExperiment(Experiment):
 
     def step(self, skill: Skill) -> bool:
         """Take a step in the environment using the provided skill. Returns True if skill postconditions are met."""
-        current, _, _ = self.env.step(skill)
+        current = self.env.step(skill)[0]
         return self.evaluator.step(
             self._get_conditions_as_observation(skill.postcons, current),
             current,
