@@ -70,6 +70,9 @@ class SkillCheckExperiment(Experiment):
         if skill_name.endswith("Back"):
             pre_skill_name = skill_name.removesuffix("Back")
             return self.storage.get_skill_by_name(pre_skill_name)
+        elif skill_name.startswith("Place"):
+            pre_skill_name = skill_name.replace("Place", "Grab")
+            return self.storage.get_skill_by_name(pre_skill_name)
         return None
 
     def metadata(self) -> dict:
