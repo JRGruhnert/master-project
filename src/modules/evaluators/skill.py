@@ -30,7 +30,7 @@ class SkillEvaluator(Evaluator):
         goal: StateValueDict,
     ) -> tuple[float, bool]:
         "Returns the step reward and wether the step is a terminal step, cause some ending condition was met."
-        raise NotImplementedError()
+        return 0.0, self.is_equal(current, goal)
 
     def same_areas(self, conditions: StateValueDict, goal: StateValueDict) -> bool:
         """Checks if all area states are equal between conditions and goal."""
