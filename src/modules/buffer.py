@@ -59,7 +59,10 @@ class Buffer:
             "terminals": torch.tensor(self.terminals),
         }
         torch.save(data, file_path)
-        return sum(self.success) / len(self.success) if self.success else 0
+        return self.success_rate()
+
+    def success_rate(self) -> float:
+        return self.success.count(True) / max(1, self.terminals.count(True))
 
     def act_values(
         self,
@@ -99,6 +102,7 @@ class Buffer:
         return {
             "total_reward": sum(self.rewards),
             "average_reward": sum(self.rewards) / self.config.batch_size,
-            "average_length": self.terminals.count(True) / self.config.batch_size,
-            "success_rate": self.success.count(True) / self.terminals.count(True),
+            "average_length": self.config.batch_size
+            / max(1, self.terminals.count(True)),
+            "success_rate": self.success_rate(),
         }
