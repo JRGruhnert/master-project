@@ -2,11 +2,11 @@ from dataclasses import dataclass
 from functools import cached_property
 import os
 
-from src.skills.skills import SKILLS_BY_TAG
-from src.states.states import STATES_BY_TAG
-from src.states.state import State
 from src.skills.skill import Skill
-from src.networks import NetworkType
+from src.skills.skills import SKILLS_BY_TAG
+from src.skills.tapas import TapasSkill
+from src.states.state import State
+from src.states.states import STATES_BY_TAG
 
 
 @dataclass
@@ -28,6 +28,20 @@ class Storage:
         config: StorageConfig,
     ):
         self.config = config
+        self.states: list[State] = sorted(
+            STATES_BY_TAG.get(self.config.states_tag, []), key=lambda s: s.id
+        )
+        # We sort based on Id for the baseline network to be consistent
+        self.skills: list[Skill] = sorted(
+            SKILLS_BY_TAG.get(self.config.skills_tag, []), key=lambda s: s.id
+        )
+        print(
+            f"Loaded skills for tag {self.config.skills_tag}: {[s.name for s in self.skills]}"
+        )
+        for skill in self.skills:
+            if isinstance(skill, TapasSkill):
+                skill.initialize_conditions(self.states)
+                skill.initialize_overrides(self.states)
 
     def create_directory(self, path: str):
         if not os.path.exists(path):
@@ -55,22 +69,3 @@ class Storage:
     def plots_saving_path(self) -> str:
         directory_path = self.agent_saving_path + self.config.plots_path + "/"
         return self.create_directory(directory_path)
-
-    @cached_property
-    def skills(self) -> list[Skill]:
-        # We sort based on Id for the baseline network to be consistent
-        skills = sorted(
-            SKILLS_BY_TAG.get(self.config.skills_tag, []), key=lambda s: s.id
-        )
-        print(
-            f"Loaded skills for tag {self.config.skills_tag}: {[s.name for s in skills]}"
-        )
-        for skill in skills:
-            skill.initialize_conditions(self.states)
-            skill.initialize_overrides(self.states)
-        return skills  # type: ignore
-
-    @cached_property
-    def states(self) -> list[State]:
-        # We sort based on Id for the baseline network to be consistent
-        return sorted(STATES_BY_TAG.get(self.config.states_tag, []), key=lambda s: s.id)

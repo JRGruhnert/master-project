@@ -2,11 +2,9 @@ from dataclasses import dataclass
 
 from loguru import logger
 import torch
-from src.agents.agent import Agent, AgentConfig
 from src.agents.ppo.ppo import PPOAgent, PPOAgentConfig
 from src.modules.buffer import Buffer
 from src.modules.storage import Storage
-from src.networks.ppo_network import PPO, PPOConfig
 from tapas_gmm.utils.select_gpu import device
 from src.networks.baseline.baseline1 import Baseline
 
