@@ -35,9 +35,12 @@ class SkillEvaluator:
     def evaluate_skill(self, skill: Skill) -> float:
         success_count = 0.0
         for _ in range(self.config.iterations):
-            self.experiment.sample_task(skill)
-            if self.experiment.step(skill):
-                success_count += 1.0
+            if self.experiment.sample_task(skill):
+                if self.experiment.step(skill):
+                    success_count += 1.0
+            else:
+                print(f"Could not sample suitable task for skill {skill.name}")
+                break
         return success_count / self.config.iterations
 
     def run(self):

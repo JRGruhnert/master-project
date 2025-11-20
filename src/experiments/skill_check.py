@@ -11,6 +11,7 @@ from src.observation.observation import StateValueDict
 @dataclass
 class SkillCheckExperimentConfig(ExperimentConfig):
     evaluator: SkillEvaluatorConfig
+    max_sample_attempts: int = 1000
 
 
 class SkillCheckExperiment(Experiment):
@@ -26,10 +27,11 @@ class SkillCheckExperiment(Experiment):
         self.pre_skill = None
         self.evaluator = SkillEvaluator(config.evaluator, storage)
 
-    def sample_task(self, skill: Skill):
+    def sample_task(self, skill: Skill) -> bool:
         """Samples a new task from the environment that is suitable for the given skill."""
         pre_skill = self._get_prerequisite_skill(skill)
-        while True:
+        attempts = 0
+        while attempts < self.config.max_sample_attempts:
             current, goal = self.env.sample_task()
             if pre_skill:
                 # If the skill has prerequisite (can only be evaluated by executing prerequisite first)
@@ -44,7 +46,9 @@ class SkillCheckExperiment(Experiment):
             obs_like3 = self._get_conditions_as_observation(skill.postcons, goal)
             same_areas = self.evaluator.same_areas(obs_like3, goal)
             if equal and same_areas:
-                break
+                return True  # Suitable task found
+            attempts += 1
+        return False  # Failed to find suitable task
 
     def step(self, skill: Skill) -> bool:
         """Take a step in the environment using the provided skill. Returns True if skill postconditions are met."""
