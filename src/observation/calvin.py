@@ -30,4 +30,4 @@ class CalvinObservation(StateValueDict):
             state_dict[f"{k}_scalar"] = torch.tensor(
                 np.array([val]), dtype=torch.float32
             )
-        return cls(state_dict)
+        return cls(state_dict, batch_size=[])
