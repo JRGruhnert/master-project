@@ -36,8 +36,7 @@ class SkillEvaluator:
         success_count = 0.0
         for _ in range(self.config.iterations):
             self.experiment.sample_task(skill)
-            self.experiment.step(skill)
-            if self.experiment.evaluate(skill)[1]:
+            if self.experiment.step(skill):
                 success_count += 1.0
         return success_count / self.config.iterations
 
