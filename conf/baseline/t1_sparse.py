@@ -1,11 +1,11 @@
 from src.agents.ppo.baseline import BaselineAgentConfig
+from src.environments.calvin import CalvinEnvironmentConfig
 from src.modules.buffer import BufferConfig
 from src.modules.evaluators.sparse import SparseEvaluatorConfig
 from src.modules.logger import LogMode, LoggerConfig
 from src.modules.storage import StorageConfig
 from src.experiments.pepr import PePrConfig
 from scripts.train import TrainConfig
-from src.environments.environment import EnvironmentConfig
 
 mode = LogMode.TERMINAL
 render = False
@@ -29,7 +29,7 @@ config = TrainConfig(
         p_empty=0.0,
         p_rand=0.0,
     ),
-    environment=EnvironmentConfig(render=render),
+    environment=CalvinEnvironmentConfig(render=render),
     evaluator=SparseEvaluatorConfig(
         step_reward=-0.01,
         success_reward=1.0,
