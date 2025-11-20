@@ -1,10 +1,10 @@
-from src.core.agents.search_tree import SearchTreeAgentConfig
-from src.core.modules.reward_module import RewardConfig
-from src.core.modules.storage_module import StorageConfig
+from src.agents.search_tree import SearchTreeAgentConfig
+from src.modules.rewards.reward import EvaluatorConfig
+from src.modules.storage import StorageConfig
 from src.experiments.pepr import PePrConfig
 from scripts.train import TrainConfig
-from src.core.networks import NetworkType
-from src.core.environment import EnvironmentConfig
+from src.networks import NetworkType
+from src.environments.environment import EnvironmentConfig
 
 storage = StorageConfig(
     skills_tag="Minimal",
@@ -17,9 +17,9 @@ config = TrainConfig(
         p_empty=0.0,
         p_rand=0.0,
     ),
-    env=EnvironmentConfig(render=False),
+    environment=EnvironmentConfig(render=False),
     agent=SearchTreeAgentConfig(),
-    reward=RewardConfig(
+    evaluator=EvaluatorConfig(
         step_reward=-0.01,
         success_reward=1.0,
     ),

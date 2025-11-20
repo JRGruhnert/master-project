@@ -2,15 +2,16 @@ from dataclasses import dataclass
 import random
 
 from loguru import logger
-from src.core.skills.skill import BaseSkill, EmptySkill
-from src.experiments.experiment import Experiment
-from src.integrations.calvin.environment import CalvinEnvironment
-from src.integrations.calvin.observation import CalvinObservation
-from src.core.skills.tapas import TapasSkill
+from src.modules.storage import Storage
+from src.skills.skill import Skill
+from src.skills.empty import EmptySkill
+from src.experiments.experiment import Experiment, ExperimentConfig
+from src.environments.environment import Environment
+from src.observation.observation import StateValueDict
 
 
 @dataclass
-class PePrConfig:
+class PePrConfig(ExperimentConfig):
     p_empty: float
     p_rand: float
 
@@ -18,11 +19,11 @@ class PePrConfig:
 class PePrExperiment(Experiment):
     """Simple Wrapper for centralized data loading and initialisation."""
 
-    def __init__(self, config: PePrConfig, env: CalvinEnvironment):
+    def __init__(self, config: PePrConfig, env: Environment, storage: Storage):
         # We sort based on Id for the baseline network to be consistent
-        super().__init__(env)
+        super().__init__(config, env, storage)
         self.config = config
-        num_skills = 6 if len(env.storage_module.skills) < 12 else 16
+        num_skills = 6 if len(self.storage.skills) < 12 else 16
         self.max_episode_length = int(
             num_skills
             + num_skills * self.config.p_empty
@@ -30,30 +31,31 @@ class PePrExperiment(Experiment):
         )
         # 6 or 16
         self.current_step = 0
+        self.current: StateValueDict | None = None
 
-    def step(self, skill: BaseSkill) -> CalvinObservation:
-        sample = random.random()
-        if sample < self.config.p_empty or isinstance(skill, EmptySkill):  # 0-p_empty>
-            logger.warning("Taking Empty Step")
-            pass
-        elif sample < self.config.p_empty + self.config.p_rand:  # 0-p_empty + p_rand>
-            logger.warning("Taking Random Step")
-            self.current = self.env.step(random.choice(self.env.storage_module.skills))
-        else:  # The rest
-            self.current = self.env.step(skill)
-
-        return self.current
-
-    def sample(self) -> tuple[CalvinObservation, CalvinObservation]:
+    def sample_task(self) -> tuple[StateValueDict, StateValueDict]:
         self.current_step = 0
         self.current, goal = self.env.sample_task()
         return self.current, goal
 
-    def evaluate(self) -> tuple[float, bool]:
-        self.current_step += 1
-        reward, done = self.env.evaluate()
-        terminal = True if self.current_step >= self.max_episode_length else done
-        return reward, terminal
+    def step(self, skill: Skill) -> tuple[StateValueDict, float, bool, bool]:
+        sample = random.random()
+        if sample < self.config.p_empty:  # 0-p_empty>
+            logger.info("Taking Empty Step")
+            overwrite_skill = EmptySkill()
+        elif sample < self.config.p_empty + self.config.p_rand:  # 0-p_empty + p_rand>
+            logger.info("Taking Random Step")
+            overwrite_skill = random.choice(self.storage.skills)
+        else:  # The rest
+            overwrite_skill = skill
 
-    def close(self):
-        self.env.close()
+        self.current, reward, done = self.env.step(overwrite_skill)
+        terminal = True if self.current_step >= self.max_episode_length else done
+        return self.current, reward, done, terminal
+
+    def metadata(self) -> dict:
+        return {
+            "p_empty": self.config.p_empty,
+            "p_rand": self.config.p_rand,
+            "max_episode_length": self.max_episode_length,
+        }

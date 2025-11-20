@@ -1,32 +1,25 @@
-from src.networks.ppo_network import PPOConfig
 from src.modules.rewards.reward import EvaluatorConfig
 from src.modules.storage import StorageConfig
 from src.experiments.pepr import PePrConfig
-from scripts.train import TrainConfig
+from scripts.debug import DebugConfig
 from src.networks import NetworkType
 from src.environments.environment import EnvironmentConfig
 
 storage = StorageConfig(
-    skills_tag="Minimal",
-    states_tag="Minimal",
+    skills_tag="Normal",
+    states_tag="Normal",
 )
-config = TrainConfig(
-    tag="t1",
+config = DebugConfig(
+    tag="test",
     nt=NetworkType.PPO_GNN,
     experiment=PePrConfig(
         p_empty=0.0,
         p_rand=0.0,
     ),
-    environment=EnvironmentConfig(
-        render=False,
-    ),
-    agent=PPOConfig(
-        eval=False,
-    ),
-    evaluator=EvaluatorConfig(
-        step_reward=-0.01,
-        success_reward=1.0,
+    env=EnvironmentConfig(render=True),
+    reward=EvaluatorConfig(
+        step_reward=-1.0,
+        success_reward=100.0,
     ),
     storage=storage,
-    use_wandb=False,
 )

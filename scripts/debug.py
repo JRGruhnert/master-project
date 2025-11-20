@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 from omegaconf import OmegaConf, SCMode
 
-from src.core.modules.reward_module import RewardConfig, SparseRewardModule
-from src.core.modules.storage_module import StorageModule, StorageConfig
-from src.core.environment import EnvironmentConfig
-from src.core.networks import NetworkType
+from src.modules.rewards.reward import EvaluatorConfig, SparseRewardModule
+from src.modules.storage import Storage, StorageConfig
+from src.environments.environment import EnvironmentConfig
+from src.networks import NetworkType
 from src.experiments.pepr import PePrExperiment, PePrConfig
-from src.integrations.calvin.environment import CalvinEnvironment
+from src.environments.calvin import CalvinEnvironment
 from tapas_gmm.utils.argparse import parse_and_build_config
 
 
@@ -16,18 +16,18 @@ class DebugConfig:
     nt: NetworkType
     experiment: PePrConfig
     env: EnvironmentConfig
-    reward: RewardConfig
+    reward: EvaluatorConfig
     storage: StorageConfig
 
 
 def train_agent(config: DebugConfig):
     # Initialize the environment and agent
-    storage_module = StorageModule(
+    storage_module = Storage(
         config.storage,
         config.tag,
         config.nt,
     )
-    storage_module2 = StorageModule(
+    storage_module2 = Storage(
         StorageConfig(
             skills_tag="Normal",
             states_tag="Normal",
@@ -53,7 +53,7 @@ def train_agent(config: DebugConfig):
         ),
     )  # Wrap environment in experiment
 
-    obs, goal = experiment.reset()
+    obs, goal = experiment.sample()
     while True:
         print(f"{0}: Reset")
         for i, task in enumerate(storage_module.skills, start=1):
@@ -62,7 +62,7 @@ def train_agent(config: DebugConfig):
         task_id = int(choice)
         if task_id == 0:
             print("Resetting environment...")
-            obs, goal = experiment.reset()
+            obs, goal = experiment.sample()
         else:
             print(
                 f"Executing task {task_id}: {storage_module.skills[task_id - 1].name}"

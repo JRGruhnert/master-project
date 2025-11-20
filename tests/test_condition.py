@@ -1,7 +1,7 @@
 import pytest
 import torch
-from src.core.logic.eval_condition import AreaEvalCondition, PreciseEvalCondition
-from src.core.logic.distance_condition import (
+from src.logic.eval_condition import AreaEvalCondition, PreciseEvalCondition
+from src.logic.distance_condition import (
     EulerDistanceCondition,
     QuaternionDistanceCondition,
     RangeDistanceCondition,
@@ -9,7 +9,7 @@ from src.core.logic.distance_condition import (
     FlipDistanceCondition,
 )
 
-from src.integrations.calvin.state import (
+from src.states.calvin import (
     CalvinState,
     BoolState,
     EulerState,

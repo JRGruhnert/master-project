@@ -1,6 +1,5 @@
 from src.agents.ppo.baseline import BaselineAgentConfig
 from src.modules.buffer import BufferConfig
-from src.modules.evaluators.dense import DenseEvaluatorConfig
 from src.modules.evaluators.sparse import SparseEvaluatorConfig
 from src.modules.logger import LogMode, LoggerConfig
 from src.modules.storage import StorageConfig
@@ -30,9 +29,8 @@ config = TrainConfig(
         p_rand=0.0,
     ),
     environment=EnvironmentConfig(render=render),
-    evaluator=DenseEvaluatorConfig(
+    evaluator=SparseEvaluatorConfig(
+        step_reward=-0.01,
         success_reward=1.0,
-        negative_step_reward=-0.01,
-        positive_step_reward=0.01,
     ),
 )
