@@ -69,3 +69,15 @@ class Storage:
     def plots_saving_path(self) -> str:
         directory_path = self.agent_saving_path + self.config.plots_path + "/"
         return self.create_directory(directory_path)
+
+    def get_skill_by_name(self, name: str) -> Skill | None:
+        for skill in self.skills:
+            if skill.name == name:
+                return skill
+        return None
+
+    def get_state_by_name(self, name: str) -> State | None:
+        for state in self.states:
+            if state.name == name:
+                return state
+        return None

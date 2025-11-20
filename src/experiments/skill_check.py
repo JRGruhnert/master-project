@@ -1,4 +1,5 @@
 import torch
+from src.modules.evaluators.skill import SkillEvaluator, SkillEvaluatorConfig
 from src.modules.storage import Storage
 from src.skills.skill import Skill
 from src.experiments.experiment import Experiment, ExperimentConfig
@@ -7,11 +8,13 @@ from src.observation.observation import StateValueDict
 
 
 class SkillCheckExperimentConfig(ExperimentConfig):
-    pass
+    evaluator: SkillEvaluatorConfig
 
 
 class SkillCheckExperiment(Experiment):
-    """Simple Wrapper for centralized data loading and initialisation."""
+    """Simple Wrapper for centralized data loading and initialisation.
+    NOTE: This experiment is very specific to CalvinEnvironment and Tapas Skills and does not generalize.
+    """
 
     def __init__(
         self, config: SkillCheckExperimentConfig, env: Environment, storage: Storage
@@ -19,99 +22,53 @@ class SkillCheckExperiment(Experiment):
         super().__init__(config, env, storage)
         self.config = config
         self.pre_skill = None
+        self.evaluator = SkillEvaluator(config.evaluator, storage)
 
     def sample_task(self, skill: Skill):
-        pass
-
-    #    self.pre_skill, prerequisites = self._get_prerequisite_skill(skill)
-    #    if (
-    #        self.pre_skill
-    #    ):  # Skill has prerequisite (can only be evaluated by executing prerequisite first)
-    #        while not self.eval_start(skill):
-    #            self.env.sample_skill_prerequisites(self.pre_skill, prerequisites)
-    #            self.env.step(self.pre_skill)
-    #    self.env.sample_skill_prerequisites(skill)
+        """Samples a new task from the environment that is suitable for the given skill."""
+        pre_skill = self._get_prerequisite_skill(skill)
+        while True:
+            current, goal = self.env.sample_task()
+            if pre_skill:
+                # If the skill has prerequisite (can only be evaluated by executing prerequisite first)
+                obs_like = self._get_conditions_as_observation(
+                    pre_skill.precons, current
+                )
+                if not self.evaluator.is_equal(obs_like, current):
+                    continue  # Prerequisite not met, resample
+                self.env.step(pre_skill)
+            obs_like2 = self._get_conditions_as_observation(skill.precons, current)
+            equal = self.evaluator.is_equal(obs_like2, current)
+            obs_like3 = self._get_conditions_as_observation(skill.postcons, goal)
+            same_areas = self.evaluator.same_areas(obs_like3, goal)
+            if equal and same_areas:
+                break
 
     def step(self, skill: Skill) -> bool:
         """Take a step in the environment using the provided skill. Returns True if skill postconditions are met."""
-        self.env.step(skill)
-        return True
-        # return self.eval_end(skill)
+        current, _, _ = self.env.step(skill)
+        return self.evaluator.step(
+            self._get_conditions_as_observation(skill.postcons, current),
+            current,
+        )[1]
 
-    # def _get_prerequisite_skill(
-    #    self, skill: Skill
-    # ) -> tuple[Skill, tuple[str, torch.Tensor]]:
-    #    """Get the prerequisite skill for a given skill name"""
-    #    if skill.name.endswith("Back"):
-    #        return True, skill.name.removesuffix("Back")
-    #    elif skill.name.startswith("Place"):
-    #        base_name = skill.name.removeprefix("Place")
-    #        grab_name = "Grab" + base_name
-    #        return True, grab_name
-    #    return False, ""
+    def _get_conditions_as_observation(
+        self, conditions: dict[str, torch.Tensor], observation: StateValueDict
+    ) -> StateValueDict:
+        """Convert a dictionary of conditions into a StateValueDict."""
+        values = conditions.copy()  # Python passes by reference so..
+        # NOTE: Again an exception for the Flip State...
+        if "base__button_scalar" in values:
+            values["base__button_scalar"] = observation["base__button_scalar"]
+        return StateValueDict.from_tensor_dict(values)
 
-    # def eval_start(self, skill: Skill) -> bool:
-    #    return self.env.evaluate_skill(skill.precons)
-
-    # def eval_end(self, skill: Skill) -> bool:
-    #    return self.env.evaluate_skill(skill.postcons)
-
-    # def _check_skill_prerequisite(
-    #    current: StateValueDict,
-    #    goal: StateValueDict,
-    # ) -> tuple[bool, str]:
-    #    """Check if a skill has a prerequisite skill and return its name"""
-    #    if pre_skill.name == "PlaceBack":
-    #        # Check if the object is already at the goal position
-    #        obj_name = "Object"  # Assuming single object named "Object"
-    #        current_pos = current.state_dict[f"{obj_name}_position"]
-    #        goal_pos = goal.state_dict[f"{obj_name}_position"]
-    #        distance = torch.norm(current_pos - goal_pos).item()
-    #        if distance < 0.05:  # Threshold to consider as "at goal"
-    #            return False, ""
-    #        else:
-    #            return True, "GrabBack"
-    #    if skill_name.endswith("Back"):
-    #        return True, skill_name.removesuffix("Back")
-    #    elif skill_name.startswith("Place"):
-    #        base_name = skill_name.removeprefix("Place")
-    #        grab_name = "Grab" + base_name
-    #        return True, grab_name
-    #    return False, ""
-
-    # def _evaluate_conditional_skill(
-    #    pre_skill: Skill,
-    #    main_skill: Skill,
-    #    iterations: int,
-    # ) -> float:
-    #    """Evaluate a skill that requires a prerequisite skill to be executed first"""
-    #    counter = 0
-    #    for i in range(iterations):
-    #        # Execute prerequisite skill until completion
-    #        while not experiment.eval_end(pre_skill):
-    #            current, goal = experiment.sample(pre_skill)
-    #            if not experiment.eval_start(pre_skill, main_skill, current, goal):
-    #                break
-    #            _ = experiment.step(pre_skill)
-    #            # _ = experiment.eval_end(pre_skill)
-    #        # Execute main skill and check success
-    #        _ = experiment.step(main_skill)
-    #        if experiment.eval_end(main_skill):
-    #            counter += 1
-    #    return counter / iterations
-
-    # def _evaluate_single_skill(
-    #    skill: Skill,
-    #    iterations: int,
-    # ) -> float:
-    #    """Evaluate a standalone skill"""
-    #    counter = 0
-    #    for i in range(iterations):
-    #        _, _ = experiment.sample(skill)
-    #        _ = experiment.step(skill)
-    #        if experiment.eval_end(skill):
-    #            counter += 1
-    #    return counter / iterations
+    def _get_prerequisite_skill(self, skill: Skill) -> Skill | None:
+        """Get the prerequisite skill for a given skill name."""
+        skill_name = skill.name
+        if skill_name.endswith("Back"):
+            pre_skill_name = skill_name.removesuffix("Back")
+            return self.storage.get_skill_by_name(pre_skill_name)
+        return None
 
     def metadata(self) -> dict:
         return {}

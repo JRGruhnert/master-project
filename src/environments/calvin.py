@@ -80,21 +80,3 @@ class CalvinEnvironment(Environment):
 
     def close(self):
         self.env.close()
-
-    def evaluate_skill(self, values: dict[str, torch.Tensor]) -> bool:
-        return self.evaluator.is_skill_equal(
-            StateValueDict.from_tensor_dict(values), self.current
-        )
-
-    def sample_for_skill(
-        self,
-        skill: Skill,
-        prerequisites: tuple[str, torch.Tensor] | None = None,
-    ) -> tuple[StateValueDict, StateValueDict]:
-        self.reset()
-        while True:
-            self.current_env, _, _, _ = self.env.reset(settle_time=50)
-            self.current = CalvinObservation.from_internal(self.current_env)
-            if self.evaluate_skill(skill.precons):
-                break
-        return self.current, self.goal

@@ -66,7 +66,7 @@ class Trainer:
         # We get metrics before learning before the current batch is cleared
         # We also log weights here before learning to have weights for the current epoch
         metrics = self.agent.metrics()
-        self.logger.log_weights(self.agent.weights(), step=self.epoch)
+        self.logger.log_weights(self.agent.weights(), epoch=self.epoch)
 
         # Learn
         start_learning = datetime.now().replace(microsecond=0)
@@ -80,7 +80,7 @@ class Trainer:
         metrics["time/learning"] = (
             end_learning - start_learning
         ).total_seconds() / 60.0
-        self.logger.log_metrics(metrics, step=self.epoch)
+        self.logger.log_metrics(metrics, epoch=self.epoch)
 
         self.epoch += 1
         return should_stop

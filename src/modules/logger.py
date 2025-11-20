@@ -39,6 +39,7 @@ class Logger:
             )
         elif self.config.mode == LogMode.TERMINAL:
             logger.info("Logging to terminal.")
+            pprint.pprint(metadata)
         elif self.config.mode == LogMode.NONE:
             logger.info("Logging disabled.")
         else:
@@ -51,20 +52,21 @@ class Logger:
         if self.run:
             self.run.finish()
 
-    def log_metrics(self, data: dict, step: int):
+    def log_metrics(self, data: dict, epoch: int):
+        print(f"Batch summary of Epoch {epoch}:")
         if self.config.mode == LogMode.WANDB and self.run:
-            self.run.log(data, step=step)
+            self.run.log(data, step=epoch)
         elif self.config.mode == LogMode.TERMINAL:
             pprint.pprint(data)
         else:
             pass  # No logging
 
-    def log_weights(self, data: dict, step: int):
+    def log_weights(self, data: dict, epoch: int):
         if self.config.mode == LogMode.WANDB and self.run:
             histogram_data = {
                 name: wandb.Histogram(param) for name, param in data.items()
             }
             self.run.log(
                 histogram_data,
-                step=step,
+                step=epoch,
             )

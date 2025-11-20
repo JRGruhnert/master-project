@@ -10,7 +10,7 @@ from scripts.train import TrainConfig
 mode = LogMode.TERMINAL
 render = False
 eval = False
-tag = "t1_sparse"
+tag = "t1_dense2"
 
 config = TrainConfig(
     agent=BaselineAgentConfig(eval=eval),
@@ -32,7 +32,7 @@ config = TrainConfig(
     environment=CalvinEnvironmentConfig(render=render),
     evaluator=DenseEvaluatorConfig(
         success_reward=1.0,
-        negative_step_reward=-0.01,
-        positive_step_reward=0.01,
+        negative_step_reward=-0.05,
+        positive_step_reward=0.05,
     ),
 )
