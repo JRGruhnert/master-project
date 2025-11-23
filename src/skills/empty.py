@@ -16,14 +16,3 @@ class EmptySkill(Skill):
         goal: StateValueDict,
     ) -> torch.Tensor | None:
         return None
-
-    def _to_skill_format(
-        self,
-        current: StateValueDict,
-        goal: StateValueDict | None = None,
-    ) -> dict:
-        return {
-            "skill_name": self.name,
-            "skill_id": self.id,
-            "parameters": {},
-        }

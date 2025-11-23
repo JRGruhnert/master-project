@@ -5,7 +5,7 @@ from torch_geometric.data import Batch, HeteroData
 from torch_geometric.nn import GATv2Conv, GINConv
 from src.observation.calvin import CalvinObservation as MasterObservation
 from src.networks.actor_critic import GnnBase
-from tapas_gmm.utils.select_gpu import device
+from src.hardware import device
 
 
 class Gnn(GnnBase):

@@ -13,7 +13,7 @@ from src.networks.layers.encoder import (
 from src.observation.observation import StateValueDict
 from src.states.state import State
 from src.skills.skill import Skill
-from tapas_gmm.utils.select_gpu import device
+from src.hardware import device
 from loguru import logger
 
 

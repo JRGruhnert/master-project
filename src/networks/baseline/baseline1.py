@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from src.networks.actor_critic import BaselineBase
 from src.observation.observation import StateValueDict
-from tapas_gmm.utils.select_gpu import device
+from src.hardware import device
 
 
 class Baseline(BaselineBase):

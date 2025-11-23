@@ -7,25 +7,26 @@ from src.modules.logger import LogMode, LoggerConfig
 from src.modules.storage import StorageConfig
 
 mode = LogMode.TERMINAL
-render = False
-eval = False
+render = True
 tag = "eval"
 
 config = SkillEvalConfig(
     tag=tag,
-    iterations=100,
+    iterations=5,
     logger=LoggerConfig(
         mode=mode,
         wandb_tag=tag,
     ),
     storage=StorageConfig(
-        skills_tag="Normal",
-        states_tag="Normal",
+        skills_tag="DrawerBlock",
+        states_tag="Debug",
         tag=tag,
         network="none",
     ),
     experiment=SkillCheckExperimentConfig(
         evaluator=SkillEvaluatorConfig(),
+        max_sample_attempts=100,
+        sample_with_precons=True,
     ),
     environment=CalvinEnvironmentConfig(render=render),
     evaluator=SparseEvaluatorConfig(

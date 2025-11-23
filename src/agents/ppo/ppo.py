@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from torch import nn
 from torch.nn.utils.clip_grad import clip_grad_norm_
-from tapas_gmm.utils.select_gpu import device
+from src.hardware import device
 from src.agents.agent import Agent, AgentConfig
 from src.modules.buffer import Buffer
 from src.modules.storage import Storage

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import torch
+import numpy as np
 from src.observation.observation import StateValueDict
 from src.states.state import State
 
@@ -14,10 +15,6 @@ class Skill(ABC):
         self._id: int = id
         self._precons: dict[str, torch.Tensor] = {}
         self._postcons: dict[str, torch.Tensor] = {}
-        self.control_duration = -1
-        self.predict_as_batch = False
-        self.current_step = -1  # Will be increased at first prediction
-        self.predictions = None
 
     @property
     def name(self) -> str:
@@ -61,30 +58,13 @@ class Skill(ABC):
         return torch.stack(task_features, dim=0)
 
     @abstractmethod
-    def reset(
-        self,
-    ):
+    def reset(self, *args, **kwargs):
         """Prepare the skill for execution. Before each use."""
         raise NotImplementedError("Subclasses must implement method.")
 
     @abstractmethod
-    def predict(
-        self,
-        current: StateValueDict,
-        goal: StateValueDict,
-    ) -> torch.Tensor | None:
+    def predict(self, *args, **kwargs) -> np.ndarray | None:
         """
-        Get the action for the skill.
-        """
-        raise NotImplementedError("Subclasses must implement method.")
-
-    @abstractmethod
-    def _to_skill_format(
-        self,
-        current: StateValueDict,
-        goal: StateValueDict,
-    ) -> dict:
-        """
-        Serialize the skill to a dictionary format.
+        Get the next action for the skill.
         """
         raise NotImplementedError("Subclasses must implement method.")

@@ -10,7 +10,7 @@ from src.networks.layers.mlp import (
     GinStandardMLP,
     StandardMLP,
 )
-from tapas_gmm.utils.select_gpu import device
+from src.hardware import device
 
 
 class GatReadoutNetwork(nn.Module):

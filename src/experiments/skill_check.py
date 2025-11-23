@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from loguru import logger
 import torch
 from src.modules.evaluators.skill import SkillEvaluator, SkillEvaluatorConfig
 from src.modules.storage import Storage
@@ -11,7 +12,8 @@ from src.observation.observation import StateValueDict
 @dataclass
 class SkillCheckExperimentConfig(ExperimentConfig):
     evaluator: SkillEvaluatorConfig
-    max_sample_attempts: int = 1000
+    max_sample_attempts: int
+    sample_with_precons: bool  # Wether to check if precons align aswell
 
 
 class SkillCheckExperiment(Experiment):
@@ -33,18 +35,34 @@ class SkillCheckExperiment(Experiment):
         attempts = 0
         while attempts < self.config.max_sample_attempts:
             current, goal = self.env.sample_task()
+
             if pre_skill:
                 # If the skill has prerequisite (can only be evaluated by executing prerequisite first)
-                obs_like = self._get_conditions_as_observation(
-                    pre_skill.precons, current
+                pre_precons = self._to_custom_observation(
+                    pre_skill.precons,
+                    current,
+                    skill.name,
                 )
-                if not self.evaluator.is_equal(obs_like, current):
+                if not self.evaluator.is_equal(pre_precons, current):
                     continue  # Prerequisite not met, resample
                 current = self.env.step(pre_skill)[0]  # Execute prerequisite skill
-            obs_like2 = self._get_conditions_as_observation(skill.precons, current)
-            equal = self.evaluator.is_equal(obs_like2, current)
-            obs_like3 = self._get_conditions_as_observation(skill.postcons, goal)
-            same_areas = self.evaluator.same_areas(obs_like3, goal)
+
+            if self.config.sample_with_precons:
+                main_precons = self._to_custom_observation(
+                    skill.precons,
+                    current,
+                    skill.name,
+                )
+                # print(f"{current['ee_position']}")
+                logger.debug(f"Skill precons: {skill.precons}")
+                equal = self.evaluator.is_equal(main_precons, current)
+            main_postcons = self._to_custom_observation(
+                skill.postcons,
+                goal,
+                skill.name,
+            )
+            same_areas = self.evaluator.same_areas(main_postcons, goal)
+            logger.debug(f"Sampling attempt: equal={equal}, same_areas={same_areas}")
             if equal and same_areas:
                 return True  # Suitable task found
             attempts += 1
@@ -54,18 +72,42 @@ class SkillCheckExperiment(Experiment):
         """Take a step in the environment using the provided skill. Returns True if skill postconditions are met."""
         current = self.env.step(skill)[0]
         return self.evaluator.step(
-            self._get_conditions_as_observation(skill.postcons, current),
+            self._to_custom_observation(
+                skill.postcons,
+                current,
+                skill.name,
+            ),
             current,
         )[1]
 
-    def _get_conditions_as_observation(
-        self, conditions: dict[str, torch.Tensor], observation: StateValueDict
+    def _to_custom_observation(
+        self,
+        conditions: dict[str, torch.Tensor],
+        observation: StateValueDict,
+        skill_name: str = "",
     ) -> StateValueDict:
         """Convert a dictionary of conditions into a StateValueDict."""
         values = conditions.copy()  # Python passes by reference so..
         # NOTE: Again an exception for the Flip State...
         if "base__button_scalar" in values:
             values["base__button_scalar"] = observation["base__button_scalar"]
+
+        # For these skills I can't compare the ee_position
+        # Cause they don't start near origin
+        if skill_name in [
+            #    "CloseDrawerBack",
+            "OpenDrawerBack",
+            #    "OpenSlideBack",
+            #    "CloseSlideBack",
+        ]:
+            values.pop("ee_position")
+            values.pop("ee_rotation")
+
+        # For this skill the gripper opening cant be compared
+        # But it doesnt matter for evaluation
+        if skill_name == "OpenSlideBack":
+            values["ee_scalar"] = observation["ee_scalar"]
+
         return StateValueDict.from_tensor_dict(values)
 
     def _get_prerequisite_skill(self, skill: Skill) -> Skill | None:

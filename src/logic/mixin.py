@@ -137,6 +137,12 @@ class AreaMixin:
                 return name
         return None
 
+    def check_area_type_discrepancy(self, value: torch.Tensor) -> bool:
+        """Check if the given value is in the same eval and spawn area."""
+        eval_area = self.check_eval_area(value)
+        spawn_area = self.check_spawn_area(value)
+        return eval_area == spawn_area
+
     def check_area_similarity(self, current: torch.Tensor, goal: torch.Tensor) -> bool:
         """Check if both obs and goal are in the same defined area."""
         current_area = self.check_eval_area(current)

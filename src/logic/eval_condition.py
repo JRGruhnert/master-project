@@ -38,6 +38,10 @@ class AreaEvalCondition(EvalCondition, AreaMixin):
     def evaluate(self, current: torch.Tensor, goal: torch.Tensor) -> bool:
         return self.check_area_similarity(current, goal)
 
+    def is_in_area(self, value: torch.Tensor) -> bool:
+        """Checks if the given value is within the defined areas."""
+        return self.check_eval_area(value) is not None
+
 
 class IgnoreEvalCondition(EvalCondition):
     """Success condition that always returns True (ignores the check)."""

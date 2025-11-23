@@ -1,5 +1,5 @@
+from dataclasses import dataclass
 from tapas_gmm.env.calvin import Calvin
-import torch
 from src.modules.evaluators.evaluator import Evaluator
 from src.modules.storage import Storage
 from src.environments.environment import Environment, EnvironmentConfig
@@ -11,6 +11,7 @@ from src.skills.tapas import TapasSkill
 from tapas_gmm.env.calvin import CalvinConfig
 
 
+@dataclass
 class CalvinEnvironmentConfig(EnvironmentConfig):
     calvin_config: CalvinConfig = CalvinConfig(
         task="Undefined",
@@ -41,19 +42,22 @@ class CalvinEnvironment(Environment):
         self.storage = storage
 
         self.env = Calvin(self.config.calvin_config)
+        self.info = {}
 
     def reset(self):
-        goal_calvin, _, _, _ = self.env.reset(settle_time=50)
-        self.goal = CalvinObservation.from_internal(goal_calvin)
-        self.current_env, _, _, _ = self.env.reset(settle_time=50)
-        self.current = CalvinObservation.from_internal(self.current_env)
+        calvin_obs = self.env.reset(settle_time=50)[0]
+        self.goal = CalvinObservation.from_internal(calvin_obs)
+        self.calvin_obs = self.env.reset(settle_time=50)[0]
+        self.current = CalvinObservation.from_internal(self.calvin_obs)
 
     def sample_task(self) -> tuple[StateValueDict, StateValueDict]:
         self.reset()
         # Current and goal should not be equal
-        while self.evaluator.is_equal(self.current, self.goal):
-            self.current_env, _, _, _ = self.env.reset(settle_time=50)
-            self.current = CalvinObservation.from_internal(self.current_env)
+        while self.evaluator.is_equal(
+            self.current, self.goal
+        ) and self.evaluator.is_good_sample(self.current, self.goal):
+            self.calvin_obs = self.env.reset(settle_time=50)[0]
+            self.current = CalvinObservation.from_internal(self.calvin_obs)
 
         return self.current, self.goal
 
@@ -61,20 +65,15 @@ class CalvinEnvironment(Environment):
         self,
         skill: Skill,
     ) -> tuple[StateValueDict, float, bool]:
-        if isinstance(skill, TapasSkill):
-            skill.reset(self.env)
-            while (
-                action := skill.predict(
-                    self.current_env,
-                    self.goal,
-                )
-            ) is not None:
-                self.current_env, _, _, _ = self.env.step(action, self.config.render)
-                self.current = CalvinObservation.from_internal(self.current_env)
-        else:
-            raise NotImplementedError(
-                "Only TapasSkill is implemented for CalvinEnvironment."
-            )  # NOTE: This is not good. Need to make it generalize
+        assert isinstance(
+            skill,
+            TapasSkill,
+        ), "CalvinEnvironment only supports TapasSkill at this time."
+        skill.reset(self.goal, self.env)
+        while (action := skill.predict(self.calvin_obs)) is not None:
+            self.calvin_obs = self.env.step(action, self.config.render, self.info)[0]
+            self.current = CalvinObservation.from_internal(self.calvin_obs)
+
         reward, done = self.evaluator.step(self.current, self.goal)
         return self.current, reward, done
 

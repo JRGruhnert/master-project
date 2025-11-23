@@ -148,6 +148,13 @@ class AreaEulerState(EulerState):
             ),
         )
 
+    def is_in_area(self, value: torch.Tensor) -> bool:
+        """Checks if the given euler value is within the defined areas."""
+        assert isinstance(
+            self._eval_condition, AreaEvalCondition
+        ), "Eval condition is not of type AreaEvalCondition."
+        return self._eval_condition.is_in_area(value)
+
 
 class QuatState(CalvinState):
     def __init__(

@@ -5,7 +5,7 @@ import torch
 from src.agents.ppo.ppo import PPOAgent, PPOAgentConfig
 from src.modules.buffer import Buffer
 from src.modules.storage import Storage
-from tapas_gmm.utils.select_gpu import device
+from src.hardware import device
 from src.networks.baseline.baseline1 import Baseline
 
 

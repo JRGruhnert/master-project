@@ -9,7 +9,7 @@ from src.networks.layers.mlp import (
 )
 from src.observation.calvin import CalvinObservation as MasterObservation
 from src.networks.actor_critic import GnnBase, PPOType
-from tapas_gmm.utils.select_gpu import device
+from src.hardware import device
 
 
 class CombinedGoalObsNetwork(nn.Module):

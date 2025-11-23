@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from loguru import logger
 import torch
 from src.agents.ppo.ppo import PPOAgent, PPOAgentConfig
-from tapas_gmm.utils.select_gpu import device
+from src.hardware import device
 
 from src.modules.buffer import Buffer
 from src.modules.storage import Storage

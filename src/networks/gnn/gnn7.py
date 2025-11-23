@@ -8,7 +8,7 @@ from src.networks.layers.mlp import (
     GinStandardMLP,
     UnactivatedMLP,
 )
-from tapas_gmm.utils.select_gpu import device
+from src.hardware import device
 
 
 class GinVirtualReadoutNetwork(nn.Module):

@@ -202,6 +202,38 @@ _S = {
 }
 
 SKILLS_BY_TAG = {
+    "Drawer": [
+        _S["CloseDrawer"],
+        _S["CloseDrawerBack"],
+        _S["OpenDrawer"],
+        _S["OpenDrawerBack"],
+    ],
+    "Slide": [
+        _S["OpenSlide"],
+        _S["OpenSlideBack"],
+        _S["CloseSlide"],
+        _S["CloseSlideBack"],
+    ],
+    "Button": [
+        _S["PressButton"],
+        _S["PressButtonBack"],
+    ],
+    "TableBlock": [
+        _S["GrabRedTable"],
+        _S["PlaceRedTable"],
+        _S["GrabPinkTable"],
+        _S["PlacePinkTable"],
+        _S["GrabBlueTable"],
+        _S["PlaceBlueTable"],
+    ],
+    "DrawerBlock": [
+        _S["GrabRedDrawer"],
+        _S["PlaceRedDrawer"],
+        _S["GrabPinkDrawer"],
+        _S["PlacePinkDrawer"],
+        _S["GrabBlueDrawer"],
+        _S["PlaceBlueDrawer"],
+    ],
     "Debug": [
         _S["CloseDrawer"],
         _S["CloseDrawerBack"],

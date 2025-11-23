@@ -9,7 +9,7 @@ from src.networks.layers.mlp import (
     GinUnactivatedMLP,
     GinStandardMLP,
 )
-from tapas_gmm.utils.select_gpu import device
+from src.hardware import device
 
 
 class SimpleMeanMaxPoolNetwork(nn.Module):

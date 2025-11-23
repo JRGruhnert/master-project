@@ -1,16 +1,15 @@
 import pathlib
-import re
-from loguru import logger
 import numpy as np
 import torch
-from calvin_env_modified.envs.observation import (
-    CalvinEnvObservation,
-)
+import re
+from loguru import logger
+from calvin_env_modified.envs.observation import CalvinEnvObservation
 from src.logic.eval_condition import AreaEvalCondition
 from src.observation.observation import StateValueDict
 from src.states.state import State
 from src.skills.skill import Skill
-from tapas_gmm.utils.select_gpu import device
+from src.hardware import device
+
 from tapas_gmm.policy import import_policy
 from tapas_gmm.policy.gmm import GMMPolicy, GMMPolicyConfig
 from tapas_gmm.policy.models.tpgmm import (
@@ -19,6 +18,7 @@ from tapas_gmm.policy.models.tpgmm import (
     ModelType,
     TPGMMConfig,
 )
+from tapas_gmm.utils.robot_trajectory import RobotTrajectory, TrajectoryPoint
 from tapas_gmm.utils.observation import (
     CameraOrder,
     SceneObservation,
@@ -27,29 +27,32 @@ from tapas_gmm.utils.observation import (
     empty_batchsize,
 )
 
-from tapas_gmm.utils.robot_trajectory import RobotTrajectory, TrajectoryPoint
-
 
 class TapasSkill(Skill):
+
     def __init__(
         self,
         name: str,
         id: int,
         reversed: bool,
-        predict_as_batch: bool,
         overrides: list[str],
+        predict_as_batch: bool,
+        control_duration: int = -1,  # Only relevant if not predict_as_batch
+        policy_name: str = "gmm",
     ):
         super().__init__(name, id)
         self.reversed = reversed
-        self.predict_as_batch = predict_as_batch
         self.overrides = overrides
-        self.policy_name = "gmm"
+        self.predict_as_batch = predict_as_batch
+        self.control_duration = control_duration
+        self.policy_name = policy_name
         self.overrides_dict: dict[str, np.ndarray] = {}
         self.policy: GMMPolicy = self._load_policy()
         self.first_prediction = True
         self.predictions: RobotTrajectory | None = None
         self.prediction = None
         self.states: list[State] = []
+        self.goal: StateValueDict | None = None
 
     def _policy_checkpoint_name(self) -> pathlib.Path:
         return (
@@ -173,25 +176,27 @@ class TapasSkill(Skill):
                     )
                 self.overrides_dict[state.name] = value.numpy()
 
-    def reset(self, env):
+    def reset(self, goal: StateValueDict, env):
         self.policy.reset_episode(env)
         self.first_prediction = True
         self.predictions = None
-        self.current_step = -1  # Will be increased at first prediction
-        self.predictions = None
         self.prediction = None
+        self.goal = goal
 
     def predict(
         self,
         current: CalvinEnvObservation,
-        goal: StateValueDict,
     ) -> np.ndarray | None:
+        assert self.goal is not None, "Goal must be set before prediction."
+        assert isinstance(
+            current, CalvinEnvObservation
+        ), "Only supports CalvinEnvObservation."
         if self.predict_as_batch:
             if self.first_prediction:
                 # NOTE: Could use control_duration later to enforce certain length
                 try:
                     self.predictions, _ = self.policy.predict(  # type: ignore
-                        self._to_skill_format(current, goal)
+                        self._to_skill_format(current, self.goal)
                     )
                 except FloatingPointError as e:
                     logger.error(f"Numerical error in GMM prediction: {e}")
@@ -207,7 +212,7 @@ class TapasSkill(Skill):
         else:
             try:
                 self.prediction, _ = self.policy.predict(  # type: ignore
-                    self._to_skill_format(current, goal)
+                    self._to_skill_format(current, self.goal)
                 )
             except FloatingPointError as e:
                 logger.error(f"Numerical error in GMM prediction: {e}")
