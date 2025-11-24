@@ -6,8 +6,8 @@ from src.networks import NetworkType
 from src.environments.environment import EnvironmentConfig
 
 storage = StorageConfig(
-    skills_tag="Normal",
-    states_tag="Normal",
+    used_skills="Normal",
+    used_states="Normal",
 )
 config = DebugConfig(
     tag="test",

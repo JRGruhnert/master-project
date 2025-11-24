@@ -20,7 +20,7 @@ class Evaluator(ABC):
         storage: Storage,
     ):
         self.storage = storage
-        self.states = storage.states
+        self.states = storage.eval_states
         self.first_step = True
         self.non_equal_states = 0.0
 
@@ -80,3 +80,7 @@ class Evaluator(ABC):
     ) -> tuple[float, bool]:
         "Returns the step reward and wether the step is a terminal step, cause some ending condition was met."
         raise NotImplementedError()
+
+    def reset(self):
+        self.first_step = True
+        self.non_equal_states = 0.0

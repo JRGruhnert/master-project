@@ -29,8 +29,8 @@ def train_agent(config: DebugConfig):
     )
     storage_module2 = Storage(
         StorageConfig(
-            skills_tag="Normal",
-            states_tag="Normal",
+            used_skills="Normal",
+            used_states="Normal",
             # checkpoint_path="results/gnn4/t1_pe_0.0_pr_0.0/model_cp_best.pth",
         ),
         config.tag,

@@ -7,7 +7,7 @@ from src.modules.storage import StorageConfig
 from src.experiments.pepr import PePrConfig
 from scripts.train import TrainConfig
 
-mode = LogMode.TERMINAL
+mode = LogMode.WANDB
 render = False
 eval = False
 tag = "t1_s"
@@ -20,8 +20,8 @@ config = TrainConfig(
         wandb_tag=tag,
     ),
     storage=StorageConfig(
-        skills_tag="Minimal",
-        states_tag="Minimal",
+        used_skills="Minimal",
+        used_states="Minimal",
         tag=tag,
         network="baseline",
     ),

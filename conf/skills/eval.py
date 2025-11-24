@@ -18,8 +18,8 @@ config = SkillEvalConfig(
         wandb_tag=tag,
     ),
     storage=StorageConfig(
-        skills_tag="DrawerBlock",
-        states_tag="Debug",
+        used_skills="DrawerBlock",
+        used_states="Debug",
         tag=tag,
         network="none",
     ),

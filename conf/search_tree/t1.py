@@ -7,8 +7,8 @@ from src.networks import NetworkType
 from src.environments.environment import EnvironmentConfig
 
 storage = StorageConfig(
-    skills_tag="Minimal",
-    states_tag="Minimal",
+    used_skills="Minimal",
+    used_states="Minimal",
 )
 config = TrainConfig(
     tag="t1",

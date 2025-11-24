@@ -11,8 +11,8 @@ from src.states.states import STATES_BY_TAG
 
 @dataclass
 class StorageConfig:
-    skills_tag: str
-    states_tag: str
+    used_skills: str
+    used_states: str
     tag: str
     network: str
     storage_path: str = "data"
@@ -20,6 +20,7 @@ class StorageConfig:
     buffer_path: str = "logs"
     plots_path: str = "plots"
     checkpoint_path: str = "checkpoint.pth"
+    eval_states: str | None = None
 
 
 class Storage:
@@ -28,15 +29,24 @@ class Storage:
         config: StorageConfig,
     ):
         self.config = config
-        self.states: list[State] = sorted(
-            STATES_BY_TAG.get(self.config.states_tag, []), key=lambda s: s.id
+        self._states: list[State] = sorted(
+            STATES_BY_TAG.get(self.config.used_states, []), key=lambda s: s.id
         )
+
+        # Evaluation states can be different from training states
+        # Just means that the relevant states for sampling and evaluation are different
+        if self.config.eval_states is not None:
+            self._eval_states = sorted(
+                STATES_BY_TAG.get(self.config.eval_states, []), key=lambda s: s.id
+            )
+        else:
+            self._eval_states = self.states
         # We sort based on Id for the baseline network to be consistent
-        self.skills: list[Skill] = sorted(
-            SKILLS_BY_TAG.get(self.config.skills_tag, []), key=lambda s: s.id
+        self._skills: list[Skill] = sorted(
+            SKILLS_BY_TAG.get(self.config.used_skills, []), key=lambda s: s.id
         )
         print(
-            f"Loaded skills for tag {self.config.skills_tag}: {[s.name for s in self.skills]}"
+            f"Loaded skills for tag {self.config.used_skills}: {[s.name for s in self.skills]}"
         )
         for skill in self.skills:
             if isinstance(skill, TapasSkill):
@@ -81,3 +91,15 @@ class Storage:
             if state.name == name:
                 return state
         return None
+
+    @property
+    def states(self) -> list[State]:
+        return self._states
+
+    @property
+    def eval_states(self) -> list[State]:
+        return self._eval_states
+
+    @property
+    def skills(self) -> list[Skill]:
+        return self._skills

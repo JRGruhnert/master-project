@@ -45,6 +45,7 @@ class CalvinEnvironment(Environment):
         self.info = {}
 
     def reset(self):
+        self.evaluator.reset()
         calvin_obs = self.env.reset(settle_time=50)[0]
         self.goal = CalvinObservation.from_internal(calvin_obs)
         self.calvin_obs = self.env.reset(settle_time=50)[0]
@@ -58,7 +59,6 @@ class CalvinEnvironment(Environment):
         ) and self.evaluator.is_good_sample(self.current, self.goal):
             self.calvin_obs = self.env.reset(settle_time=50)[0]
             self.current = CalvinObservation.from_internal(self.calvin_obs)
-
         return self.current, self.goal
 
     def step(

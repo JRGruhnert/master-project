@@ -17,9 +17,9 @@ class Buffer:
         self.goal: list[StateValueDict] = []
         self.actions: list[torch.Tensor] = []
         self.logprobs: list[torch.Tensor] = []
+        self.values: list[torch.Tensor] = []
         self.rewards: list[float] = []
         self.success: list[bool] = []
-        self.values: list[torch.Tensor] = []
         self.terminals: list[bool] = []
 
     def clear(self):
