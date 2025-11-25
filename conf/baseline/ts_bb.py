@@ -7,8 +7,8 @@ from src.modules.storage import StorageConfig
 from src.experiments.pepr import PePrConfig
 from scripts.train import TrainConfig
 
-mode = LogMode.TERMINAL
-render = True
+mode = LogMode.WANDB
+render = False
 eval = False
 tag = "ts_bb"
 
