@@ -1,7 +1,7 @@
 from src.agents.ppo.baseline import BaselineAgentConfig
 from src.environments.calvin import CalvinEnvironmentConfig
 from src.modules.buffer import BufferConfig
-from src.modules.evaluators.sparse import SparseEvaluatorConfig
+from src.modules.evaluators.dense2 import Dense2EvaluatorConfig
 from src.modules.logger import LogMode, LoggerConfig
 from src.modules.storage import StorageConfig
 from src.experiments.pepr import PePrConfig
@@ -10,7 +10,7 @@ from scripts.train import TrainConfig
 mode = LogMode.WANDB
 render = False
 eval = False
-tag = "ts_b_b"
+tag = "td_brpb_bb"
 
 config = TrainConfig(
     agent=BaselineAgentConfig(eval=eval),
@@ -20,19 +20,20 @@ config = TrainConfig(
         wandb_tag=tag,
     ),
     storage=StorageConfig(
-        used_skills="Base",
-        used_states="Base",
-        eval_states="Base",
+        used_skills="BaseBlue",
+        used_states="BaseRedPinkBlue",
+        eval_states="BaseBlue",
         tag=tag,
         network="baseline",
     ),
     experiment=PePrConfig(
-        p_empty=0.1,
+        p_empty=0.0,
         p_rand=0.0,
     ),
     environment=CalvinEnvironmentConfig(render=render),
-    evaluator=SparseEvaluatorConfig(
-        step_reward=-0.01,
+    evaluator=Dense2EvaluatorConfig(
         success_reward=1.0,
+        positive_step_reward=0.1,
+        negative_step_reward=-0.01,
     ),
 )

@@ -10,7 +10,7 @@ from scripts.train import TrainConfig
 mode = LogMode.WANDB
 render = False
 eval = False
-tag = "ts_bb"
+tag = "ts_brpb_bb"
 
 config = TrainConfig(
     agent=BaselineAgentConfig(eval=eval),

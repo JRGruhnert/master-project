@@ -30,22 +30,22 @@ class Evaluator(ABC):
         goal: StateValueDict,
     ) -> bool:
         """Generic method to check if states match target conditions."""
-        if current.keys() != goal.keys():
-            for key, value in current.items():
-                for state in self.states:
-                    if state.name == key:
-                        if not state.evaluate(current[state.name], goal[state.name]):
-                            print(f"{key} {value} is not {goal[key]}")
+        # if current.keys() != goal.keys():
+        #    for key, value in current.items():
+        #        for state in self.states:
+        #            if state.name == key:
+        #                if not state.evaluate(current[state.name], goal[state.name]):
+        #                    print(f"{key} {value} is not {goal[key]}")
         not_finished_states = 0
         for state in self.states:
             if state.name in current.keys():
                 if not state.evaluate(current[state.name], goal[state.name]):
-                    print(
-                        f"{state.name}\t{current[state.name]} is not {goal[state.name]}"
-                    )
+                    # print(
+                    #    f"{state.name}\t{current[state.name]} is not {goal[state.name]}"
+                    # )
                     not_finished_states += 1
         self.non_equal_states = not_finished_states / max(len(self.states), 1)
-        print(f"It's {self.non_equal_states == 0.0}")
+        # print(f"It's {self.non_equal_states == 0.0}")
         return self.non_equal_states == 0.0
 
     def is_good_sample(
@@ -58,10 +58,10 @@ class Evaluator(ABC):
         for state in self.states:
             if isinstance(state, AreaEulerState) and state.name in goal.keys():
                 if not state.is_in_area(goal[state.name]):
-                    print(f"Bad sample: goal {goal[state.name]} not in an area.")
+                    # print(f"Bad sample: goal {goal[state.name]} not in an area.")
                     return False
                 if not state.is_in_area(current[state.name]):
-                    print(f"Bad sample: current {current[state.name]} not in an area.")
+                    # print(f"Bad sample: current {current[state.name]} not in an area.")
                     return False
         return True
 
@@ -84,6 +84,6 @@ class Evaluator(ABC):
         raise NotImplementedError()
 
     def reset(self):
-        print("Resetting evaluator...")
+        # print("Resetting evaluator...")
         self.first_step = True
         self.non_equal_states = 0.0
