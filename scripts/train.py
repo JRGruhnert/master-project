@@ -52,9 +52,8 @@ class Trainer:
             episode_ended = False
             while not episode_ended:
                 skill = self.agent.act(obs, goal)
-                if skill is None:
-                    return True
-                obs, reward, done, episode_ended = self.experiment.step(skill)
+                if skill:
+                    obs, reward, done, episode_ended = self.experiment.step(skill)
                 if self.agent.feedback(reward, done, episode_ended):
                     return True
 
@@ -107,8 +106,13 @@ def train_agent(config: TrainConfig):
 
 def entry_point():
     _, dict_config = parse_and_build_config(data_load=False, need_task=False)
+
     dict_config["storage"]["tag"] = (
         dict_config["storage"]["tag"]
+        + f"_pe_{dict_config['experiment']['p_empty']}_pr_{dict_config['experiment']['p_rand']}"
+    )
+    dict_config["logger"]["wandb_tag"] = (
+        dict_config["logger"]["wandb_tag"]
         + f"_pe_{dict_config['experiment']['p_empty']}_pr_{dict_config['experiment']['p_rand']}"
     )
     config = OmegaConf.to_container(
