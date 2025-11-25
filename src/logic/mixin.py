@@ -158,9 +158,10 @@ class AreaMixin:
         """
         area = self.check_spawn_area(x)
         # print("Override area:", area)
+        y = x.clone()  # ✅ Prevents modifying the original tensor
         if area == self.drawer_closed:
-            x[1] -= 0.17  # Drawer Offset
-        return x  # Return original point if no area match
+            y[1] -= 0.17  # Drawer Offset
+        return y  # Return original point if no area match
 
     def make_surfaces(
         self,
@@ -248,9 +249,10 @@ class AreaMixin2:
         """
         area = self.check_area(x)
         # print("Override area:", area)
+        y = x.clone()  # ✅ Prevents modifying the original tensor
         if area == self.drawer_closed:
-            x[1] -= 0.17  # Drawer Offset
-        return x  # Return original point if no area match
+            y[1] -= 0.17  # Drawer Offset
+        return y  # Return original point if no area match
 
     def make_eval_surfaces(
         self,

@@ -23,7 +23,10 @@ class PePrExperiment(Experiment):
         # We sort based on Id for the baseline network to be consistent
         super().__init__(config, env, storage)
         self.config = config
-        num_skills = 6 if len(self.storage.skills) < 12 else 16
+        ls = len(self.storage.skills)
+        num_skills = 6 if ls == 10 else 8 + (ls - 10) / 2
+        print(f"Number of skills: {ls}, max episode length: {num_skills}")
+        # NOTE: This is for my skills setup
         self.max_episode_length = int(
             num_skills
             + num_skills * self.config.p_empty

@@ -138,7 +138,7 @@ class AreaEulerState(EulerState):
                 eval_surfaces={
                     "table": [[-0.02, -0.17, 0.44], [0.32, -0.01, 0.54]],
                     "drawer_open": [[0.02, -0.37, 0.34], [0.32, -0.23, 0.44]],
-                    "drawer_closed": [[0.02, -0.18, 0.34], [0.32, -0.01, 0.44]],
+                    "drawer_closed": [[0.02, -0.18, 0.34], [0.32, -0.00, 0.44]],
                 },
                 # Drawer as one
                 # eval_surfaces={

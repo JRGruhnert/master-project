@@ -52,6 +52,8 @@ class Trainer:
             episode_ended = False
             while not episode_ended:
                 skill = self.agent.act(obs, goal)
+                if skill is None:
+                    return True
                 obs, reward, done, episode_ended = self.experiment.step(skill)
                 if self.agent.feedback(reward, done, episode_ended):
                     return True

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from src.agents.agent import Agent, AgentConfig
 from src.modules.buffer import Buffer
+from src.modules.storage import Storage
 from src.observation.observation import StateValueDict
 from src.skills.skill import Skill
 
@@ -11,40 +12,59 @@ class HumanAgentConfig(AgentConfig):
 
 
 class HumanAgent(Agent):
-    def __init__(self, config: HumanAgentConfig, buffer: Buffer):
+
+    def __init__(
+        self,
+        config: HumanAgentConfig,
+        storage: Storage,
+        buffer: Buffer,
+    ):
         self.config = config
         self.buffer = buffer
+        self.storage = storage
+        self.do_reset = False
 
     def act(
         self,
         obs: StateValueDict,
         goal: StateValueDict,
-    ) -> Skill:
+    ) -> Skill | None:
         """Select an action given the current observation and goal observation."""
-        raise NotImplementedError("Act method not implemented yet.")
+        for i, skill in enumerate(self.storage.skills):
+            print(f"{i}: {skill.name}")
+        print(f"{len(self.storage.skills)}: Reset")
+        choice = int(input("Enter the Task id: "))
+        if choice == len(self.storage.skills):
+            self.do_reset = True
+            return None
+        return self.storage.skills[choice]
 
     def feedback(self, reward: float, success: bool, terminal: bool) -> bool:
         """Pass feedback from the environment. Returns True if the buffer reached the targeted batch size."""
-        raise NotImplementedError("Feedback method not implemented yet.")
+        if self.do_reset:
+            print("Resetting agent...")
+            self.do_reset = False
+            return True
+        return False
 
     def learn(self) -> bool:
         """Perform learning update. Returns True if training should stop. (Plateau reached)"""
-        raise NotImplementedError("Learn method not implemented yet.")
+        return False
 
     def save(self, tag: str = ""):
-        raise NotImplementedError("Save method not implemented yet.")
+        pass
 
     def load(self):
-        raise NotImplementedError("Load method not implemented yet.")
+        pass
 
     def metadata(self) -> dict:
         """Return agent metadata as a dictionary."""
-        raise NotImplementedError("Metadata method not implemented yet.")
+        return {}
 
     def metrics(self) -> dict[str, float]:
         """Return current agent metrics as a dictionary."""
-        raise NotImplementedError("Metrics method not implemented yet.")
+        return {}
 
     def weights(self) -> dict[str, float]:
         """Return current agent weights as a dictionary."""
-        raise NotImplementedError("Weights method not implemented yet.")
+        return {}

@@ -1,4 +1,4 @@
-from src.agents.ppo.baseline import BaselineAgentConfig
+from src.agents.human import HumanAgentConfig
 from src.environments.calvin import CalvinEnvironmentConfig
 from src.modules.buffer import BufferConfig
 from src.modules.evaluators.sparse import SparseEvaluatorConfig
@@ -9,11 +9,10 @@ from scripts.train import TrainConfig
 
 mode = LogMode.TERMINAL
 render = True
-eval = False
 tag = "ts_bb"
 
 config = TrainConfig(
-    agent=BaselineAgentConfig(eval=eval),
+    agent=HumanAgentConfig(),
     buffer=BufferConfig(),
     logger=LoggerConfig(
         mode=mode,

@@ -40,10 +40,12 @@ class Evaluator(ABC):
         for state in self.states:
             if state.name in current.keys():
                 if not state.evaluate(current[state.name], goal[state.name]):
-                    # print(f"Wrong: \t {state.name}")
-                    # print(f"{current[state.name]} is not {goal[state.name]}")
+                    print(
+                        f"{state.name}\t{current[state.name]} is not {goal[state.name]}"
+                    )
                     not_finished_states += 1
         self.non_equal_states = not_finished_states / max(len(self.states), 1)
+        print(f"It's {self.non_equal_states == 0.0}")
         return self.non_equal_states == 0.0
 
     def is_good_sample(
@@ -82,5 +84,6 @@ class Evaluator(ABC):
         raise NotImplementedError()
 
     def reset(self):
+        print("Resetting evaluator...")
         self.first_step = True
         self.non_equal_states = 0.0

@@ -1,4 +1,5 @@
 from src.agents.agent import Agent, AgentConfig
+from src.agents.human import HumanAgent, HumanAgentConfig
 from src.agents.ppo.baseline import BaselineAgent, BaselineAgentConfig
 from src.agents.ppo.gnn import GNNAgent, GNNAgentConfig
 from src.agents.search_tree import SearchTreeAgent, SearchTreeAgentConfig
@@ -47,6 +48,8 @@ def select_agent(
         return GNNAgent(config, storage_module, buffer_module)
     elif isinstance(config, SearchTreeAgentConfig):
         return SearchTreeAgent(config, storage_module, buffer_module)
+    elif isinstance(config, HumanAgentConfig):
+        return HumanAgent(config, storage_module, buffer_module)
     else:
         raise ValueError(f"Unknown agent type: {type(config)}")
 
