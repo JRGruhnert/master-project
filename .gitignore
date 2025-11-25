@@ -117,10 +117,9 @@ data/calvin/tapas/
 /results/
 /results_temp/
 /wandb/
-
+/wandb
 /conf/machine.py
 conf/machine.py
 
 
-wandb/latest-run
 /dependencies/
