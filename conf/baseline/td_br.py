@@ -10,7 +10,7 @@ from conf.common.evaluator import dense_evaluator
 mode = LogMode.WANDB
 render = False
 eval = False
-tag = "td_brpb"
+tag = "td_br_br"
 
 config = TrainConfig(
     agent=BaselineAgentConfig(eval=eval),
@@ -20,9 +20,9 @@ config = TrainConfig(
         wandb_tag=tag,
     ),
     storage=StorageConfig(
-        used_skills="BaseRedPinkBlue",
-        used_states="BaseRedPinkBlue",
-        eval_states="BaseRedPinkBlue",
+        used_skills="BaseRed",
+        used_states="BaseRed",
+        eval_states="BaseRed",
         tag=tag,
         network="baseline",
     ),
