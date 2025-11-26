@@ -66,8 +66,8 @@ class Trainer:
 
         # We get metrics before learning before the current batch is cleared
         # We also log weights here before learning to have weights for the current epoch
-        metrics = self.agent.metrics()
         self.logger.log_weights(self.agent.weights(), epoch=self.epoch)
+        metrics = self.agent.metrics()
 
         # Learn
         start_learning = datetime.now().replace(microsecond=0)
@@ -109,11 +109,11 @@ def entry_point():
 
     dict_config["storage"]["tag"] = (
         dict_config["storage"]["tag"]
-        + f"_pe_{dict_config['experiment']['p_empty']}_pr_{dict_config['experiment']['p_rand']}"
+        + f"_pe{dict_config['experiment']['p_empty']}_pr{dict_config['experiment']['p_rand']}"
     )
     dict_config["logger"]["wandb_tag"] = (
         dict_config["logger"]["wandb_tag"]
-        + f"_pe_{dict_config['experiment']['p_empty']}_pr_{dict_config['experiment']['p_rand']}"
+        + f"_pe{dict_config['experiment']['p_empty']}_pr{dict_config['experiment']['p_rand']}"
     )
     config = OmegaConf.to_container(
         dict_config, resolve=True, structured_config_mode=SCMode.INSTANTIATE

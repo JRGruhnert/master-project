@@ -4,6 +4,7 @@ from src.modules.evaluators.evaluator import Evaluator
 from src.modules.storage import Storage
 from src.environments.environment import Environment, EnvironmentConfig
 from src.observation.observation import StateValueDict
+from src.skills.empty import EmptySkill
 from src.skills.skill import Skill
 
 from src.observation.calvin import CalvinObservation
@@ -68,6 +69,8 @@ class CalvinEnvironment(Environment):
         assert isinstance(
             skill,
             TapasSkill,
+        ) or isinstance(
+            skill, EmptySkill
         ), "CalvinEnvironment only supports TapasSkill at this time."
         skill.reset(self.goal, self.env)
         while (action := skill.predict(self.calvin_obs)) is not None:
