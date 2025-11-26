@@ -23,7 +23,11 @@ class BaselineAgent(PPOAgent):
         buffer: Buffer,
     ):
         super().__init__(
-            config, Baseline(storage.states, storage.skills), buffer, storage
+            config,
+            Baseline(storage.states, storage.skills),
+            Baseline(storage.states, storage.skills),
+            buffer,
+            storage,
         )
 
     def load(self):

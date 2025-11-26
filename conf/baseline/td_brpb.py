@@ -10,7 +10,7 @@ from conf.common.evaluator import dense_evaluator
 mode = LogMode.WANDB
 render = False
 eval = False
-tag = "td_brpb"
+tag = "td_brpb_brpb"
 
 config = TrainConfig(
     agent=BaselineAgentConfig(eval=eval),

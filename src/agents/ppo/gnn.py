@@ -22,7 +22,13 @@ class GNNAgent(PPOAgent):
         storage: Storage,
         buffer: Buffer,
     ):
-        super().__init__(config, Gnn(storage.states, storage.skills), buffer, storage)
+        super().__init__(
+            config,
+            Gnn(storage.states, storage.skills),
+            Gnn(storage.states, storage.skills),
+            buffer,
+            storage,
+        )
 
     def load(self):
         """

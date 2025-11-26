@@ -12,6 +12,40 @@ from src.networks.actor_critic import ActorCriticBase
 from src.skills.skill import Skill
 from loguru import logger
 
+# Batch Size	The number of samples used
+# in each training batch.	Larger batch sizes typically lead
+# to more stable training but may require
+# more memory and computational resources.
+# Clip Range	The threshold for clipping
+# the ratio of policy probabilities.	Clipping the ratio helps to prevent overly large policy updates, ensuring
+# stability during training.
+# Entropy Coefficient	A coefficient balancing between
+# exploration and exploitation.	Higher values encourage more
+# exploration, while lower values prioritize exploitation.
+# The parameter controlling the balance between
+# bias and variance in estimating advantages.	Lower values increase bias
+# but reduce variance, leading to more stable training
+# but potentially less accurate value estimates.
+# Learning Rate	The rate at which the model’s
+# parameters are updated during training.	A higher learning rate can accelerate learning but may lead to instability
+# or divergence if too large.
+# Log Std Init	The initial value for the logarithm
+# of the standard deviation of the policy.	A higher initial value can encourage more exploration
+# in the early stages of training.
+# Epochs Number	The number of times the entire dataset is used during training.	Increasing the number of epochs allows for more passes through
+# the data, utilizing data more efficiently.
+# Steps Number	The number of steps taken when accumulating the dataset.	More step numbers allow for more information to be gathered per iteration,
+# potentially leading to more efficient and stable learning.
+# Normalize Advantages	Whether to normalize advantages
+# before using them in training.	Normalization can help to stabilize training by scaling advantages to have
+# a consistent impact on policy updates.
+# Target KL	The target value for the Kullback-Leibler (KL)
+# divergence between old and new policies.	Adjusting the target KL helps to regulate the magnitude of policy updates,
+# promoting smoother learning.
+# Value Coefficient	The coefficient balancing between the
+# value loss and policy loss in the total loss function.	A higher value coefficient places more emphasis on the value function,
+# potentially leading to more stable training.
+
 
 @dataclass
 class PPOAgentConfig(AgentConfig):
@@ -24,7 +58,7 @@ class PPOAgentConfig(AgentConfig):
     save_stats: bool = True
 
     mini_batch_size: int = 64  # 64 # How many steps to use in each mini-batch
-    learning_epochs: int = 50  # How many passes over the collected batch per update
+    learning_epochs: int = 30  # How many passes over the collected batch per update
     lr_annealing: bool = False
     learning_rate: float = 0.0003  # Step size for actor optimizer
     gamma: float = 0.99  # How much future rewards are worth today
@@ -33,16 +67,15 @@ class PPOAgentConfig(AgentConfig):
     entropy_coef: float = 0.01  # Weight on the entropy bonus to encourage exploration
     value_coef: float = 0.5  # Weight on the critic (value) loss vs. the policy loss
     max_grad_norm: float = 0.5  # Threshold for clipping gradient norms
-    target_kl: float | None = (
-        None  # (Optional) early stopping if KL divergence gets too large
-    )
+    target_kl: float | None = None  # (Optional) early stopping if KL
 
 
 class PPOAgent(Agent):
     def __init__(
         self,
         config: PPOAgentConfig,
-        model: ActorCriticBase,
+        policy_new: ActorCriticBase,
+        policy_old: ActorCriticBase,
         buffer: Buffer,
         storage: Storage,
     ):
@@ -52,8 +85,8 @@ class PPOAgent(Agent):
         self.buffer: Buffer = buffer
         self.storage: Storage = storage
         self.mse_loss = nn.MSELoss()
-        self.policy_new: ActorCriticBase = model.to(device)
-        self.policy_old: ActorCriticBase = model.to(device)
+        self.policy_new: ActorCriticBase = policy_new.to(device)
+        self.policy_old: ActorCriticBase = policy_old.to(device)
         self.optimizer = torch.optim.AdamW(
             self.policy_new.parameters(),
             lr=self.config.learning_rate,
@@ -193,9 +226,11 @@ class PPOAgent(Agent):
                 mb_rewards = rewards[mb_idx]
 
                 # Evaluate policy
-                logprobs, state_values, dist_entropy = self.policy_new.evaluate(
+                logprobs, state_values, dist_new = self.policy_new.evaluate(
                     mb_obs, mb_goal, mb_actions
                 )
+
+                _, _, dist_old = self.policy_old.evaluate(mb_obs, mb_goal, mb_actions)
 
                 assert logprobs.shape == mb_logprobs.shape, "Logprobs shape mismatch"
                 assert (
@@ -222,7 +257,7 @@ class PPOAgent(Agent):
                 loss: torch.Tensor = (
                     -torch.min(surr1, surr2)
                     + self.config.value_coef * self.mse_loss(state_values, mb_rewards)
-                    - self.config.entropy_coef * dist_entropy
+                    - self.config.entropy_coef * dist_new.entropy().mean()
                 )
 
                 ### Update gradients on mini-batch
@@ -234,7 +269,9 @@ class PPOAgent(Agent):
                 # Optional KL early stopping
                 if self.config.target_kl is not None:
                     with torch.no_grad():
-                        kl = (mb_logprobs - logprobs).mean()
+                        kl = torch.distributions.kl.kl_divergence(
+                            dist_old, dist_new
+                        ).mean()
                         if kl > self.config.target_kl:
                             kl_divergence_stop = True
                             break  # break minibatch loop

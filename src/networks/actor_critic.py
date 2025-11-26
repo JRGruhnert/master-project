@@ -132,7 +132,7 @@ class ActorCriticBase(nn.Module, ABC):
         obs: list[StateValueDict],
         goal: list[StateValueDict],
         action: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor, Categorical]:
         assert len(obs) == len(goal), "Observation and Goal lists have different sizes."
         logits, value = self.forward(obs, goal)
         assert logits.shape == (
@@ -145,8 +145,7 @@ class ActorCriticBase(nn.Module, ABC):
 
         dist = Categorical(logits=logits)
         action_logprobs = dist.log_prob(action)
-        dist_entropy = dist.entropy()
-        return action_logprobs, value, dist_entropy
+        return action_logprobs, value, dist
 
 
 class BaselineBase(ActorCriticBase):
