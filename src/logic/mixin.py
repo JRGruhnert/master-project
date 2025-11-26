@@ -13,9 +13,10 @@ class QuaternionMixin:
 
     def normalize_quat(self, x: torch.Tensor) -> torch.Tensor:
         """Normalize quaternion and ensure positive w component."""
-        x = x / torch.linalg.norm(x)
-        if x[3] < 0:
-            return -x
+        x = x / torch.linalg.norm(x, dim=-1, keepdim=True)
+        w = x[..., 3]
+        mask = w < 0
+        x[mask] = -x[mask]
         return x
 
     def _quaternion_mean(self, quaternions: torch.Tensor) -> torch.Tensor:

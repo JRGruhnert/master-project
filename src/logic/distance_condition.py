@@ -12,10 +12,20 @@ class DistanceCondition(ABC):
         self,
         current: torch.Tensor,
         goal: torch.Tensor,
-        tp: torch.Tensor,
-    ) -> float:
+        goal_tp: torch.Tensor,
+    ) -> torch.Tensor:
         """Evaluate goal condition for the given state."""
         raise NotImplementedError("Subclasses must implement the evaluate method.")
+
+    def expand_if_needed(
+        self,
+        tensor: torch.Tensor,
+        target_shape: torch.Size,
+    ) -> torch.Tensor:
+        """Expand tensor to target shape if needed."""
+        if tensor.shape != target_shape:
+            return tensor.expand(target_shape)
+        return tensor
 
 
 class EulerDistanceCondition(DistanceCondition, BoundedMixin):
@@ -25,13 +35,14 @@ class EulerDistanceCondition(DistanceCondition, BoundedMixin):
         self,
         current: torch.Tensor,
         goal: torch.Tensor,
-        tp: torch.Tensor,
-    ) -> float:
+        goal_tp: torch.Tensor,
+    ) -> torch.Tensor:
         cx = torch.clamp(current, self.lower_bound, self.upper_bound)
-        cy = torch.clamp(tp, self.lower_bound, self.upper_bound)
+        cy = torch.clamp(goal_tp, self.lower_bound, self.upper_bound)
         nx = self.normalize(cx)
         ny = self.normalize(cy)
-        return torch.linalg.norm(nx - ny)
+        ny = self.expand_if_needed(ny, nx.shape)
+        return torch.linalg.norm(nx - ny, dim=-1)
 
 
 class QuaternionDistanceCondition(DistanceCondition, QuaternionMixin):
@@ -41,12 +52,14 @@ class QuaternionDistanceCondition(DistanceCondition, QuaternionMixin):
         self,
         current: torch.Tensor,
         goal: torch.Tensor,
-        tp: torch.Tensor,
-    ) -> float:
+        goal_tp: torch.Tensor,
+    ) -> torch.Tensor:
         nx = self.normalize_quat(current)
-        ny = self.normalize_quat(tp)
-        dot = torch.clamp(torch.abs(torch.dot(nx, ny)), -1.0, 1.0)
-        return (2.0 * torch.arccos(dot)).item()
+        ny = self.normalize_quat(goal_tp)
+        ny = self.expand_if_needed(ny, nx.shape)
+        dot = torch.sum(nx * ny, dim=-1)
+        dot = torch.clamp(torch.abs(dot), -1.0, 1.0)
+        return 2.0 * torch.arccos(dot)
 
 
 class RangeDistanceCondition(DistanceCondition, BoundedMixin):
@@ -56,13 +69,14 @@ class RangeDistanceCondition(DistanceCondition, BoundedMixin):
         self,
         current: torch.Tensor,
         goal: torch.Tensor,
-        tp: torch.Tensor,
-    ) -> float:
+        goal_tp: torch.Tensor,
+    ) -> torch.Tensor:
         cx = torch.clamp(current, self.lower_bound, self.upper_bound)
-        cy = torch.clamp(tp, self.lower_bound, self.upper_bound)
+        cy = torch.clamp(goal_tp, self.lower_bound, self.upper_bound)
         nx = self.normalize(cx)
         ny = self.normalize(cy)
-        return torch.abs(nx - ny).item()
+        ny = self.expand_if_needed(ny, nx.shape)
+        return torch.abs(nx - ny)
 
 
 class BooleanDistanceCondition(DistanceCondition):
@@ -72,9 +86,10 @@ class BooleanDistanceCondition(DistanceCondition):
         self,
         current: torch.Tensor,
         goal: torch.Tensor,
-        tp: torch.Tensor,
-    ) -> float:
-        return torch.abs(current - tp).item()
+        goal_tp: torch.Tensor,
+    ) -> torch.Tensor:
+        ny = self.expand_if_needed(goal_tp, current.shape)
+        return torch.abs(current - ny)
 
 
 class FlipDistanceCondition(DistanceCondition):
@@ -84,6 +99,7 @@ class FlipDistanceCondition(DistanceCondition):
         self,
         current: torch.Tensor,
         goal: torch.Tensor,
-        tp: torch.Tensor,
-    ) -> float:
-        return (tp - torch.abs(current - goal)).item()  # Flips distance
+        goal_tp: torch.Tensor,
+    ) -> torch.Tensor:
+        ny = self.expand_if_needed(goal_tp, current.shape)
+        return ny - torch.abs(current - goal)  # Flips distance

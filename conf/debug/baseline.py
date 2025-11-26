@@ -1,12 +1,35 @@
-from conf.master.shared.train_env import env1
-from conf.master.shared.agent import debug
-from tapas_gmm.master_project.networks import NetworkType
-from tapas_gmm.master_train import TrainConfig
+from src.agents.ppo.baseline import BaselineAgentConfig
+from src.environments.calvin import CalvinEnvironmentConfig
+from src.modules.buffer import BufferConfig
+from src.modules.logger import LogMode, LoggerConfig
+from src.modules.storage import StorageConfig
+from src.experiments.pepr import PePrConfig
+from scripts.train import TrainConfig
+from conf.common.evaluator import dense_evaluator
 
+mode = LogMode.TERMINAL
+render = False
+eval = False
+tag = "debug"
 
 config = TrainConfig(
-    tag="test",
-    nt=NetworkType.BASELINE_TEST,
-    env=env1,
-    agent=debug,
+    agent=BaselineAgentConfig(eval=eval),
+    buffer=BufferConfig(steps_number=2),
+    logger=LoggerConfig(
+        mode=mode,
+        wandb_tag=tag,
+    ),
+    storage=StorageConfig(
+        used_skills="Base",
+        used_states="Base",
+        eval_states="Base",
+        tag=tag,
+        network="baseline",
+    ),
+    experiment=PePrConfig(
+        p_empty=0.0,
+        p_rand=0.0,
+    ),
+    environment=CalvinEnvironmentConfig(render=render),
+    evaluator=dense_evaluator,
 )

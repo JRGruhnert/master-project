@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from src.observation.observation import StateValueDict, empty_batchsize
+from src.observation.observation import StateValueDict, singleton_batch_size
 
 from calvin_env_modified.envs.observation import (
     CalvinEnvObservation,
@@ -30,4 +30,8 @@ class CalvinObservation(StateValueDict):
             state_dict[f"{k}_scalar"] = torch.tensor(
                 np.array([val]), dtype=torch.float32
             )
-        return cls(state_dict, batch_size=empty_batchsize)
+
+        batched_state_dict = {
+            k: v.unsqueeze(0) if v.dim() == 1 else v for k, v in state_dict.items()
+        }
+        return cls(batched_state_dict, batch_size=singleton_batch_size)

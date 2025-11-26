@@ -5,7 +5,7 @@ from src.observation.observation import StateValueDict
 
 
 @dataclass
-class Dense2EvaluatorConfig(EvaluatorConfig):
+class DenseBestEvaluatorConfig(EvaluatorConfig):
     positive_step_reward: float
     negative_step_reward: float
 
@@ -13,7 +13,7 @@ class Dense2EvaluatorConfig(EvaluatorConfig):
 class Dense2Evaluator(Evaluator):
     def __init__(
         self,
-        config: Dense2EvaluatorConfig,
+        config: DenseBestEvaluatorConfig,
         storage: Storage,
     ):
         super().__init__(storage)

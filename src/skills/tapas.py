@@ -316,8 +316,8 @@ class TapasSkill(Skill):
                     position_state_name = f"{match_position.group(1)}_position"
                     if position_state_name in states_dict:
                         temp_state = states_dict[position_state_name]
-                        if isinstance(temp_state._eval_condition, AreaEvalCondition):
-                            temp_pos = temp_state._eval_condition.area_tapas_override(
+                        if isinstance(temp_state.eval_condition, AreaEvalCondition):
+                            temp_pos = temp_state.eval_condition.area_tapas_override(
                                 goal[position_state_name],
                             )
                         else:

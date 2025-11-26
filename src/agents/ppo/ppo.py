@@ -42,18 +42,19 @@ class PPOAgent(Agent):
     def __init__(
         self,
         config: PPOAgentConfig,
-        model: ActorCriticBase,
+        policy_new: ActorCriticBase,
+        policy_old: ActorCriticBase,
         buffer: Buffer,
         storage: Storage,
     ):
         ### Initialize hyperparameters
         self.config = config
         ### Initialize the agent
-        self.buffer: Buffer = buffer
-        self.storage: Storage = storage
+        self.buffer = buffer
+        self.storage = storage
         self.mse_loss = nn.MSELoss()
-        self.policy_new: ActorCriticBase = model.to(device)
-        self.policy_old: ActorCriticBase = model.to(device)
+        self.policy_new = policy_new.to(device)
+        self.policy_old = policy_old.to(device)
         self.optimizer = torch.optim.AdamW(
             self.policy_new.parameters(),
             lr=self.config.learning_rate,
@@ -140,10 +141,10 @@ class PPOAgent(Agent):
 
         # Check shapes
         assert (
-            advantages.shape[0] == self.buffer.config.batch_size
+            advantages.shape[0] == self.buffer.config.steps_number
         ), "Advantage shape mismatch"
         assert (
-            rewards.shape[0] == self.buffer.config.batch_size
+            rewards.shape[0] == self.buffer.config.steps_number
         ), "Reward shape mismatch"
 
         advantages = advantages.to(device)
@@ -151,6 +152,8 @@ class PPOAgent(Agent):
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
         old_obs = self.buffer.current
         old_goal = self.buffer.goal
+        assert old_obs is not None, "Old observations are None"
+        assert old_goal is not None, "Old goals are None"
         old_actions = (
             torch.squeeze(torch.stack(self.buffer.actions, dim=0)).detach().to(device)
         )
@@ -170,32 +173,28 @@ class PPOAgent(Agent):
         kl_divergence_stop = False
         for epoch in range(self.config.learning_epochs):
             # Shuffle indices for minibatch
-            indices = torch.randperm(self.buffer.config.batch_size)
+            indices = torch.randperm(self.buffer.config.steps_number)
 
             for start in range(
                 0,
-                self.buffer.config.batch_size,
+                self.buffer.config.steps_number,
                 self.config.mini_batch_size,
             ):
                 end = start + self.config.mini_batch_size
                 mb_idx = indices[start:end]
-                mb_idx_list = mb_idx.tolist()  # turn Tensor → Python list of ints
-                # Decided to save observations as objects instead of tensors
-                # Makes it easier to convert it based on network later on
-                mb_obs = [old_obs[i] for i in mb_idx_list]
-                mb_goal = [old_goal[i] for i in mb_idx_list]
-
-                # mb_obs = old_obs[mb_idx]
-                # mb_goal = old_goal[mb_idx]
+                # Get mini-batch
+                mb_obs = old_obs.indexed(mb_idx)
+                mb_goal = old_goal.indexed(mb_idx)
                 mb_actions = old_actions[mb_idx]
                 mb_logprobs = old_logprobs[mb_idx]
                 mb_advantages = advantages[mb_idx]
                 mb_rewards = rewards[mb_idx]
 
                 # Evaluate policy
-                logprobs, state_values, dist_entropy = self.policy_new.evaluate(
+                logprobs, state_values, new_dist = self.policy_new.evaluate(
                     mb_obs, mb_goal, mb_actions
                 )
+                _, _, old_dist = self.policy_old.evaluate(mb_obs, mb_goal, mb_actions)
 
                 assert logprobs.shape == mb_logprobs.shape, "Logprobs shape mismatch"
                 assert (
@@ -222,7 +221,7 @@ class PPOAgent(Agent):
                 loss: torch.Tensor = (
                     -torch.min(surr1, surr2)
                     + self.config.value_coef * self.mse_loss(state_values, mb_rewards)
-                    - self.config.entropy_coef * dist_entropy
+                    - self.config.entropy_coef * new_dist.entropy().mean()
                 )
 
                 ### Update gradients on mini-batch
@@ -234,7 +233,9 @@ class PPOAgent(Agent):
                 # Optional KL early stopping
                 if self.config.target_kl is not None:
                     with torch.no_grad():
-                        kl = (mb_logprobs - logprobs).mean()
+                        kl = torch.distributions.kl_divergence(
+                            old_dist, new_dist
+                        ).mean()
                         if kl > self.config.target_kl:
                             kl_divergence_stop = True
                             break  # break minibatch loop

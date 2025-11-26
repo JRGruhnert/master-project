@@ -45,7 +45,7 @@ class TreeEvaluator(Evaluator):
                     current[state.name],
                     goal[state.name],
                     skill.precons[state.name],
-                )
+                ).item()
                 total_distance += distance
         return total_distance / max(len(skill.precons), 1)
 
@@ -61,6 +61,6 @@ class TreeEvaluator(Evaluator):
             distance = state.distance_to_goal(
                 current[state.name],
                 goal[state.name],
-            )
+            ).item()
             total_distance += distance
         return total_distance / max(len(self.states), 1)

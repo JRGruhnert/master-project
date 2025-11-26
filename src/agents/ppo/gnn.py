@@ -6,7 +6,7 @@ from src.hardware import device
 
 from src.modules.buffer import Buffer
 from src.modules.storage import Storage
-from src.networks.gnn.gnn4 import Gnn
+from src.networks.gnn.gnn import Gnn
 
 
 @dataclass
@@ -22,7 +22,13 @@ class GNNAgent(PPOAgent):
         storage: Storage,
         buffer: Buffer,
     ):
-        super().__init__(config, Gnn(storage.states, storage.skills), buffer, storage)
+        super().__init__(
+            config,
+            Gnn(storage.states, storage.skills),
+            Gnn(storage.states, storage.skills),
+            buffer,
+            storage,
+        )
 
     def load(self):
         """

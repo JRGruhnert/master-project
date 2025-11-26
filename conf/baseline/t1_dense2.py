@@ -1,7 +1,7 @@
 from src.agents.ppo.baseline import BaselineAgentConfig
 from src.environments.calvin import CalvinEnvironmentConfig
 from src.modules.buffer import BufferConfig
-from src.modules.evaluators.dense2 import Dense2EvaluatorConfig
+from src.modules.evaluators.dense_best import DenseBestEvaluatorConfig
 from src.modules.logger import LogMode, LoggerConfig
 from src.modules.storage import StorageConfig
 from src.experiments.pepr import PePrConfig
@@ -30,7 +30,7 @@ config = TrainConfig(
         p_rand=0.0,
     ),
     environment=CalvinEnvironmentConfig(render=render),
-    evaluator=Dense2EvaluatorConfig(
+    evaluator=DenseBestEvaluatorConfig(
         success_reward=1.0,
         positive_step_reward=0.1,
         negative_step_reward=-0.01,

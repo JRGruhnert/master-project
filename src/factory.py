@@ -6,7 +6,7 @@ from src.agents.search_tree import SearchTreeAgent, SearchTreeAgentConfig
 from src.environments.environment import Environment, EnvironmentConfig
 from src.modules.buffer import Buffer
 from src.modules.evaluators.dense import DenseEvaluator, DenseEvaluatorConfig
-from src.modules.evaluators.dense2 import Dense2Evaluator, Dense2EvaluatorConfig
+from src.modules.evaluators.dense_best import Dense2Evaluator, DenseBestEvaluatorConfig
 from src.modules.evaluators.evaluator import Evaluator, EvaluatorConfig
 from src.modules.evaluators.sparse import SparseEvaluator, SparseEvaluatorConfig
 from src.modules.storage import Storage
@@ -61,7 +61,7 @@ def select_evaluator(
     """Create reward module from config - simple factory function"""
     if isinstance(config, DenseEvaluatorConfig):
         return DenseEvaluator(config, storage)
-    elif isinstance(config, Dense2EvaluatorConfig):
+    elif isinstance(config, DenseBestEvaluatorConfig):
         return Dense2Evaluator(config, storage)
     elif isinstance(config, SparseEvaluatorConfig):
         return SparseEvaluator(config, storage)

@@ -30,7 +30,7 @@ def import_network(network_type):
     elif network_type is NetworkType.SKILLS:
         from src.networks.gnn.gnn3 import Gnn as Network
     elif network_type is NetworkType.PPO_GNN:
-        from src.networks.gnn.gnn4 import Gnn as Network
+        from src.networks.gnn.gnn import Gnn as Network
     elif network_type is NetworkType.GNN_V5:
         from src.networks.gnn.gnn5 import Gnn as Network
     elif network_type is NetworkType.GNN_V6:
@@ -38,11 +38,11 @@ def import_network(network_type):
     elif network_type is NetworkType.GNN_V7:
         from src.networks.gnn.gnn7 import Gnn as Network
     elif network_type is NetworkType.BASELINE_TEST:
-        from src.networks.baseline.baseline1 import (
+        from src.networks.baseline.baseline import (
             Baseline as Network,
         )
     elif network_type is NetworkType.PPO_BASELINE:
-        from src.networks.baseline.baseline1 import (
+        from src.networks.baseline.baseline import (
             Baseline as Network,
         )
     elif network_type is NetworkType.BASELINE_V2:

@@ -133,7 +133,7 @@ class Gnn(GnnBase):
         obs: list[MasterObservation],
         goal: list[MasterObservation],
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        batch: Batch = self.to_batch(obs, goal)
+        batch: Batch = self.preprocess(obs, goal)
         logits = self.actor(batch)
         value = self.critic(batch)
         return logits, value

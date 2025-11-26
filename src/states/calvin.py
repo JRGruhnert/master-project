@@ -101,7 +101,7 @@ class PreciseEulerState(EulerState):
         super().__init__(
             name=name,
             id=id,
-            type_str="Euler",
+            type_str="EulerPrecise",
             ignore=ignore,
             eval_condition=PreciseEvalCondition(
                 condition=EulerDistanceCondition(
@@ -121,7 +121,7 @@ class AreaEulerState(EulerState):
         super().__init__(
             name=name,
             id=id,
-            type_str="Euler",
+            type_str="EulerArea",
             eval_condition=AreaEvalCondition(
                 spawn_surfaces={
                     "table": [[0.0, -0.15, 0.44], [0.30, -0.03, 0.48]],
@@ -151,9 +151,9 @@ class AreaEulerState(EulerState):
     def is_in_area(self, value: torch.Tensor) -> bool:
         """Checks if the given euler value is within the defined areas."""
         assert isinstance(
-            self._eval_condition, AreaEvalCondition
+            self.eval_condition, AreaEvalCondition
         ), "Eval condition is not of type AreaEvalCondition."
-        return self._eval_condition.is_in_area(value)
+        return self.eval_condition.is_in_area(value)
 
 
 class QuatState(CalvinState):

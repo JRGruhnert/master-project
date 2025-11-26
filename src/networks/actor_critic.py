@@ -36,23 +36,10 @@ class ActorCriticBase(nn.Module, ABC):
         self.dim_states = len(states)
         self.dim_skills = len(skills)
         self.dim_encoder = 32
-        self.encoder_obs = nn.ModuleDict(
+        self.encoder = nn.ModuleDict(
             {
-                # "EulerPrecise": PositionEncoder(self.dim_encoder),
-                # "EulerArea": PositionEncoder(self.dim_encoder),
-                "Euler": PositionEncoder(self.dim_encoder),
-                "Quat": QuaternionEncoder(self.dim_encoder),
-                "Range": ScalarEncoder(self.dim_encoder),
-                "Bool": ScalarEncoder(self.dim_encoder),
-                "Flip": ScalarEncoder(self.dim_encoder),
-            }
-        )
-
-        self.encoder_goal = nn.ModuleDict(
-            {
-                # "EulerPrecise": PositionEncoder(self.dim_encoder),
-                # "EulerArea": PositionEncoder(self.dim_encoder),
-                "Euler": PositionEncoder(self.dim_encoder),
+                "EulerPrecise": PositionEncoder(self.dim_encoder),
+                "EulerArea": PositionEncoder(self.dim_encoder),
                 "Quat": QuaternionEncoder(self.dim_encoder),
                 "Range": ScalarEncoder(self.dim_encoder),
                 "Bool": ScalarEncoder(self.dim_encoder),
@@ -86,6 +73,47 @@ class ActorCriticBase(nn.Module, ABC):
         else:
             raise ValueError(f"Unknown state type: {type_str}")
 
+    def encode_by_state_type(
+        self,
+        x: StateValueDict,
+    ) -> StateValueDict:
+        """Returns the per state encoded StateValueDict
+        \t
+        From:
+        dict[state_name] = (batch_size, heterogenous state_dim)
+        \t
+        To:
+        dict[state_name] = (batch_size, homogenous encoded_dim)
+        """
+        encoded = {}
+        for state in self.states:
+            # Get the encoder for this state type
+            encoder = self.encoder[state.type_str]
+            # Encode the batched value for this state
+            encoded[state.name] = encoder(x[state.name])
+        return StateValueDict.from_tensor_dict(encoded, x.batch_size)
+
+    def from_tensor_dict_to_tensor(self, x: StateValueDict) -> torch.Tensor:
+        """Returns the per state encoded StateValueDict
+        \t
+        From:
+        dict[state_name] = (batch_size, homogenous dim)
+        \t
+        To:
+        (batch_size, state_num, homogenous encoded_dim)
+        """
+        tensors = [x[state.name] for state in self.states]
+        if tensors[0].ndim == 2:
+            # Is batched
+            return torch.stack(tensors, dim=1)
+        elif tensors[0].ndim == 1:
+            # Single sample
+            return torch.stack(tensors, dim=0)
+        else:
+            raise ValueError(
+                f"Unexpected tensor dimension: {tensors[0].ndim}, expected 1 or 2."
+            )
+
     def eval(self):
         super().eval()  # Call PyTorch's nn.Module.eval() instead of iterating manually
         self.is_eval_mode = True
@@ -94,16 +122,16 @@ class ActorCriticBase(nn.Module, ABC):
     @abstractmethod
     def forward(
         self,
-        obs: list[StateValueDict],
-        goal: list[StateValueDict],
+        obs: StateValueDict,
+        goal: StateValueDict,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         pass
 
     @abstractmethod
-    def to_batch(
+    def preprocess(
         self,
-        obs: list[StateValueDict],
-        goal: list[StateValueDict],
+        obs: StateValueDict,
+        goal: StateValueDict,
     ):
         pass
 
@@ -112,7 +140,7 @@ class ActorCriticBase(nn.Module, ABC):
         obs: StateValueDict,
         goal: StateValueDict,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        logits, value = self.forward([obs], [goal])
+        logits, value = self.forward(obs, goal)
         assert logits.shape == (
             1,
             self.dim_skills,
@@ -124,114 +152,108 @@ class ActorCriticBase(nn.Module, ABC):
             action = logits.argmax(dim=-1)
         else:
             action = dist.sample()  # shape: [B]
-        logprob = dist.log_prob(action)  # shape: [B]
+        logprob: torch.Tensor = dist.log_prob(action)  # shape: [B]
         return action.detach(), logprob.detach(), value.detach()
 
     def evaluate(
         self,
-        obs: list[StateValueDict],
-        goal: list[StateValueDict],
+        current: StateValueDict,
+        goal: StateValueDict,
         action: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        assert len(obs) == len(goal), "Observation and Goal lists have different sizes."
-        logits, value = self.forward(obs, goal)
+    ) -> tuple[torch.Tensor, torch.Tensor, Categorical]:
+        assert current.shape == goal.shape, "Current and Goal have different shapes."
+        logits, value = self.forward(current, goal)
         assert logits.shape == (
-            len(obs),
+            current.batch_size[0],
             self.dim_skills,
-        ), f"Expected logits shape ({len(obs)}, {self.dim_skills}), got {logits.shape}"
+        ), f"Expected logits shape ({current.batch_size[0]}, {self.dim_skills}), got {logits.shape}"
         assert value.shape == (
-            len(obs),
-        ), f"Expected value shape ({len(obs)},), got {value.shape}"
+            current.batch_size[0],
+        ), f"Expected value shape ({current.batch_size[0]},), got {value.shape}"
 
         dist = Categorical(logits=logits)
         action_logprobs = dist.log_prob(action)
-        dist_entropy = dist.entropy()
-        return action_logprobs, value, dist_entropy
+        return action_logprobs, value, dist
 
 
 class BaselineBase(ActorCriticBase):
 
-    def state_type_dict_values(
+    def preprocess(
         self,
-        x: StateValueDict,
-    ) -> dict[str, torch.Tensor]:
-        # TODO: MAKE IT DYNAMIC
-        grouped: dict[str, list] = {
-            # "EulerPrecise": [],
-            # "EulerArea": [],
-            "Euler": [],
-            "Quat": [],
-            "Range": [],
-            "Bool": [],
-            "Flip": [],
-        }
-        for state in self.states:
-            value = state.value(x[state.name])
-            grouped[state.type_str].append(value)
-        return {
-            t: torch.stack(vals).float()
-            for t, vals in grouped.items()
-            if vals  # only include non-empty
-        }
+        current: StateValueDict,
+        goal: StateValueDict,
+    ) -> torch.Tensor:
+        encoded_current = self.encode_by_state_type(current)
+        encoded_goal = self.encode_by_state_type(goal)
 
-    def to_batch(
-        self,
-        obs: list[StateValueDict],
-        goal: list[StateValueDict],
-    ):
-        obs_dicts = [self.state_type_dict_values(o) for o in obs]
-        goal_dicts = [self.state_type_dict_values(g) for g in goal]
-
-        tensor_obs = {
-            k: torch.stack([d[k] for d in obs_dicts], dim=0).detach().to(device)
-            for k in obs_dicts[0].keys()
-        }
-        tensor_goal = {
-            k: torch.stack([d[k] for d in goal_dicts], dim=0).detach().to(device)
-            for k in goal_dicts[0].keys()
-        }
-
-        return tensor_obs, tensor_goal
+        tensor_current = self.from_tensor_dict_to_tensor(encoded_current)
+        tensor_goal = self.from_tensor_dict_to_tensor(encoded_goal)
+        print(tensor_current.shape, tensor_goal.shape)
+        if tensor_current.ndim == 3:
+            # Batched
+            reshaped_current = tensor_current.view(
+                tensor_current.shape[0], -1
+            )  # [B, S * dim_encoder]
+            reshaped_goal = tensor_goal.view(
+                tensor_goal.shape[0], -1
+            )  # [B, S * dim_encoder]
+            return torch.cat([reshaped_current, reshaped_goal], dim=1)
+        elif tensor_current.ndim == 2:
+            # Single sample
+            reshaped_current = tensor_current.view(1, -1)  # [S * dim_encoder]
+            reshaped_goal = tensor_goal.view(1, -1)  # [S * dim_encoder]
+            return torch.cat([reshaped_current, reshaped_goal], dim=1)
+        else:
+            raise ValueError(
+                f"Unexpected tensor dimension: {tensor_current.ndim}, expected 2 or 3."
+            )
 
 
 class GnnBase(ActorCriticBase, ABC):
     @abstractmethod
-    def to_data(self, obs: StateValueDict, goal: StateValueDict) -> HeteroData:
+    def to_data(
+        self,
+        obs: torch.Tensor,
+        goal: torch.Tensor,
+        state_skill: torch.Tensor,
+    ) -> HeteroData:
         pass
 
-    def to_batch(
+    def preprocess(
         self,
-        obs: list[StateValueDict],
-        goal: list[StateValueDict],
+        current: StateValueDict,
+        goal: StateValueDict,
     ) -> Batch:
-        data = []
-        for o, g in zip(obs, goal):
-            data.append(self.to_data(o, g))
-        return Batch.from_data_list(data)
+        encoded_current = self.encode_by_state_type(current)
+        encoded_goal = self.encode_by_state_type(goal)
 
-    def encode_states(
-        self, obs: StateValueDict, goal: StateValueDict
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        obs_encoded = [
-            self.encoder_obs[state.type_str](obs[state.name]) for state in self.states
-        ]
-        goal_encoded = [
-            self.encoder_goal[state.type_str](goal[state.name]) for state in self.states
-        ]
-        obs_tensor = torch.stack(obs_encoded, dim=0)  # [num_states, feature_size]
-        goal_tensor = torch.stack(goal_encoded, dim=0)  # [num_states, feature_size]
-        return obs_tensor, goal_tensor
+        tensor_current = self.from_tensor_dict_to_tensor(encoded_current)
+        tensor_goal = self.from_tensor_dict_to_tensor(encoded_goal)
+        tensor_state_skill = self.skill_state_distances(current, goal)
+        assert tensor_current.shape == tensor_goal.shape
+        assert tensor_current.shape[0] == tensor_state_skill.shape[0]
+
+        data = []
+        for index in range(tensor_current.shape[0]):
+            data.append(
+                self.to_data(
+                    tensor_current[index],
+                    tensor_goal[index],
+                    tensor_state_skill[index],
+                )
+            )
+        return Batch.from_data_list(data)
 
     def skill_state_distances(
         self,
-        obs: StateValueDict,
+        current: StateValueDict,
         goal: StateValueDict,
         pad: bool = False,
         sparse: bool = False,
     ) -> torch.Tensor:
         features: list[torch.Tensor] = []
         for skill in self.skills:
-            distances = skill.distances(obs, goal, self.states, pad, sparse)
+            distances = skill.distances(current, goal, self.states, pad, sparse)
             features.append(distances)
         return torch.stack(features, dim=0).float()
 

@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 from src.networks.actor_critic import BaselineBase
 from src.observation.observation import StateValueDict
-from src.hardware import device
 
 
 class Baseline(BaselineBase):
@@ -36,22 +35,13 @@ class Baseline(BaselineBase):
 
     def forward(
         self,
-        obs: list[StateValueDict],
-        goal: list[StateValueDict],
+        current: StateValueDict,
+        goal: StateValueDict,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        # obs and goal are dicts with keys 'euler', 'quat', 'scalar'
-        obs_dict, goal_dict = self.to_batch(obs, goal)
 
-        obs_encoded = [self.encoder_obs[k](v.to(device)) for k, v in obs_dict.items()]
-        goal_encoded = [
-            self.encoder_goal[k](v.to(device)) for k, v in goal_dict.items()
-        ]
-
-        # Flatten each encoded component
-        obs_flat = torch.cat([v.flatten(start_dim=1) for v in obs_encoded], dim=1)
-        goal_flat = torch.cat([v.flatten(start_dim=1) for v in goal_encoded], dim=1)
-
-        x = torch.cat([obs_flat, goal_flat], dim=1)  # .unsqueeze(
+        #
+        x = self.preprocess(current, goal)
+        # Forward through actor and critic
         logits = self.actor(x)
         value = self.critic(x).squeeze(-1)  # shape: [B]
         return logits, value

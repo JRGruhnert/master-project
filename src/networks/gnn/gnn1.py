@@ -60,7 +60,7 @@ class Gnn(GnnBase):
         obs: list[MasterObservation],
         goal: list[MasterObservation],
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        batch: Batch = self.to_batch(obs, goal)
+        batch: Batch = self.preprocess(obs, goal)
         x_dict = batch.x_dict
         edge_index_dict = batch.edge_index_dict
         edge_attr_dict = batch.edge_attr_dict

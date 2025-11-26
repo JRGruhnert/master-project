@@ -6,7 +6,7 @@ from src.agents.ppo.ppo import PPOAgent, PPOAgentConfig
 from src.modules.buffer import Buffer
 from src.modules.storage import Storage
 from src.hardware import device
-from src.networks.baseline.baseline1 import Baseline
+from src.networks.baseline.baseline import Baseline
 
 
 @dataclass
@@ -23,7 +23,11 @@ class BaselineAgent(PPOAgent):
         buffer: Buffer,
     ):
         super().__init__(
-            config, Baseline(storage.states, storage.skills), buffer, storage
+            config,
+            Baseline(storage.states, storage.skills),
+            Baseline(storage.states, storage.skills),
+            buffer,
+            storage,
         )
 
     def load(self):

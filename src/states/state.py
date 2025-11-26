@@ -13,7 +13,6 @@ from src.logic.eval_condition import (
 
 
 class State:
-
     def __init__(
         self,
         name: str,
@@ -25,50 +24,35 @@ class State:
         eval_condition: EvalCondition,
         addons: dict[str, BaseAddon],
     ):
-        self._name = name
-        self._id = id
-        self._type_str = type_str
-        self._normalizer = normalizer
-        self._skill_condition = skill_condition
-        self._goal_condition = goal_condition
-        self._eval_condition = eval_condition
-        self._addons = addons
-
-    @property
-    def name(self) -> str:
-        """Returns the StateIdent of the state."""
-        return self._name
-
-    @property
-    def id(self) -> int:
-        """Returns the ID of the state."""
-        return self._id
-
-    @property
-    def type_str(self) -> str:
-        """Returns the Type of the state."""
-        return self._type_str
+        self.name = name
+        self.id = id
+        self.type_str = type_str
+        self.normalizer = normalizer
+        self.skill_condition = skill_condition
+        self.goal_condition = goal_condition
+        self.eval_condition = eval_condition
+        self.addons = addons
 
     def value(self, x: torch.Tensor) -> torch.Tensor:
         """Returns the value of the state as a tensor."""
-        return self._normalizer.value(x)
+        return self.normalizer.value(x)
 
     def distance_to_skill(
         self,
         current: torch.Tensor,
         goal: torch.Tensor,
         precon: torch.Tensor,
-    ) -> float:
+    ) -> torch.Tensor:
         """Returns the distance of the state as a tensor."""
-        return self._skill_condition.distance(current, goal, precon)
+        return self.skill_condition.distance(current, goal, precon)
 
     def distance_to_goal(
         self,
         current: torch.Tensor,
         goal: torch.Tensor,
-    ) -> float:
+    ) -> torch.Tensor:
         """Returns the distance of the state as a tensor."""
-        return self._goal_condition.distance(current, goal, goal)
+        return self.goal_condition.distance(current, goal, goal)
 
     def evaluate(
         self,
@@ -76,7 +60,7 @@ class State:
         goal: torch.Tensor,
     ) -> bool:
         """Evaluate success using injected strategy."""
-        return self._eval_condition.evaluate(current, goal)
+        return self.eval_condition.evaluate(current, goal)
 
     def run_addon(
         self,
@@ -85,7 +69,7 @@ class State:
         **kwargs,
     ) -> torch.Tensor | None:
         """Returns the mean of the given tensor values."""
-        addon = self._addons.get(name)
+        addon = self.addons.get(name)
         if addon:
             return addon.run(*args, **kwargs)
         return None
