@@ -165,9 +165,16 @@ class PPOAgent(Agent):
             )
             return True
 
+        # Normalize rewards
+        normalized_rewards = np.array(self.buffer.rewards)
+        normalized_rewards = (normalized_rewards - np.mean(normalized_rewards)) / (
+            np.std(normalized_rewards) + 1e-8
+        )
+        normalized_rewards = normalized_rewards.tolist()
+
         ### Preprocess batch values
         advantages, rewards = self.compute_gae(
-            self.buffer.rewards,
+            normalized_rewards,
             self.buffer.values,
             self.buffer.terminals,
         )
