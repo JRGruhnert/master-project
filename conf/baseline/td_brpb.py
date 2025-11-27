@@ -13,7 +13,12 @@ eval = False
 tag = "td_brpb_brpb"
 
 config = TrainConfig(
-    agent=BaselineAgentConfig(eval=eval),
+    agent=BaselineAgentConfig(
+        eval=eval,
+        early_stop_patience=10,
+        min_sampling_epochs=20,
+        max_batches=200,
+    ),
     buffer=BufferConfig(),
     logger=LoggerConfig(
         mode=mode,
