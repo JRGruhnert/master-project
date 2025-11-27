@@ -142,11 +142,12 @@ class PPOAgent(Agent):
     def learn(self) -> bool:
         # Saves batch values
         success_rate = self.buffer.save(
-            self.storage.buffer_saving_path, self.current_epoch
+            self.storage.buffer_saving_path,
+            self.current_epoch,
         )
 
         ### Check for early stop (Plateau reached)
-        if success_rate > self.best_success + 1e-2:  # small threshold
+        if success_rate > self.best_success:  # New best success rate
             self.best_success = success_rate
             self.epochs_since_improvement = 0
             # Aditional save the new high.before new learning.
