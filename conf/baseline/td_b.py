@@ -14,7 +14,7 @@ tag = "td_b_b"
 
 config = TrainConfig(
     agent=BaselineAgentConfig(eval=eval),
-    buffer=BufferConfig(),
+    buffer=BufferConfig(batch_size=2048),
     logger=LoggerConfig(
         mode=mode,
         wandb_tag=tag,
@@ -27,7 +27,7 @@ config = TrainConfig(
         network="baseline",
     ),
     experiment=PePrConfig(
-        p_empty=0.0,
+        p_empty=0.8,
         p_rand=0.0,
     ),
     environment=CalvinEnvironmentConfig(render=render),
