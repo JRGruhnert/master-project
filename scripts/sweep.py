@@ -10,15 +10,16 @@ from src.agents.ppo.baseline import BaselineAgentConfig
 from src.agents.ppo.gnn import GNNAgentConfig
 
 from scripts.train import TrainConfig, Trainer
+from wandb.wandb_run import Run
 
 
-def train_agent(config: TrainConfig):
-    trainer = Trainer(config)
+def train_agent(config: TrainConfig, run: Run):
+    trainer = Trainer(config, run)
     trainer.run()
 
 
 def entry_point():
-    wandb.init()
+    run = wandb.init()
     # Use wandb.config to override TrainConfig
     if wandb.config["dense_evaluator"]:
         print("Using Dense2EvaluatorConfig from wandb config.")
@@ -81,7 +82,7 @@ def entry_point():
         evaluator=evaluator,
     )
 
-    train_agent(config)  # type: ignore
+    train_agent(config, run)  # type: ignore
 
 
 if __name__ == "__main__":

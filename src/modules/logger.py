@@ -24,14 +24,15 @@ class LoggerConfig:
 
 
 class Logger:
-    def __init__(self, config: LoggerConfig):
+    def __init__(self, config: LoggerConfig, run: Run | None = None):
         self.config = config
+        self.run = run
         self.max_success_rate = float("-inf")
 
     def start(self, metadata: dict = {}):
         self.start_time = datetime.now().replace(microsecond=0)
         if self.config.mode == LogMode.WANDB:
-            wandb.init(
+            self.run = wandb.init(
                 entity=self.config.wandb_entity,
                 project=self.config.wandb_project,
                 name=self.config.wandb_tag,
@@ -61,8 +62,8 @@ class Logger:
             data["stats/max_success_rate"] = self.max_success_rate
         if (
             self.config.mode == LogMode.WANDB or self.config.mode == LogMode.SWEEP
-        ) and wandb.run:
-            wandb.run.log(data, step=epoch)
+        ) and self.run:
+            self.run.log(data, step=epoch)
         elif self.config.mode == LogMode.TERMINAL:
             pprint.pprint(data)
         else:
@@ -71,11 +72,11 @@ class Logger:
     def log_weights(self, data: dict, epoch: int):
         if (
             self.config.mode == LogMode.WANDB or self.config.mode == LogMode.SWEEP
-        ) and wandb.run:
+        ) and self.run:
             histogram_data = {
                 name: wandb.Histogram(param) for name, param in data.items()
             }
-            wandb.run.log(
+            self.run.log(
                 histogram_data,
                 step=epoch,
             )

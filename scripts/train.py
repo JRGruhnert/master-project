@@ -16,6 +16,7 @@ from src.modules.storage import Storage, StorageConfig
 from src.environments.environment import EnvironmentConfig
 from src.agents.agent import AgentConfig
 from src.experiments.experiment import ExperimentConfig
+from wandb.wandb_run import Run
 from src.factory import (
     select_agent,
     select_environment,
@@ -38,10 +39,10 @@ class TrainConfig:
 class Trainer:
     """Manages training loop"""
 
-    def __init__(self, config: TrainConfig):
+    def __init__(self, config: TrainConfig, run: Run | None = None):
         self.storage = Storage(config.storage)
         self.buffer = Buffer(config.buffer)
-        self.logger = Logger(config.logger)
+        self.logger = Logger(config.logger, run)
 
         evaluator = select_evaluator(config.evaluator, self.storage)
         env = select_environment(config.environment, evaluator, self.storage)
