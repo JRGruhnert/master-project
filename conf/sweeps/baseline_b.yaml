@@ -105,13 +105,13 @@ parameters:
       - 4096
   storage.used_skills:
     distribution: constant
-    value: "BaseRedPinkBlue"
+    value: "Base"
   storage.used_states:
     distribution: constant
-    value: "BaseRedPinkBlue"
+    value: "Base"
   storage.eval_states:
     distribution: constant
-    value: "BaseRedPinkBlue"
+    value: "Base"
   storage.network:
     distribution: constant
     value: "baseline"

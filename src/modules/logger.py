@@ -43,6 +43,8 @@ class Logger:
             pprint.pprint(metadata)
         elif self.config.mode == LogMode.NONE:
             logger.info("Logging disabled.")
+        elif self.config.mode == LogMode.SWEEP:
+            logger.info("Logging in sweep mode.")
         else:
             raise ValueError(f"Unknown logging mode: {self.config.mode}")
 
@@ -55,7 +57,9 @@ class Logger:
 
     def log_metrics(self, data: dict, epoch: int):
         print(f"Batch summary of Epoch {epoch}:")
-        if self.config.mode == LogMode.WANDB and self.run:
+        if (
+            self.config.mode == LogMode.WANDB or self.config.mode == LogMode.SWEEP
+        ) and self.run:
             self.run.log(data, step=epoch)
         elif self.config.mode == LogMode.TERMINAL:
             pprint.pprint(data)
@@ -63,7 +67,9 @@ class Logger:
             pass  # No logging
 
     def log_weights(self, data: dict, epoch: int):
-        if self.config.mode == LogMode.WANDB and self.run:
+        if (
+            self.config.mode == LogMode.WANDB or self.config.mode == LogMode.SWEEP
+        ) and self.run:
             histogram_data = {
                 name: wandb.Histogram(param) for name, param in data.items()
             }

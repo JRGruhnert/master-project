@@ -114,7 +114,7 @@ parameters:
     value: "BaseRedPinkBlue"
   storage.network:
     distribution: constant
-    value: "baseline"
+    value: "gnn"
   experiment.p_empty:
     distribution: constant
     value: 0.0
