@@ -9,6 +9,7 @@ from wandb.wandb_run import Run
 
 
 class LogMode(Enum):
+    SWEEP = "sweep"
     WANDB = "wandb"
     TERMINAL = "terminal"
     NONE = "none"
@@ -16,8 +17,8 @@ class LogMode(Enum):
 
 @dataclass
 class LoggerConfig:
-    mode: LogMode
-    wandb_tag: str
+    mode: LogMode = LogMode.SWEEP
+    wandb_tag: str = "untagged_run"
     wandb_entity: str = "jan-gruhnert-universit-t-freiburg"
     wandb_project: str = "master-project"
 

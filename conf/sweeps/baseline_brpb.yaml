@@ -1,0 +1,135 @@
+program: train.py # The script to run
+method: bayes # Bayesian optimization for hyperparameter search
+metric:
+  name: stats/success_rate # The metric to optimize
+  goal: maximize # We want to maximize the success rate
+parameters:
+  agent.eval:
+    distribution: constant
+    values:
+      - False
+  agent.early_stop_patience:
+    distribution: constant
+    value: 5
+  agent.use_ema_for_early_stopping:
+    distribution: constant
+    value: True
+  agent.ema_smoothing_factor:
+    distribution: constant
+    value: 0.1
+  agent.min_batches:
+    distribution: constant
+    value: 10
+  agent.max_batches:
+    distribution: constant
+    value: 100
+  saving_freq:
+    distribution: constant
+    value: 10
+  save_stats:
+    distribution: constant
+    value: False
+  agent.mini_batch_size:
+    distribution: categorical
+    values:
+      - 32
+      - 64
+      - 128
+      - 256
+  agent.learning_epochs:
+    distribution: categorical
+    values:
+      - 5
+      - 10
+      - 15
+      - 20
+      - 25
+      - 30
+      - 50
+  agent.lr_annealing:
+    distribution: constant
+    value: False
+  agent.learning_rate:
+    distribution: categorical
+    values:
+      - 0.003
+      - 0.0003
+      - 0.00003
+      - 0.000003
+  agent.gamma:
+    distribution: uniform
+    min: 0.8
+    max: 0.99
+  agent.gae_lambda:
+    distribution: uniform
+    min: 0.9
+    max: 1.0
+  agent.eps_clip:
+    distribution: categorical
+    values:
+      - 0.1
+      - 0.2
+      - 0.3
+  agent.entropy_coef:
+    distribution: categorical
+    values:
+      - 0.0
+      - 0.01
+      - 0.001
+      - 0.0001
+  agent.value_coef:
+    distribution: categorical
+    values:
+      - 0.5
+      - 1.0
+  agent.max_grad_norm:
+    distribution: categorical
+    values:
+      - 0.5
+      - 1.0
+      - 2.0
+      - 5.0
+  agent.target_kl:
+    distribution: categorical
+    values:
+      - 0.01
+      - 0.02
+      - 0.03
+      - None
+  buffer.steps:
+    distribution: categorical
+    values:
+      - 256
+      - 512
+      - 1024
+      - 2048
+      - 4096
+  storage.used_skills:
+    distribution: constant
+    values:
+      - "BaseRedPinkBlue"
+  storage.used_states:
+    distribution: constant
+    values:
+      - "BaseRedPinkBlue"
+  storage.eval_skills:
+    distribution: constant
+    values:
+      - "BaseRedPinkBlue"
+  network.constant:
+    distribution: constant
+    values:
+      - "baseline"
+  experiment.p_empty:
+    distribution: constant
+    values:
+      - 0.0
+  experiment.p_rand:
+    distribution: constant
+    values:
+      - 0.0
+  dense_evaluator:
+    distribution: categorical
+    values:
+      - True
+      - False

@@ -6,7 +6,7 @@ from src.observation.observation import StateValueDict
 
 @dataclass
 class BufferConfig:
-    batch_size: int = 2048
+    steps: int = 2048
 
 
 class Buffer:
@@ -95,14 +95,12 @@ class Buffer:
         self.success.append(success)
         self.terminals.append(terminal)
         assert self.health(), "Buffer lengths are inconsistent!"
-        return len(self.actions) == self.config.batch_size
+        return len(self.actions) == self.config.steps
 
     def metrics(self) -> dict[str, float]:
         assert self.health(), "Buffer lengths are inconsistent!"
         return {
-            "total_reward": sum(self.rewards),
-            "average_reward": sum(self.rewards) / self.config.batch_size,
-            "average_length": self.config.batch_size
-            / max(1, self.terminals.count(True)),
-            "success_rate": self.success_rate(),
+            "stats/mean_reward": sum(self.rewards) / self.config.steps,
+            "stats/mean_length": self.config.steps / max(1, self.terminals.count(True)),
+            "stats/success_rate": self.success_rate(),
         }

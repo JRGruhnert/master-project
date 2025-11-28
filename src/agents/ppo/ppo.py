@@ -52,7 +52,9 @@ class PPOAgentConfig(AgentConfig):
     # Default values
     eval: bool = False
     early_stop_patience: int = 5
-    min_sampling_epochs: int = 10
+    use_ema_for_early_stopping: bool = True
+    ema_smoothing_factor: float = 0.1
+    min_batches: int = 10
     max_batches: int = 50
     saving_freq: int = 5  # Saving frequence of trained model
     save_stats: bool = True
@@ -68,6 +70,72 @@ class PPOAgentConfig(AgentConfig):
     value_coef: float = 0.5  # Weight on the critic (value) loss vs. the policy loss
     max_grad_norm: float = 0.5  # Threshold for clipping gradient norms
     target_kl: float | None = None  # (Optional) early stopping if KL
+
+
+class ProgressWatcher:
+    def __init__(
+        self,
+        patience: int,
+        min_batches: int,
+        max_batches: int,
+        use_ema: bool,
+        smoothing_factor: float = 0.1,
+    ):
+        self.patience = patience
+        self.min_batches = min_batches
+        self.max_batches = max_batches
+        self.use_ema = use_ema
+        self.smoothing_factor = smoothing_factor
+        self.best_value = -float("inf")
+        self.counter = 0
+        self.ema = None
+
+    def update(self, metric: float, current_batch: int) -> tuple[bool, bool]:
+        """
+        Determines if training should stop and whether the metric is a new high.
+        Returns:
+            should_stop (bool): Whether early stopping should trigger.
+            is_new_high (bool): Whether the current metric is a new high.
+        """
+        if self.use_ema:
+            should_stop, is_new_high = self._ema_check(metric)
+        else:
+            should_stop, is_new_high = self._default_metric_check(metric)
+
+        # Enforce min and max batch constraints
+        if current_batch < self.min_batches:
+            return False, is_new_high
+        elif current_batch >= self.max_batches:
+            return True, is_new_high
+        else:
+            return should_stop, is_new_high
+
+    def _ema_check(self, metric: float) -> tuple[bool, bool]:
+        # Update EMA
+        if self.ema is None:
+            self.ema = metric  # Initialize EMA with the first metric value
+        else:
+            self.ema = (
+                self.smoothing_factor * metric + (1 - self.smoothing_factor) * self.ema
+            )
+
+        if self.ema > self.best_value:
+            self.best_value = self.ema
+            self.counter = 0  # Reset patience counter
+            return False, True  # No stop, is new high
+        else:
+            self.counter += 1  # Increment patience counter
+            return self.counter >= self.patience, False
+
+    def _default_metric_check(self, metric: float) -> tuple[bool, bool]:
+        # Check if metric improves
+        if metric > self.best_value:
+            self.best_value = metric
+            self.counter = 0  # Reset patience counter
+            return False, True  # No stop, is new high
+        else:
+            self.counter += 1  # Increment patience counter
+            return self.counter >= self.patience, False
 
 
 class PPOAgent(Agent):
@@ -90,6 +158,14 @@ class PPOAgent(Agent):
         self.optimizer = torch.optim.AdamW(
             self.policy_new.parameters(),
             lr=self.config.learning_rate,
+        )
+
+        self.stop_watcher = ProgressWatcher(
+            patience=self.config.early_stop_patience,
+            min_batches=self.config.min_batches,
+            max_batches=self.config.max_batches,
+            use_ema=self.config.use_ema_for_early_stopping,
+            smoothing_factor=self.config.ema_smoothing_factor,
         )
         if self.config.eval:
             self.policy_new.eval()
@@ -140,28 +216,26 @@ class PPOAgent(Agent):
         )
 
     def learn(self) -> bool:
+
         # Saves batch values
         success_rate = self.buffer.save(
             self.storage.buffer_saving_path,
             self.current_epoch,
         )
 
-        ### Check for early stop (Plateau reached)
-        if success_rate > self.best_success:  # New best success rate
-            self.best_success = success_rate
-            self.epochs_since_improvement = 0
-            # Aditional save the new high.before new learning.
-            self.save("best")
-        else:
-            self.epochs_since_improvement += 1
-
-        # Check for improvement
-        if (
-            self.epochs_since_improvement >= self.config.early_stop_patience
-            and self.config.min_sampling_epochs <= self.current_epoch
-        ):
+        # Check batch success rate for early stopping
+        should_stop, is_new_high = self.stop_watcher.update(
+            success_rate, self.current_epoch
+        )
+        if is_new_high:
             logger.info(
-                f"Early stopping training after {self.current_epoch} epochs because of no improvement in the last {self.config.early_stop_patience} epochs."
+                f"New high success rate {success_rate:.4f} at epoch {self.current_epoch}"
+            )
+            self.save("best")
+
+        if should_stop:
+            logger.info(
+                f"Early stopping training after {self.current_epoch} epochs because of no improvement in the smoothed success rate."
             )
             return True
 
@@ -181,11 +255,9 @@ class PPOAgent(Agent):
 
         # Check shapes
         assert (
-            advantages.shape[0] == self.buffer.config.batch_size
+            advantages.shape[0] == self.buffer.config.steps
         ), "Advantage shape mismatch"
-        assert (
-            rewards.shape[0] == self.buffer.config.batch_size
-        ), "Reward shape mismatch"
+        assert rewards.shape[0] == self.buffer.config.steps, "Reward shape mismatch"
 
         advantages = advantages.to(device)
         rewards = rewards.to(device)
@@ -211,11 +283,11 @@ class PPOAgent(Agent):
         kl_divergence_stop = False
         for epoch in range(self.config.learning_epochs):
             # Shuffle indices for minibatch
-            indices = torch.randperm(self.buffer.config.batch_size)
+            indices = torch.randperm(self.buffer.config.steps)
 
             for start in range(
                 0,
-                self.buffer.config.batch_size,
+                self.buffer.config.steps,
                 self.config.mini_batch_size,
             ):
                 end = start + self.config.mini_batch_size

@@ -13,8 +13,8 @@ from src.states.states import STATES_BY_TAG
 class StorageConfig:
     used_skills: str
     used_states: str
-    tag: str
     network: str
+    tag: str = "untagged_run"
     storage_path: str = "data"
     results_path: str = "results"
     buffer_path: str = "logs"

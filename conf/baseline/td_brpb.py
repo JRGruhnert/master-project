@@ -16,7 +16,7 @@ config = TrainConfig(
     agent=BaselineAgentConfig(
         eval=eval,
         early_stop_patience=10,
-        min_sampling_epochs=20,
+        min_batches=20,
         max_batches=200,
     ),
     buffer=BufferConfig(),
