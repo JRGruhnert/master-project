@@ -46,6 +46,20 @@ from loguru import logger
 # value loss and policy loss in the total loss function.	A higher value coefficient places more emphasis on the value function,
 # potentially leading to more stable training.
 
+# from torch.utils.data import DataLoader, Dataset
+
+# from tapas.build.lib.tapas_gmm import dataset
+
+
+# class PPOBufferDataset(Dataset):
+#    def __init__(self, obs, goal, actions, logprobs, advantages, rewards):
+#        self.data = list(zip(obs, goal, actions, logprobs, advantages, rewards))
+#
+#    def __len__(self):
+#        return len(self.data)
+#    def __getitem__(self, idx):
+#        return self.data[idx]
+
 
 @dataclass
 class PPOAgentConfig(AgentConfig):
@@ -229,7 +243,7 @@ class PPOAgent(Agent):
         )
         if is_new_high:
             logger.info(
-                f"New high success rate {success_rate:.4f} at epoch {self.current_epoch}"
+                f"Success rate {success_rate:.4f} at epoch {self.current_epoch}. Saving best model."
             )
             self.save("best")
 
@@ -239,16 +253,9 @@ class PPOAgent(Agent):
             )
             return True
 
-        # Normalize rewards
-        normalized_rewards = np.array(self.buffer.rewards)
-        normalized_rewards = (normalized_rewards - np.mean(normalized_rewards)) / (
-            np.std(normalized_rewards) + 1e-8
-        )
-        normalized_rewards = normalized_rewards.tolist()
-
         ### Preprocess batch values
         advantages, rewards = self.compute_gae(
-            normalized_rewards,
+            self.buffer.rewards,
             self.buffer.values,
             self.buffer.terminals,
         )
@@ -270,6 +277,16 @@ class PPOAgent(Agent):
         old_logprobs = (
             torch.squeeze(torch.stack(self.buffer.logprobs, dim=0)).detach().to(device)
         )
+
+        ### Create DataLoader
+        # dataset = PPOBufferDataset(
+        #    old_obs, old_goal, old_actions, old_logprobs, advantages, rewards
+        # )
+        # dataloader = DataLoader(
+        #    dataset,
+        #    batch_size=self.config.mini_batch_size,
+        #    shuffle=True,
+        # )
 
         ### Learning Rate Annealing
         if self.config.lr_annealing:
