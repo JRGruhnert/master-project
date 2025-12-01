@@ -46,20 +46,22 @@ class CalvinEnvironment(Environment):
         self.info = {}
 
     def reset(self):
-        self.evaluator.reset()
-        calvin_obs = self.env.reset(settle_time=50)[0]
-        self.goal = CalvinObservation.from_internal(calvin_obs)
+        temp = self.env.reset(settle_time=50)[0]
+        self.goal = CalvinObservation.from_internal(temp)
         self.calvin_obs = self.env.reset(settle_time=50)[0]
         self.current = CalvinObservation.from_internal(self.calvin_obs)
 
     def sample_task(self) -> tuple[StateValueDict, StateValueDict]:
+        self.evaluator.reset()
         self.reset()
         # Current and goal should not be equal
         while self.evaluator.is_equal(
             self.current, self.goal
         ) or not self.evaluator.is_good_sample(self.current, self.goal):
-            self.calvin_obs = self.env.reset(settle_time=50)[0]
-            self.current = CalvinObservation.from_internal(self.calvin_obs)
+            # print("Resampling task...")
+            # print(self.evaluator.is_equal(self.current, self.goal))
+            # print(not self.evaluator.is_good_sample(self.current, self.goal))
+            self.reset()
         return self.current, self.goal
 
     def step(
