@@ -57,7 +57,7 @@ class CalvinEnvironment(Environment):
         # Current and goal should not be equal
         while self.evaluator.is_equal(
             self.current, self.goal
-        ) and self.evaluator.is_good_sample(self.current, self.goal):
+        ) or not self.evaluator.is_good_sample(self.current, self.goal):
             self.calvin_obs = self.env.reset(settle_time=50)[0]
             self.current = CalvinObservation.from_internal(self.calvin_obs)
         return self.current, self.goal

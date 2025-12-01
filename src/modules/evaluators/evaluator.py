@@ -57,10 +57,10 @@ class Evaluator(ABC):
         # print(f"Checking states dense reward module...")
         for state in self.states:
             if isinstance(state, AreaEulerState) and state.name in goal.keys():
-                if not state.is_in_area(goal[state.name]):
+                if not state.is_in_an_existing_area(goal[state.name]):
                     # print(f"Bad sample: goal {goal[state.name]} not in an area.")
                     return False
-                if not state.is_in_area(current[state.name]):
+                if not state.is_in_an_existing_area(current[state.name]):
                     # print(f"Bad sample: current {current[state.name]} not in an area.")
                     return False
         return True

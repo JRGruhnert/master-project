@@ -148,7 +148,7 @@ class AreaEulerState(EulerState):
             ),
         )
 
-    def is_in_area(self, value: torch.Tensor) -> bool:
+    def is_in_an_existing_area(self, value: torch.Tensor) -> bool:
         """Checks if the given euler value is within the defined areas."""
         assert isinstance(
             self._eval_condition, AreaEvalCondition
