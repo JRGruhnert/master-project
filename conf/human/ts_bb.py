@@ -19,9 +19,9 @@ config = TrainConfig(
         wandb_tag=tag,
     ),
     storage=StorageConfig(
-        used_skills="BaseBlue",
+        used_skills="BaseRedPinkBlue",
         used_states="BaseRedPinkBlue",
-        eval_states="BaseBlue",
+        eval_states="BaseRedPinkBlue",
         tag=tag,
         network="baseline",
     ),
