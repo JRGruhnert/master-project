@@ -1,4 +1,6 @@
 program: scripts/sweep.py # The script to run
+project: master-project
+name: gnn_brpb_sweep
 method: bayes # Bayesian optimization for hyperparameter search
 metric:
   name: stats/max_success_rate # The metric to optimize
