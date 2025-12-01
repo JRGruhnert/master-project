@@ -27,11 +27,16 @@ class EulerDistanceCondition(DistanceCondition, BoundedMixin):
         goal: torch.Tensor,
         tp: torch.Tensor,
     ) -> float:
+        assert (
+            isinstance(current, torch.Tensor)
+            and isinstance(goal, torch.Tensor)
+            and isinstance(tp, torch.Tensor)
+        ), "Inputs must be torch.Tensor"
         cx = torch.clamp(current, self.lower_bound, self.upper_bound)
         cy = torch.clamp(tp, self.lower_bound, self.upper_bound)
         nx = self.normalize(cx)
         ny = self.normalize(cy)
-        return torch.linalg.norm(nx - ny)
+        return torch.linalg.norm(nx - ny).item()
 
 
 class QuaternionDistanceCondition(DistanceCondition, QuaternionMixin):
@@ -43,6 +48,11 @@ class QuaternionDistanceCondition(DistanceCondition, QuaternionMixin):
         goal: torch.Tensor,
         tp: torch.Tensor,
     ) -> float:
+        assert (
+            isinstance(current, torch.Tensor)
+            and isinstance(goal, torch.Tensor)
+            and isinstance(tp, torch.Tensor)
+        ), "Inputs must be torch.Tensor"
         nx = self.normalize_quat(current)
         ny = self.normalize_quat(tp)
         dot = torch.clamp(torch.abs(torch.dot(nx, ny)), -1.0, 1.0)
@@ -58,6 +68,11 @@ class RangeDistanceCondition(DistanceCondition, BoundedMixin):
         goal: torch.Tensor,
         tp: torch.Tensor,
     ) -> float:
+        assert (
+            isinstance(current, torch.Tensor)
+            and isinstance(goal, torch.Tensor)
+            and isinstance(tp, torch.Tensor)
+        ), "Inputs must be torch.Tensor"
         cx = torch.clamp(current, self.lower_bound, self.upper_bound)
         cy = torch.clamp(tp, self.lower_bound, self.upper_bound)
         nx = self.normalize(cx)
@@ -74,6 +89,11 @@ class BooleanDistanceCondition(DistanceCondition):
         goal: torch.Tensor,
         tp: torch.Tensor,
     ) -> float:
+        assert (
+            isinstance(current, torch.Tensor)
+            and isinstance(goal, torch.Tensor)
+            and isinstance(tp, torch.Tensor)
+        ), "Inputs must be torch.Tensor"
         return torch.abs(current - tp).item()
 
 
@@ -86,4 +106,9 @@ class FlipDistanceCondition(DistanceCondition):
         goal: torch.Tensor,
         tp: torch.Tensor,
     ) -> float:
+        assert (
+            isinstance(current, torch.Tensor)
+            and isinstance(goal, torch.Tensor)
+            and isinstance(tp, torch.Tensor)
+        ), "Inputs must be torch.Tensor"
         return (tp - torch.abs(current - goal)).item()  # Flips distance

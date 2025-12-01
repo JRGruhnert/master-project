@@ -29,6 +29,7 @@ class PreciseEvalCondition(EvalCondition, ThresholdMixin):
     def evaluate(self, current: torch.Tensor, goal: torch.Tensor) -> bool:
         """Evaluate success condition based on Euclidean distance."""
         distance = self.condition.distance(current, goal, goal)
+        assert isinstance(distance, float), "Distance must be a float"
         return distance <= self.threshold
 
 

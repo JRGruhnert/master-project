@@ -1,3 +1,4 @@
+from collections import defaultdict
 from enum import Enum
 from functools import cached_property
 import torch
@@ -5,11 +6,7 @@ import torch.nn as nn
 from torch.distributions import Categorical
 from abc import ABC, abstractmethod
 from torch_geometric.data import Batch, HeteroData
-from src.networks.layers.encoder import (
-    QuaternionEncoder,
-    ScalarEncoder,
-    PositionEncoder,
-)
+from src.networks.layers.encoder import StateEncoder
 from src.observation.observation import StateValueDict
 from src.states.state import State
 from src.skills.skill import Skill
@@ -36,55 +33,15 @@ class ActorCriticBase(nn.Module, ABC):
         self.dim_states = len(states)
         self.dim_skills = len(skills)
         self.dim_encoder = 32
-        self.encoder_obs = nn.ModuleDict(
+
+        input_dims = {state.type: state.size for state in states}
+
+        self.encoders = nn.ModuleDict(
             {
-                # "EulerPrecise": PositionEncoder(self.dim_encoder),
-                # "EulerArea": PositionEncoder(self.dim_encoder),
-                "Euler": PositionEncoder(self.dim_encoder),
-                "Quat": QuaternionEncoder(self.dim_encoder),
-                "Range": ScalarEncoder(self.dim_encoder),
-                "Bool": ScalarEncoder(self.dim_encoder),
-                "Flip": ScalarEncoder(self.dim_encoder),
+                type_str: StateEncoder(input_dim, self.dim_encoder)
+                for type_str, input_dim in input_dims.items()
             }
         )
-
-        self.encoder_goal = nn.ModuleDict(
-            {
-                # "EulerPrecise": PositionEncoder(self.dim_encoder),
-                # "EulerArea": PositionEncoder(self.dim_encoder),
-                "Euler": PositionEncoder(self.dim_encoder),
-                "Quat": QuaternionEncoder(self.dim_encoder),
-                "Range": ScalarEncoder(self.dim_encoder),
-                "Bool": ScalarEncoder(self.dim_encoder),
-                "Flip": ScalarEncoder(self.dim_encoder),
-            }
-        )
-
-    def _create_encoders_for_states(self, states: list[State]) -> nn.ModuleDict:
-        """Create encoders dynamically based on the actual state types present"""
-        unique_types = set(state.type_str for state in states)
-
-        encoder_dict = {}
-        for type_str in unique_types:
-            encoder_dict[type_str] = self._get_encoder_for_type(type_str)
-
-        return nn.ModuleDict(encoder_dict)
-
-    def _get_encoder_for_type(self, type_str: str) -> nn.Module:
-        """Factory method to create appropriate encoder for each state type"""
-        encoder_mapping = {
-            "Euler": lambda: PositionEncoder(self.dim_encoder),
-            "Quat": lambda: QuaternionEncoder(self.dim_encoder),
-            "Range": lambda: ScalarEncoder(self.dim_encoder),
-            "Bool": lambda: ScalarEncoder(self.dim_encoder),
-            "Flip": lambda: ScalarEncoder(self.dim_encoder),
-            # Need to find a way to store these mapping externally
-        }
-
-        if type_str in encoder_mapping:
-            return encoder_mapping[type_str]()
-        else:
-            raise ValueError(f"Unknown state type: {type_str}")
 
     def eval(self):
         super().eval()  # Call PyTorch's nn.Module.eval() instead of iterating manually
@@ -154,24 +111,12 @@ class BaselineBase(ActorCriticBase):
         self,
         x: StateValueDict,
     ) -> dict[str, torch.Tensor]:
-        # TODO: MAKE IT DYNAMIC
-        grouped: dict[str, list] = {
-            # "EulerPrecise": [],
-            # "EulerArea": [],
-            "Euler": [],
-            "Quat": [],
-            "Range": [],
-            "Bool": [],
-            "Flip": [],
-        }
+        """Group state values by their type strings."""
+        grouped = defaultdict(list)
         for state in self.states:
-            value = state.value(x[state.name])
-            grouped[state.type_str].append(value)
-        return {
-            t: torch.stack(vals).float()
-            for t, vals in grouped.items()
-            if vals  # only include non-empty
-        }
+            value = state.normalize(x[state.name])
+            grouped[state.type].append(value)
+        return {k: torch.stack(v).float() for k, v in grouped.items()}
 
     def to_batch(
         self,
@@ -209,17 +154,15 @@ class GnnBase(ActorCriticBase, ABC):
         return Batch.from_data_list(data)
 
     def encode_states(
-        self, obs: StateValueDict, goal: StateValueDict
+        self, current: StateValueDict, goal: StateValueDict
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        obs_encoded = [
-            self.encoder_obs[state.type_str](obs[state.name]) for state in self.states
+        encoded_current = [
+            self.encoders[state.type](current[state.name]) for state in self.states
         ]
-        goal_encoded = [
-            self.encoder_goal[state.type_str](goal[state.name]) for state in self.states
+        encoded_goal = [
+            self.encoders[state.type](goal[state.name]) for state in self.states
         ]
-        obs_tensor = torch.stack(obs_encoded, dim=0)  # [num_states, feature_size]
-        goal_tensor = torch.stack(goal_encoded, dim=0)  # [num_states, feature_size]
-        return obs_tensor, goal_tensor
+        return torch.stack(encoded_current, dim=0), torch.stack(encoded_goal, dim=0)
 
     def skill_state_distances(
         self,

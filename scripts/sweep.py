@@ -10,12 +10,6 @@ from src.agents.ppo.baseline import BaselineAgentConfig
 from src.agents.ppo.gnn import GNNAgentConfig
 
 from scripts.train import TrainConfig, Trainer
-from wandb.wandb_run import Run
-
-
-def train_agent(config: TrainConfig, run: Run):
-    trainer = Trainer(config, run)
-    trainer.run()
 
 
 def entry_point():
@@ -82,7 +76,9 @@ def entry_point():
         evaluator=evaluator,
     )
 
-    train_agent(config, run)  # type: ignore
+    trainer = Trainer(config, run)
+    trainer.run()
+    run.finish()
 
 
 if __name__ == "__main__":

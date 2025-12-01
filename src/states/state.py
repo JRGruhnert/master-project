@@ -19,37 +19,24 @@ class State:
         name: str,
         id: int,
         type_str: str,
+        size: int,
         normalizer: ValueCondition,
         skill_condition: DistanceCondition,
         goal_condition: DistanceCondition,
         eval_condition: EvalCondition,
         addons: dict[str, BaseAddon],
     ):
-        self._name = name
-        self._id = id
-        self._type_str = type_str
+        self.name = name
+        self.id = id
+        self.type = type_str
+        self.size = size
         self._normalizer = normalizer
         self._skill_condition = skill_condition
         self._goal_condition = goal_condition
         self._eval_condition = eval_condition
         self._addons = addons
 
-    @property
-    def name(self) -> str:
-        """Returns the StateIdent of the state."""
-        return self._name
-
-    @property
-    def id(self) -> int:
-        """Returns the ID of the state."""
-        return self._id
-
-    @property
-    def type_str(self) -> str:
-        """Returns the Type of the state."""
-        return self._type_str
-
-    def value(self, x: torch.Tensor) -> torch.Tensor:
+    def normalize(self, x: torch.Tensor) -> torch.Tensor:
         """Returns the value of the state as a tensor."""
         return self._normalizer.value(x)
 

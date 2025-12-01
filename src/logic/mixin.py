@@ -69,11 +69,7 @@ class ThresholdMixin:
 
     def __init__(self, threshold: float = 0.05, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._threshold = threshold
-
-    @property
-    def threshold(self) -> float:
-        return self._threshold
+        self.threshold = threshold
 
 
 class RelThresholdMixin(BoundedMixin, ThresholdMixin):
@@ -106,28 +102,8 @@ class AreaMixin:
     def check_eval_area(self, x: torch.Tensor) -> Optional[str]:
         """Check if the point x is in any of the defined areas."""
         for name, (min_corner, max_corner) in self.eval_surfaces.items():
-            # min_corner = min_corner.to(x.device, dtype=x.dtype)
-            # max_corner = max_corner.to(x.device, dtype=x.dtype)
-            # print("Checking area:", name)
-            # print("Min corner:", min_corner)
-            # print("Max corner:", max_corner)
-            # print("Point to check:", x)
-            # print(
-            #    "Check result:", torch.all(x >= min_corner), torch.all(x <= max_corner)
-            # )
-            # ✅ Let's manually check each element
-            # for i in range(len(x)):
-            #    print(
-            #        f"  Element {i}: {x[i]} >= {min_corner[i]} = {x[i] >= min_corner[i]}"
-            #    )
-            #    print(
-            #        f"  Element {i}: {x[i]} <= {max_corner[i]} = {x[i] <= max_corner[i]}"
-            #    )
-
             if torch.all(x >= min_corner) and torch.all(x <= max_corner):
                 return name
-            # else:
-            #    print(torch.all(x >= min_corner), torch.all(x <= max_corner))
         return None
 
     def check_spawn_area(self, x: torch.Tensor) -> Optional[str]:
@@ -195,115 +171,16 @@ class AreaMixin:
 
         return padded_surface
 
-
-class AreaMixin2:
-    """Mixin for area-based success conditions"""
-
-    def __init__(self, surfaces: Dict[str, list[list[float]]], *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.table: str = "table"
-        self.drawer_open: str = "drawer_open"
-        self.drawer_closed: str = "drawer_closed"
-        self.drawer: str = "drawer"
-        self.eval_surfaces = self.make_eval_surfaces(surfaces)
-
-    def check_area(self, x: torch.Tensor) -> Optional[str]:
-        """Check if the point x is in any of the defined areas."""
-        for name, (min_corner, max_corner) in self.eval_surfaces.items():
-            # min_corner = min_corner.to(x.device, dtype=x.dtype)
-            # max_corner = max_corner.to(x.device, dtype=x.dtype)
-            # print("Checking area:", name)
-            # print("Min corner:", min_corner)
-            # print("Max corner:", max_corner)
-            # print("Point to check:", x)
-            # print(
-            #    "Check result:", torch.all(x >= min_corner), torch.all(x <= max_corner)
-            # )
-            # ✅ Let's manually check each element
-            # for i in range(len(x)):
-            #    print(
-            #        f"  Element {i}: {x[i]} >= {min_corner[i]} = {x[i] >= min_corner[i]}"
-            #    )
-            #    print(
-            #        f"  Element {i}: {x[i]} <= {max_corner[i]} = {x[i] <= max_corner[i]}"
-            #    )
-
-            if torch.all(x >= min_corner) and torch.all(x <= max_corner):
-                return name
-            # else:
-            #    print(torch.all(x >= min_corner), torch.all(x <= max_corner))
-        return None
-
-    def check_area_similarity(self, current: torch.Tensor, goal: torch.Tensor) -> bool:
-        """Check if both obs and goal are in the same defined area."""
-        current_area = self.check_area(current)
-        # print("Current area:", current_area)
-        goal_area = self.check_area(goal)
-        # print("Goal area:", goal_area)
-        # print("Area match:", current_area == goal_area)
-        return current_area == goal_area
-
-    def area_tapas_override(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Override the area check for TAPAS.
-        """
-        area = self.check_area(x)
-        # print("Override area:", area)
-        y = x.clone()  # ✅ Prevents modifying the original tensor
-        if area == self.drawer_closed:
-            y[1] -= 0.17  # Drawer Offset
-        return y  # Return original point if no area match
-
-    def make_eval_surfaces(
+    def get_one_hot_area_vector(
         self,
-        surfaces: dict[str, list[list[float]]],
-        padding_percent: float = 0.1,
-    ):
-        eval_surfaces = surfaces.copy()
-        eval_surfaces[self.table] = self.add_surface_padding(
-            eval_surfaces[self.table], padding_percent
-        )
-        eval_surfaces[self.drawer_open][0][0] -= 0.02
-        eval_surfaces[self.drawer_open][1][0] += 0.02
-        eval_surfaces[self.drawer_closed][0][0] -= 0.02
-        eval_surfaces[self.drawer_closed][1][0] += 0.02
-        eval_surfaces[self.drawer_open][0][1] -= 0.02
-        eval_surfaces[self.drawer_open][1][1] += 0.02
-        eval_surfaces[self.drawer_closed][0][1] -= 0.02
-        eval_surfaces[self.drawer_closed][1][1] += 0.02
-        eval_surfaces[self.drawer_open][0][2] -= 0.02
-        eval_surfaces[self.drawer_open][1][2] += 0.02
-        eval_surfaces[self.drawer_closed][0][2] -= 0.02
-        eval_surfaces[self.drawer_closed][1][2] += 0.02
-        eval_surfaces[self.table][0][2] -= 0.02
-        eval_surfaces[self.table][1][2] += 0.02
-        eval_surfaces[self.table][0][1] -= 0.02
-        eval_surfaces[self.table][1][1] += 0.02
-
-        return {k: torch.from_numpy(np.array(v)) for k, v in eval_surfaces.items()}
-
-    def add_surface_padding(
-        self,
-        surface: list[list[float]],
-        padding_percent: float,
-    ):
-        """Add padding to surface bounds in x and y directions"""
-        # surface = np.array(surface)
-
-        # Get bounds
-        x_min, y_min, z_min = surface[0]
-        x_max, y_max, z_max = surface[1]
-
-        # Calculate padding amounts
-        x_range = x_max - x_min
-        y_range = y_max - y_min
-        x_padding = x_range * padding_percent / 2  # Divide by 2 for each side
-        y_padding = y_range * padding_percent / 2
-
-        # Apply padding (keep z unchanged)
-        padded_surface = [
-            [x_min - x_padding, y_min - y_padding, z_min],
-            [x_max + x_padding, y_max + y_padding, z_max],
-        ]
-
-        return padded_surface
+        area_name: str | None,
+    ) -> torch.Tensor:
+        """Get one-hot encoded vector for the given area name."""
+        area_names = list(self.eval_surfaces.keys())
+        one_hot = torch.zeros(len(area_names), dtype=torch.float32)
+        if area_name in area_names:
+            index = area_names.index(area_name)
+            one_hot[index] = 1.0
+        else:
+            pass  # Area name not found, return all zeros
+        return one_hot

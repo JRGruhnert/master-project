@@ -43,7 +43,7 @@ class Baseline(BaselineBase):
         obs_dict, goal_dict = self.to_batch(obs, goal)
 
         obs_encoded = [
-            self.encoder_obs[k.name](v.to(device)) for k, v in obs_dict.items()
+            self.encoder_current[k.name](v.to(device)) for k, v in obs_dict.items()
         ]
         goal_encoded = [
             self.encoder_goal[k.name](v.to(device)) for k, v in goal_dict.items()

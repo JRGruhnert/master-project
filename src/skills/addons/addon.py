@@ -28,6 +28,8 @@ class ScalarTapasAddon(TapasAddon, RelThresholdMixin):
         reversed: bool,
         selected_by_tapas: bool = False,
     ) -> torch.Tensor | None:
+        assert isinstance(start, torch.Tensor), "start must be a torch.Tensor"
+        assert isinstance(end, torch.Tensor), "end must be a torch.Tensor"
         if reversed:
             std = end.std(dim=0)
             if (std < self.relative_threshold).all():
@@ -50,6 +52,8 @@ class FlipTapasAddon(TapasAddon):
         selected_by_tapas: bool = False,
     ) -> torch.Tensor | None:
         """Returns the mean of the given tensor values."""
+        assert isinstance(start, torch.Tensor), "start must be a torch.Tensor"
+        assert isinstance(end, torch.Tensor), "end must be a torch.Tensor"
         if (end == (1 - start)).all(dim=0).all():
             return torch.tensor([1.0])  # Flip state
         return None
@@ -65,6 +69,8 @@ class QuatTapasAddon(TapasAddon, QuaternionMixin):
         reversed: bool,
         selected_by_tapas: bool = False,
     ) -> torch.Tensor | None:
+        assert isinstance(start, torch.Tensor), "start must be a torch.Tensor"
+        assert isinstance(end, torch.Tensor), "end must be a torch.Tensor"
         if selected_by_tapas:
             if reversed:
                 return self._quaternion_mean(end)
@@ -82,6 +88,8 @@ class EulerTapasAddon(TapasAddon):
         reversed: bool,
         selected_by_tapas: bool = False,
     ) -> torch.Tensor | None:
+        assert isinstance(start, torch.Tensor), "start must be a torch.Tensor"
+        assert isinstance(end, torch.Tensor), "end must be a torch.Tensor"
         if selected_by_tapas:
             if reversed:
                 return end.mean(dim=0)

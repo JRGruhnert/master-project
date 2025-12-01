@@ -21,6 +21,7 @@ from src.logic.eval_condition import (
     PreciseEvalCondition,
 )
 from src.logic.value_condition import (
+    AreaValueNormalizer,
     ValueCondition,
     QuaternionValueNormalizer,
     LinearValueNormalizer,
@@ -35,6 +36,7 @@ class CalvinState(State):
         name: str,
         id: int,
         type_str: str,
+        size: int,
         value_condition: ValueCondition,
         skill_condition: DistanceCondition,
         goal_condition: DistanceCondition,
@@ -45,6 +47,7 @@ class CalvinState(State):
             name,
             id,
             type_str,
+            size,
             value_condition,
             skill_condition,
             goal_condition,
@@ -60,9 +63,14 @@ class EulerState(CalvinState):
         name,
         id,
         type_str,
+        size,
         ignore: bool = False,
         lower_bound=[-1.0, -1.0, -1.0],
         upper_bound=[1.0, 1.0, 1.0],
+        value_condition: ValueCondition = LinearValueNormalizer(
+            lower_bound=[-1.0, -1.0, -1.0],
+            upper_bound=[1.0, 1.0, 1.0],
+        ),
         eval_condition: EvalCondition = PreciseEvalCondition(
             condition=EulerDistanceCondition(
                 lower_bound=[-1.0, -1.0, -1.0],
@@ -74,10 +82,8 @@ class EulerState(CalvinState):
             name=name,
             id=id,
             type_str=type_str,
-            value_condition=LinearValueNormalizer(
-                lower_bound=lower_bound,
-                upper_bound=upper_bound,
-            ),
+            size=size,
+            value_condition=value_condition,
             skill_condition=EulerDistanceCondition(
                 lower_bound=lower_bound,
                 upper_bound=upper_bound,
@@ -101,7 +107,8 @@ class PreciseEulerState(EulerState):
         super().__init__(
             name=name,
             id=id,
-            type_str="Euler",
+            type_str="EulerPrecise",
+            size=3,
             ignore=ignore,
             eval_condition=PreciseEvalCondition(
                 condition=EulerDistanceCondition(
@@ -118,33 +125,37 @@ class AreaEulerState(EulerState):
         name,
         id,
     ):
+        # ORIGINAl
+        # eval_surfaces={
+        #    "table": [[0.0, -0.15, 0.46], [0.30, -0.03, 0.46]],
+        #    "drawer_open": [[0.04, -0.35, 0.36], [0.30, -0.21, 0.36]],
+        #    "drawer_closed": [[0.04, -0.16, 0.36], [0.30, -0.03, 0.36]],
+        # },
+
+        spawn_surfaces = {
+            "table": [[0.0, -0.15, 0.44], [0.30, -0.03, 0.48]],
+            "drawer_open": [[0.04, -0.35, 0.34], [0.30, -0.21, 0.38]],
+            "drawer_closed": [[0.04, -0.16, 0.34], [0.30, -0.03, 0.38]],
+        }
+        eval_surfaces = {
+            "table": [[-0.02, -0.17, 0.44], [0.32, -0.01, 0.54]],
+            "drawer_open": [[0.02, -0.37, 0.34], [0.32, -0.23, 0.44]],
+            "drawer_closed": [[0.02, -0.18, 0.34], [0.32, -0.00, 0.44]],
+        }
         super().__init__(
             name=name,
             id=id,
-            type_str="Euler",
+            type_str="EulerArea",
+            size=6,
+            value_condition=AreaValueNormalizer(
+                spawn_surfaces=spawn_surfaces,
+                eval_surfaces=eval_surfaces,
+                lower_bound=[-1.0, -1.0, -1.0],
+                upper_bound=[1.0, 1.0, 1.0],
+            ),
             eval_condition=AreaEvalCondition(
-                spawn_surfaces={
-                    "table": [[0.0, -0.15, 0.44], [0.30, -0.03, 0.48]],
-                    "drawer_open": [[0.04, -0.35, 0.34], [0.30, -0.21, 0.38]],
-                    "drawer_closed": [[0.04, -0.16, 0.34], [0.30, -0.03, 0.38]],
-                },
-                # ORIGINAl
-                # eval_surfaces={
-                #    "table": [[0.0, -0.15, 0.46], [0.30, -0.03, 0.46]],
-                #    "drawer_open": [[0.04, -0.35, 0.36], [0.30, -0.21, 0.36]],
-                #    "drawer_closed": [[0.04, -0.16, 0.36], [0.30, -0.03, 0.36]],
-                # },
-                # Less strict
-                eval_surfaces={
-                    "table": [[-0.02, -0.17, 0.44], [0.32, -0.01, 0.54]],
-                    "drawer_open": [[0.02, -0.37, 0.34], [0.32, -0.23, 0.44]],
-                    "drawer_closed": [[0.02, -0.18, 0.34], [0.32, -0.00, 0.44]],
-                },
-                # Drawer as one
-                # eval_surfaces={
-                #    "table": [[-0.02, -0.17, 0.44], [0.32, -0.01, 0.54]],
-                #    "drawer": [[0.02, -0.37, 0.34], [0.32, -0.23, 0.44]],
-                # },
+                spawn_surfaces=spawn_surfaces,
+                eval_surfaces=eval_surfaces,
             ),
         )
 
@@ -167,6 +178,7 @@ class QuatState(CalvinState):
             name=name,
             id=id,
             type_str="Quat",
+            size=4,
             value_condition=QuaternionValueNormalizer(),
             skill_condition=QuaternionDistanceCondition(),
             goal_condition=QuaternionDistanceCondition(),
@@ -191,6 +203,7 @@ class RangeState(CalvinState):
             name=name,
             id=id,
             type_str="Range",
+            size=1,
             value_condition=LinearValueNormalizer(
                 lower_bound=[lower_bound],
                 upper_bound=[upper_bound],
@@ -226,6 +239,7 @@ class BoolState(CalvinState):
             name=name,
             id=id,
             type_str="Bool",
+            size=1,
             value_condition=IdentityValue(),
             skill_condition=BooleanDistanceCondition(),
             goal_condition=BooleanDistanceCondition(),
@@ -249,6 +263,7 @@ class FlipState(CalvinState):
             name=name,
             id=id,
             type_str="Flip",
+            size=1,
             value_condition=IdentityValue(),
             skill_condition=FlipDistanceCondition(),
             goal_condition=BooleanDistanceCondition(),
