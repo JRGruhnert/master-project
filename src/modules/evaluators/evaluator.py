@@ -1,12 +1,9 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from enum import Enum
 
 from src.modules.storage import Storage
 from src.observation.observation import StateValueDict
-from src.skills.skill import Skill
 from src.states.calvin import AreaEulerState
-from src.states.state import State
 
 
 @dataclass
@@ -57,10 +54,10 @@ class Evaluator(ABC):
         # print(f"Checking states dense reward module...")
         for state in self.states:
             if isinstance(state, AreaEulerState) and state.name in goal.keys():
-                if not state.is_in_area(goal[state.name]):
+                if not state.is_in_an_existing_area(goal[state.name]):
                     # print(f"Bad sample: goal {goal[state.name]} not in an area.")
                     return False
-                if not state.is_in_area(current[state.name]):
+                if not state.is_in_an_existing_area(current[state.name]):
                     # print(f"Bad sample: current {current[state.name]} not in an area.")
                     return False
         return True
