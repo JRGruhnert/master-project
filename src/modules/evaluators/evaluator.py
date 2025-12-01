@@ -1,12 +1,9 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from enum import Enum
 
 from src.modules.storage import Storage
 from src.observation.observation import StateValueDict
-from src.skills.skill import Skill
 from src.states.calvin import AreaEulerState
-from src.states.state import State
 
 
 @dataclass
