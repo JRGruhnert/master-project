@@ -122,17 +122,14 @@ class AreaMixin:
     def check_area_similarity(self, current: torch.Tensor, goal: torch.Tensor) -> bool:
         """Check if both obs and goal are in the same defined area."""
         current_area = self.check_eval_area(current)
-        # print("Current area:", current_area)
         goal_area = self.check_eval_area(goal)
-        # print("Goal area:", goal_area)
-        # print("Area match:", current_area == goal_area)
         return current_area == goal_area
 
     def area_tapas_override(self, x: torch.Tensor) -> torch.Tensor:
         """
         Override the area check for TAPAS.
         """
-        area = self.check_spawn_area(x)
+        area = self.check_eval_area(x)
         # print("Override area:", area)
         y = x.clone()  # ✅ Prevents modifying the original tensor
         if area == self.drawer_closed:
