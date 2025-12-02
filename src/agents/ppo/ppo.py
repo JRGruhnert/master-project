@@ -81,7 +81,7 @@ class PPOAgentConfig(AgentConfig):
     gae_lambda: float = 0.95  # Bias/variance trade‑off in advantage estimation
     eps_clip: float = 0.2  # How far the new policy is allowed to move from the old
     entropy_coef: float = 0.01  # Weight on the entropy bonus to encourage exploration
-    value_coef: float = 0.5  # Weight on the critic (value) loss vs. the policy loss
+    critic_coef: float = 0.5  # Weight on the critic (value) loss vs. the policy loss
     max_grad_norm: float = 0.5  # Threshold for clipping gradient norms
     target_kl: float | None = None  # (Optional) early stopping if KL
 
@@ -353,7 +353,7 @@ class PPOAgent(Agent):
                 # Calculate loss
                 loss: torch.Tensor = (
                     -torch.min(surr1, surr2)
-                    + self.config.value_coef * self.mse_loss(state_values, mb_rewards)
+                    + self.config.critic_coef * self.mse_loss(state_values, mb_rewards)
                     - self.config.entropy_coef * dist_new.entropy().mean()
                 )
 
@@ -435,7 +435,7 @@ class PPOAgent(Agent):
             "gae_lambda": self.config.gae_lambda,
             "eps_clip": self.config.eps_clip,
             "entropy_coef": self.config.entropy_coef,
-            "value_coef": self.config.value_coef,
+            "critic_coef": self.config.critic_coef,
             "max_grad_norm": self.config.max_grad_norm,
             **(
                 {"target_kl": self.config.target_kl}

@@ -54,7 +54,7 @@ def entry_point():
             gae_lambda=wandb.config["agent.gae_lambda"],
             eps_clip=wandb.config["agent.eps_clip"],
             entropy_coef=wandb.config["agent.entropy_coef"],
-            value_coef=wandb.config["agent.value_coef"],
+            critic_coef=wandb.config["agent.critic_coef"],
             max_grad_norm=wandb.config["agent.max_grad_norm"],
             target_kl=wandb.config["agent.target_kl"],
         ),
