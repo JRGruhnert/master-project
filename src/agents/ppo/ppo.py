@@ -187,9 +187,9 @@ class PPOAgent(Agent):
             self.policy_old.eval()
 
         ### Internal flags and counter
-        self.current_epoch: int = 0
-        self.best_success = 0
-        self.epochs_since_improvement = 0
+        self._current_epoch: int = 0
+        self._best_success: float = 0.0
+        self._ppo_metrics: dict[str, float] = {}
 
     def act(
         self,
@@ -235,22 +235,27 @@ class PPOAgent(Agent):
         # Saves batch values
         success_rate = self.buffer.save(
             self.storage.buffer_saving_path,
-            self.current_epoch,
+            self._current_epoch,
         )
+
+        # Update best success rate if current success rate is higher
+        if self._best_success < success_rate:
+            self._best_success = success_rate
+            self._ppo_metrics["stats/best_success_rate"] = self._best_success
 
         # Check batch success rate for early stopping
         should_stop, is_new_high = self.stop_watcher.update(
-            success_rate, self.current_epoch
+            success_rate, self._current_epoch
         )
         if is_new_high:
             logger.info(
-                f"Success rate {success_rate:.4f} at epoch {self.current_epoch}. Saving best model."
+                f"Success rate {success_rate:.4f} at epoch {self._current_epoch}. Saving best model."
             )
             self.save("best")
 
         if should_stop:
             logger.info(
-                f"Early stopping training after {self.current_epoch} epochs because of no improvement in the smoothed success rate."
+                f"Early stopping training after {self._current_epoch} epochs because of no improvement in the smoothed success rate."
             )
             return True
 
@@ -291,7 +296,7 @@ class PPOAgent(Agent):
 
         ### Learning Rate Annealing
         if self.config.lr_annealing:
-            progress = self.current_epoch / self.config.max_batches
+            progress = self._current_epoch / self.config.max_batches
             new_lr = self.config.learning_rate * (1.0 - progress)
 
             for param_group in self.optimizer.param_groups:
@@ -383,16 +388,44 @@ class PPOAgent(Agent):
                 clip_grad_norm_(self.policy_new.parameters(), self.config.max_grad_norm)
                 self.optimizer.step()
 
-                # Optional KL early stopping
-                if self.config.target_kl is not None:
-                    with torch.no_grad():
-                        log_ratio = logprobs - mb_logprobs
-                        approx_kl = torch.mean((torch.exp(log_ratio) - 1) - log_ratio)
+                # Collect metrics (will keep last minibatch values)
+                with torch.no_grad():
+                    log_ratio = logprobs - mb_logprobs
+                    approx_kl = torch.mean((torch.exp(log_ratio) - 1) - log_ratio)
+                    clip_fraction = (
+                        ((ratios - 1).abs() > self.config.eps_clip).float().mean()
+                    )
+                    entropy = dist_new.entropy().mean()
+                    policy_loss = (-torch.min(surr1, surr2)).mean()
+
+                    self._ppo_metrics = {
+                        "ppo/policy_loss": policy_loss.item(),
+                        "ppo/value_loss": value_loss.item(),
+                        "ppo/entropy": entropy.item(),
+                        "ppo/approx_kl": approx_kl.item(),
+                        "ppo/clip_fraction": clip_fraction.item(),
+                        "ppo/total_loss": loss.mean().item(),
+                    }
+                    # Optional KL early stopping
+                    if self.config.target_kl is not None:
                         if approx_kl > self.config.target_kl:
                             kl_divergence_stop = True
                             break  # break minibatch loop
             if kl_divergence_stop:
                 break
+
+        # Compute explained variance over full batch
+        with torch.no_grad():
+            all_values = torch.stack(self.buffer.values).squeeze().to(device)
+            var_returns = returns.var()
+            if var_returns > 0:
+                explained_var = (1 - (returns - all_values).var() / var_returns).item()
+            else:
+                explained_var = 0.0
+            self._ppo_metrics["ppo/explained_variance"] = explained_var
+            self._ppo_metrics["ppo/learning_rate"] = self.optimizer.param_groups[0][
+                "lr"
+            ]
 
         ### Copy new weights into old policy
         self.policy_old.load_state_dict(self.policy_new.state_dict())
@@ -401,14 +434,14 @@ class PPOAgent(Agent):
         self.buffer.clear()
 
         # Update Epoch
-        self.current_epoch += 1
+        self._current_epoch += 1
 
         ### Regular saving based on saving frequence
-        if self.current_epoch % self.config.saving_freq == 0:
+        if self._current_epoch % self.config.saving_freq == 0:
             self.save()
 
         ### Stop Training
-        if self.current_epoch == self.config.max_batches:
+        if self._current_epoch == self.config.max_batches:
             print("Stopping Training cause of max epoch reached.")
             return True
 
@@ -423,7 +456,7 @@ class PPOAgent(Agent):
             checkpoint_path = (
                 self.storage.agent_saving_path
                 + "model_cp_epoch_{}.pth".format(
-                    self.current_epoch,
+                    self._current_epoch,
                 )
             )
         else:
@@ -432,14 +465,14 @@ class PPOAgent(Agent):
             )
 
         logger.info(
-            f"Saving weights to: {checkpoint_path} at epoch {self.current_epoch}"
+            f"Saving weights to: {checkpoint_path} at epoch {self._current_epoch}"
         )
         # torch.save(self.policy_old.state_dict(), checkpoint_path)
         torch.save(
             {
                 "model_state": self.policy_old.state_dict(),
                 "optimizer_state": self.optimizer.state_dict(),
-                "epoch": self.current_epoch,
+                "epoch": self._current_epoch,
             },
             checkpoint_path,
         )
@@ -465,7 +498,7 @@ class PPOAgent(Agent):
         }
 
     def metrics(self) -> dict[str, float]:
-        return self.buffer.metrics()
+        return {**self.buffer.metrics(), **self._ppo_metrics}
 
     def weights(self) -> dict[str, np.ndarray]:
         return {

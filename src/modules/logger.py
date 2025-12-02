@@ -21,13 +21,13 @@ class LoggerConfig:
     wandb_tag: str = "untagged_run"
     wandb_entity: str = "jan-gruhnert-universit-t-freiburg"
     wandb_project: str = "master-project"
+    log_weights: int = 5  # Log weights every n epochs or -1 to disable
 
 
 class Logger:
     def __init__(self, config: LoggerConfig, run: Run | None = None):
         self.config = config
         self.run = run
-        self.max_success_rate = float("-inf")
 
     def start(self, metadata: dict = {}):
         self.start_time = datetime.now().replace(microsecond=0)
@@ -55,11 +55,6 @@ class Logger:
         logger.info(f"Total run time: {total_time} hours.")
 
     def log_metrics(self, data: dict, epoch: int):
-        if "stats/success_rate" in data:
-            self.max_success_rate = max(
-                self.max_success_rate, data["stats/success_rate"]
-            )
-            data["stats/max_success_rate"] = self.max_success_rate
         if (
             self.config.mode == LogMode.WANDB or self.config.mode == LogMode.SWEEP
         ) and self.run:
@@ -70,13 +65,16 @@ class Logger:
             pass  # No logging
 
     def log_weights(self, data: dict, epoch: int):
-        if (
-            self.config.mode == LogMode.WANDB or self.config.mode == LogMode.SWEEP
-        ) and self.run:
-            histogram_data = {
-                name: wandb.Histogram(param) for name, param in data.items()
-            }
-            self.run.log(
-                histogram_data,
-                step=epoch,
-            )
+        if self.config.log_weights == -1:
+            return
+        if epoch % self.config.log_weights != 0:
+            if (
+                self.config.mode == LogMode.WANDB or self.config.mode == LogMode.SWEEP
+            ) and self.run:
+                histogram_data = {
+                    name: wandb.Histogram(param) for name, param in data.items()
+                }
+                self.run.log(
+                    histogram_data,
+                    step=epoch,
+                )

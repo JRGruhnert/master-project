@@ -3,7 +3,7 @@ project: master-project
 name: gnn_brpb_sweep
 method: bayes # Bayesian optimization for hyperparameter search
 metric:
-  name: stats/max_success_rate # The metric to optimize
+  name: stats/best_success_rate # The metric to optimize
   goal: maximize # We want to maximize the success rate
 parameters:
   agent.eval:
