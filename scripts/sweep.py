@@ -2,14 +2,13 @@ import wandb
 from src.environments.calvin import CalvinEnvironmentConfig
 from src.experiments.pepr import PePrConfig
 from src.modules.buffer import BufferConfig
-from src.modules.evaluators.dense2 import Dense2EvaluatorConfig
-from src.modules.evaluators.sparse import SparseEvaluatorConfig
 from src.modules.logger import LoggerConfig
 from src.modules.storage import StorageConfig
 from src.agents.ppo.baseline import BaselineAgentConfig
 from src.agents.ppo.gnn import GNNAgentConfig
 
 from scripts.train import TrainConfig, Trainer
+from conf.common.evaluator import dense_evaluator, sparse_evaluator
 
 
 def entry_point():
@@ -17,17 +16,10 @@ def entry_point():
     # Use wandb.config to override TrainConfig
     if wandb.config["dense_evaluator"]:
         print("Using Dense2EvaluatorConfig from wandb config.")
-        evaluator = Dense2EvaluatorConfig(
-            success_reward=100.0,
-            positive_step_reward=5.0,
-            negative_step_reward=-1.0,
-        )
+        evaluator = dense_evaluator
     else:
         print("Using SparseEvaluatorConfig from wandb config.")
-        evaluator = SparseEvaluatorConfig(
-            success_reward=100.0,
-            step_reward=-1.0,
-        )
+        evaluator = sparse_evaluator
 
     if wandb.config["storage.network"] == "gnn":
         agent_type = GNNAgentConfig
