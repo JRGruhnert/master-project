@@ -57,6 +57,7 @@ def entry_point():
             critic_coef=wandb.config["agent.critic_coef"],
             max_grad_norm=wandb.config["agent.max_grad_norm"],
             target_kl=wandb.config["agent.target_kl"],
+            clip_value_loss=wandb.config["agent.clip_val_loss"],
         ),
         buffer=BufferConfig(
             steps=wandb.config["buffer.steps"],

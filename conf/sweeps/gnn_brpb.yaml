@@ -33,7 +33,6 @@ parameters:
   agent.mini_batch_size:
     distribution: categorical
     values:
-      - 16
       - 32
       - 64
       - 128
@@ -43,27 +42,28 @@ parameters:
       - 3
       - 5
       - 10
-      - 20
-      - 30
-      - 50
+      - 15
   agent.lr_annealing:
     distribution: constant
     value: false
   agent.learning_rate:
     distribution: categorical
     values:
-      - 0.003
+      - 0.001
       - 0.0003
-      - 0.00003
-      - 0.000003
+      - 0.0001
   agent.gamma:
-    distribution: uniform
-    min: 0.8
-    max: 0.99
+    distribution: categorical
+    values:
+      - 0.95
+      - 0.99
+      - 0.995
   agent.gae_lambda:
-    distribution: uniform
-    min: 0.9
-    max: 1.0
+    distribution: categorical
+    values:
+      - 0.90
+      - 0.95
+      - 0.98
   agent.eps_clip:
     distribution: categorical
     values:
@@ -73,10 +73,10 @@ parameters:
   agent.entropy_coef:
     distribution: categorical
     values:
-      - 0.0
+      - 0.1
+      - 0.05
       - 0.01
-      - 0.001
-      - 0.0001
+      - 0.0
   agent.critic_coef:
     distribution: categorical
     values:
@@ -88,7 +88,6 @@ parameters:
       - 0.5
       - 1.0
       - 2.0
-      - 5.0
   agent.target_kl:
     distribution: categorical
     values:
@@ -96,6 +95,9 @@ parameters:
       - 0.02
       - 0.03
       - null # Use 'null' for None in YAML
+  agent.clip_val_loss:
+    distribution: constant
+    value: true
   buffer.steps:
     distribution: categorical
     values:
