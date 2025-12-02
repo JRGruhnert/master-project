@@ -11,10 +11,10 @@ parameters:
     value: false
   agent.early_stop_patience:
     distribution: constant
-    value: 5
+    value: 20
   agent.use_ema_for_early_stopping:
     distribution: constant
-    value: true
+    value: false
   agent.ema_smoothing_factor:
     distribution: constant
     value: 0.1
