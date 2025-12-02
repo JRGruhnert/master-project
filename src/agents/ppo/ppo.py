@@ -74,7 +74,7 @@ class PPOAgentConfig(AgentConfig):
     save_stats: bool = True
 
     mini_batch_size: int = 64  # 64 # How many steps to use in each mini-batch
-    learning_epochs: int = 30  # How many passes over the collected batch per update
+    learning_epochs: int = 10  # How many passes over the collected batch per update
     lr_annealing: bool = False
     learning_rate: float = 0.0003  # Step size for actor optimizer
     gamma: float = 0.99  # How much future rewards are worth today
@@ -84,6 +84,7 @@ class PPOAgentConfig(AgentConfig):
     critic_coef: float = 0.5  # Weight on the critic (value) loss vs. the policy loss
     max_grad_norm: float = 0.5  # Threshold for clipping gradient norms
     target_kl: float | None = None  # (Optional) early stopping if KL
+    clip_value_loss: bool = True
 
 
 class ProgressWatcher:
@@ -254,7 +255,7 @@ class PPOAgent(Agent):
             return True
 
         ### Preprocess batch values
-        advantages, rewards = self.compute_gae(
+        advantages, returns = self.compute_gae(
             self.buffer.rewards,
             self.buffer.values,
             self.buffer.terminals,
@@ -263,24 +264,24 @@ class PPOAgent(Agent):
         # Check shapes
         assert (
             advantages.shape[0] == self.buffer.config.steps
-        ), "Advantage shape mismatch"
-        assert rewards.shape[0] == self.buffer.config.steps, "Reward shape mismatch"
+        ), "Advantages shape mismatch"
+        assert returns.shape[0] == self.buffer.config.steps, "Returns shape mismatch"
 
         advantages = advantages.to(device)
-        rewards = rewards.to(device)
-        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+        returns = returns.to(device)
         old_obs = self.buffer.current
         old_goal = self.buffer.goal
         old_actions = (
-            torch.squeeze(torch.stack(self.buffer.actions, dim=0)).detach().to(device)
+            torch.stack(self.buffer.actions, dim=0).detach().to(device).squeeze(-1)
         )
+
         old_logprobs = (
-            torch.squeeze(torch.stack(self.buffer.logprobs, dim=0)).detach().to(device)
+            torch.stack(self.buffer.logprobs, dim=0).detach().to(device).squeeze(-1)
         )
 
         ### Create DataLoader
         # dataset = PPOBufferDataset(
-        #    old_obs, old_goal, old_actions, old_logprobs, advantages, rewards
+        #    old_obs, old_goal, old_actions, old_logprobs, advantages, returns
         # )
         # dataloader = DataLoader(
         #    dataset,
@@ -320,18 +321,21 @@ class PPOAgent(Agent):
                 mb_actions = old_actions[mb_idx]
                 mb_logprobs = old_logprobs[mb_idx]
                 mb_advantages = advantages[mb_idx]
-                mb_rewards = rewards[mb_idx]
+                mb_returns = returns[mb_idx]
+
+                # Normalize advantages per minibatch
+                mb_advantages = (mb_advantages - mb_advantages.mean()) / (
+                    mb_advantages.std() + 1e-8
+                )
 
                 # Evaluate policy
                 logprobs, state_values, dist_new = self.policy_new.evaluate(
                     mb_obs, mb_goal, mb_actions
                 )
 
-                _, _, dist_old = self.policy_old.evaluate(mb_obs, mb_goal, mb_actions)
-
                 assert logprobs.shape == mb_logprobs.shape, "Logprobs shape mismatch"
                 assert (
-                    state_values.shape == mb_rewards.shape
+                    state_values.shape == mb_returns.shape
                 ), "Value prediction shape mismatch"
 
                 state_values = torch.squeeze(state_values)
@@ -350,10 +354,26 @@ class PPOAgent(Agent):
                     * mb_advantages
                 )
 
+                # Value loss (with optional clipping)
+                if self.config.clip_value_loss:
+                    mb_old_values = (
+                        torch.stack([self.buffer.values[i] for i in mb_idx_list])
+                        .squeeze()
+                        .to(device)
+                    )
+                    values_pred = mb_old_values + torch.clamp(
+                        state_values - mb_old_values,
+                        -self.config.eps_clip,
+                        self.config.eps_clip,
+                    )
+                    value_loss = self.mse_loss(values_pred, mb_returns)
+                else:
+                    value_loss = self.mse_loss(state_values, mb_returns)
+
                 # Calculate loss
                 loss: torch.Tensor = (
                     -torch.min(surr1, surr2)
-                    + self.config.critic_coef * self.mse_loss(state_values, mb_rewards)
+                    + self.config.critic_coef * value_loss
                     - self.config.entropy_coef * dist_new.entropy().mean()
                 )
 
@@ -366,10 +386,9 @@ class PPOAgent(Agent):
                 # Optional KL early stopping
                 if self.config.target_kl is not None:
                     with torch.no_grad():
-                        kl = torch.distributions.kl.kl_divergence(
-                            dist_old, dist_new
-                        ).mean()
-                        if kl > self.config.target_kl:
+                        log_ratio = logprobs - mb_logprobs
+                        approx_kl = torch.mean((torch.exp(log_ratio) - 1) - log_ratio)
+                        if approx_kl > self.config.target_kl:
                             kl_divergence_stop = True
                             break  # break minibatch loop
             if kl_divergence_stop:
@@ -437,6 +456,7 @@ class PPOAgent(Agent):
             "entropy_coef": self.config.entropy_coef,
             "critic_coef": self.config.critic_coef,
             "max_grad_norm": self.config.max_grad_norm,
+            "clip_value_loss": self.config.clip_value_loss,
             **(
                 {"target_kl": self.config.target_kl}
                 if self.config.target_kl is not None
