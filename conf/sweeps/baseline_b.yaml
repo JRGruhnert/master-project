@@ -104,7 +104,6 @@ parameters:
       - 512
       - 1024
       - 2048
-      - 4096
   storage.used_skills:
     distribution: constant
     value: "Base"

@@ -239,7 +239,7 @@ class PPOAgent(Agent):
         )
 
         # Update best success rate if current success rate is higher
-        if self._best_success < success_rate:
+        if self._best_success <= success_rate:
             self._best_success = success_rate
             self._ppo_metrics["stats/best_success_rate"] = self._best_success
 
@@ -398,14 +398,16 @@ class PPOAgent(Agent):
                     entropy = dist_new.entropy().mean()
                     policy_loss = (-torch.min(surr1, surr2)).mean()
 
-                    self._ppo_metrics = {
-                        "ppo/policy_loss": policy_loss.item(),
-                        "ppo/value_loss": value_loss.item(),
-                        "ppo/entropy": entropy.item(),
-                        "ppo/approx_kl": approx_kl.item(),
-                        "ppo/clip_fraction": clip_fraction.item(),
-                        "ppo/total_loss": loss.mean().item(),
-                    }
+                    self._ppo_metrics.update(
+                        {
+                            "ppo/policy_loss": policy_loss.item(),
+                            "ppo/value_loss": value_loss.item(),
+                            "ppo/entropy": entropy.item(),
+                            "ppo/approx_kl": approx_kl.item(),
+                            "ppo/clip_fraction": clip_fraction.item(),
+                            "ppo/total_loss": loss.mean().item(),
+                        }
+                    )
                     # Optional KL early stopping
                     if self.config.target_kl is not None:
                         if approx_kl > self.config.target_kl:
