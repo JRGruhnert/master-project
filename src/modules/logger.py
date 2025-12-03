@@ -28,8 +28,9 @@ class Logger:
     def __init__(self, config: LoggerConfig, run: Run | None = None):
         self.config = config
         self.run = run
+        self.time: int = 0
 
-    def start(self, metadata: dict = {}):
+    def initialize(self, metadata: dict = {}):
         self.start_time = datetime.now().replace(microsecond=0)
         if self.config.mode == LogMode.WANDB:
             self.run = wandb.init(
@@ -49,32 +50,23 @@ class Logger:
         else:
             raise ValueError(f"Unknown logging mode: {self.config.mode}")
 
-    def end(self):
-        end_time = datetime.now().replace(microsecond=0)
-        total_time = (end_time - self.start_time).total_seconds() / 60.0 / 60.0
-        logger.info(f"Total run time: {total_time} hours.")
-
-    def log_metrics(self, data: dict, epoch: int):
+    def log(self, data: dict):
+        # Remove weights if not logging this epoch or mode
+        if (
+            self.config.log_weights != -1
+            or self.time % self.config.log_weights == 0
+            or self.config.mode == LogMode.TERMINAL
+        ):
+            for key in data.keys():
+                if isinstance(key, str) and key.startswith("weights/"):
+                    data.pop(key)
         if (
             self.config.mode == LogMode.WANDB or self.config.mode == LogMode.SWEEP
         ) and self.run:
-            self.run.log(data, step=epoch)
+            self.run.log(data, step=self.time)
         elif self.config.mode == LogMode.TERMINAL:
             pprint.pprint(data)
         else:
             pass  # No logging
 
-    def log_weights(self, data: dict, epoch: int):
-        if self.config.log_weights == -1:
-            return
-        if epoch % self.config.log_weights != 0:
-            if (
-                self.config.mode == LogMode.WANDB or self.config.mode == LogMode.SWEEP
-            ) and self.run:
-                histogram_data = {
-                    name: wandb.Histogram(param) for name, param in data.items()
-                }
-                self.run.log(
-                    histogram_data,
-                    step=epoch,
-                )
+        self.time += 1

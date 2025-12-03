@@ -49,9 +49,6 @@ class Trainer:
         self.experiment = select_experiment(config.experiment, env, self.storage)
         self.agent = select_agent(config.agent, self.storage, self.buffer)
 
-        # Initialize epoch counter (First epoch is the untrained performance)
-        self.epoch = 0
-
     def collect_batch(self) -> bool:
         """Collect experiences until batch is ready"""
         while True:
@@ -67,42 +64,25 @@ class Trainer:
     def train_epoch(self) -> bool:
         """Train one epoch, return True if agent signals to stop training."""
         # Collect batch
-        start_batch = datetime.now().replace(microsecond=0)
         if not self.collect_batch():
             return False
 
-        # We get metrics before learning before the current batch is cleared
-        # We also log weights here before learning to have weights for the current epoch
-        self.logger.log_weights(self.agent.weights(), epoch=self.epoch)
-        metrics = self.agent.metrics()
-
         # Learn
-        start_learning = datetime.now().replace(microsecond=0)
         should_stop = self.agent.learn()
-        end_learning = datetime.now().replace(microsecond=0)
 
-        # Logging metrics here to include time information
-        metrics["time/collecting"] = (
-            start_learning - start_batch
-        ).total_seconds() / 60.0
-        metrics["time/learning"] = (
-            end_learning - start_learning
-        ).total_seconds() / 60.0
-        self.logger.log_metrics(metrics, epoch=self.epoch)
-
-        self.epoch += 1
+        # Log metrics
+        self.logger.log(self.agent.metrics())
         return should_stop
 
     def run(self):
         """Main training loop"""
         metadata = self.experiment.metadata()
         metadata.update(self.agent.metadata())
-        self.logger.start(metadata)
+        self.logger.initialize(metadata)
 
         while not self.train_epoch():
             pass
 
-        self.logger.end()
         self.experiment.close()
 
 

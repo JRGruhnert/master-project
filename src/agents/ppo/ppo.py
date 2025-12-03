@@ -1,8 +1,8 @@
 from dataclasses import dataclass
-import numpy as np
 import torch
 from torch import nn
 from torch.nn.utils.clip_grad import clip_grad_norm_
+import wandb
 from src.hardware import device
 from src.agents.agent import Agent, AgentConfig
 from src.modules.buffer import Buffer
@@ -105,7 +105,7 @@ class ProgressWatcher:
         self.counter = 0
         self.ema = None
 
-    def update(self, metric: float, current_batch: int) -> tuple[bool, bool]:
+    def update(self, metric: float, current_batch: int) -> bool:
         """
         Determines if training should stop and whether the metric is a new high.
         Returns:
@@ -113,19 +113,19 @@ class ProgressWatcher:
             is_new_high (bool): Whether the current metric is a new high.
         """
         if self.use_ema:
-            should_stop, is_new_high = self._ema_check(metric)
+            should_stop = self._ema_check(metric)
         else:
-            should_stop, is_new_high = self._default_metric_check(metric)
+            should_stop = self._metric_check(metric)
 
         # Enforce min and max batch constraints
         if current_batch < self.min_batches:
-            return False, is_new_high
+            return False
         elif current_batch >= self.max_batches:
-            return True, is_new_high
+            return True
         else:
-            return should_stop, is_new_high
+            return should_stop
 
-    def _ema_check(self, metric: float) -> tuple[bool, bool]:
+    def _ema_check(self, metric: float) -> bool:
         # Update EMA
         if self.ema is None:
             self.ema = metric  # Initialize EMA with the first metric value
@@ -134,23 +134,17 @@ class ProgressWatcher:
                 self.smoothing_factor * metric + (1 - self.smoothing_factor) * self.ema
             )
 
-        if self.ema > self.best_value:
-            self.best_value = self.ema
-            self.counter = 0  # Reset patience counter
-            return False, True  # No stop, is new high
-        else:
-            self.counter += 1  # Increment patience counter
-            return self.counter >= self.patience, False
+        return self._metric_check(self.ema)
 
-    def _default_metric_check(self, metric: float) -> tuple[bool, bool]:
+    def _metric_check(self, metric: float) -> bool:
         # Check if metric improves
         if metric > self.best_value:
             self.best_value = metric
             self.counter = 0  # Reset patience counter
-            return False, True  # No stop, is new high
+            return False  # No stop
         else:
             self.counter += 1  # Increment patience counter
-            return self.counter >= self.patience, False
+            return self.counter >= self.patience
 
 
 class PPOAgent(Agent):
@@ -186,10 +180,10 @@ class PPOAgent(Agent):
             self.policy_new.eval()
             self.policy_old.eval()
 
-        ### Internal flags and counter
+        ### Internal flags and dynamic values
         self._current_epoch: int = 0
         self._best_success: float = 0.0
-        self._ppo_metrics: dict[str, float] = {}
+        self._metrics: dict = {}
 
     def act(
         self,
@@ -232,28 +226,34 @@ class PPOAgent(Agent):
 
     def learn(self) -> bool:
 
-        # Saves batch values
-        success_rate = self.buffer.save(
+        ### Saves batch values
+        batch_success_rate = self.buffer.save(
             self.storage.buffer_saving_path,
             self._current_epoch,
         )
 
-        # Update best success rate if current success rate is higher
-        if self._best_success <= success_rate:
-            self._best_success = success_rate
-            self._ppo_metrics["stats/best_success_rate"] = self._best_success
-
-        # Check batch success rate for early stopping
-        should_stop, is_new_high = self.stop_watcher.update(
-            success_rate, self._current_epoch
-        )
-        if is_new_high:
+        # Update best success rate
+        if self._best_success <= batch_success_rate:
+            self._best_success = batch_success_rate
             logger.info(
-                f"Success rate {success_rate:.4f} at epoch {self._current_epoch}. Saving best model."
+                f"Success rate {batch_success_rate:.4f} at epoch {self._current_epoch}. Saving best model."
             )
             self.save("best")
 
-        if should_stop:
+        ### Additional logging before clearing buffer and updating network
+        self._metrics.update({"stats/best_success_rate": self._best_success})
+        self._metrics.update(self.buffer.metrics())
+        self._metrics.update(
+            {
+                f"weights/{name.replace('.', '/')}": wandb.Histogram(
+                    param.data.cpu().numpy()
+                )
+                for name, param in self.policy_new.named_parameters()
+            }
+        )
+
+        # Check batch success rate for early stopping
+        if self.stop_watcher.update(batch_success_rate, self._current_epoch):
             logger.info(
                 f"Early stopping training after {self._current_epoch} epochs because of no improvement in the smoothed success rate."
             )
@@ -298,7 +298,7 @@ class PPOAgent(Agent):
         if self.config.lr_annealing:
             progress = self._current_epoch / self.config.max_batches
             new_lr = self.config.learning_rate * (1.0 - progress)
-
+            self._metrics.update({"ppo/learning_rate": new_lr})
             for param_group in self.optimizer.param_groups:
                 param_group["lr"] = new_lr
 
@@ -398,7 +398,7 @@ class PPOAgent(Agent):
                     entropy = dist_new.entropy().mean()
                     policy_loss = (-torch.min(surr1, surr2)).mean()
 
-                    self._ppo_metrics.update(
+                    self._metrics.update(
                         {
                             "ppo/policy_loss": policy_loss.item(),
                             "ppo/value_loss": value_loss.item(),
@@ -416,7 +416,7 @@ class PPOAgent(Agent):
             if kl_divergence_stop:
                 break
 
-        # Compute explained variance over full batch
+        # Computes explained variance over full batch
         with torch.no_grad():
             all_values = torch.stack(self.buffer.values).squeeze().to(device)
             var_returns = returns.var()
@@ -424,10 +424,7 @@ class PPOAgent(Agent):
                 explained_var = (1 - (returns - all_values).var() / var_returns).item()
             else:
                 explained_var = 0.0
-            self._ppo_metrics["ppo/explained_variance"] = explained_var
-            self._ppo_metrics["ppo/learning_rate"] = self.optimizer.param_groups[0][
-                "lr"
-            ]
+            self._metrics.update({"ppo/explained_variance": explained_var})
 
         ### Copy new weights into old policy
         self.policy_old.load_state_dict(self.policy_new.state_dict())
@@ -499,11 +496,5 @@ class PPOAgent(Agent):
             ),
         }
 
-    def metrics(self) -> dict[str, float]:
-        return {**self.buffer.metrics(), **self._ppo_metrics}
-
-    def weights(self) -> dict[str, np.ndarray]:
-        return {
-            f"weights/{name.replace('.', '/')}": param.data.cpu().numpy()
-            for name, param in self.policy_new.named_parameters()
-        }
+    def metrics(self) -> dict:
+        return self._metrics

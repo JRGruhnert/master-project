@@ -224,8 +224,5 @@ class SearchTreeAgent(Agent):
             "max_nodes": self.config.max_nodes,
         }
 
-    def metrics(self) -> dict[str, float]:
-        return {}
-
-    def weights(self) -> dict[str, float]:
+    def metrics(self) -> dict:
         return {}

@@ -44,7 +44,7 @@ class SkillEvaluator:
         return success_count / self.config.iterations
 
     def run(self):
-        self.logger.start({"iterations_per_skill": self.config.iterations})
+        self.logger.initialize({"iterations_per_skill": self.config.iterations})
 
         # Evaluate all skills
         for index, skill in enumerate(self.storage.skills):
@@ -53,13 +53,12 @@ class SkillEvaluator:
                 "skill_name": skill.name,
                 "success_rate": self.results[skill.name],
             }
-            self.logger.log_metrics(metrics, epoch=index)
+            self.logger.log(metrics)
 
         # Save results to a JSON file
         with open(f"{self.storage.plots_saving_path}/results.json", "w") as f:
             json.dump(self.results, f, indent=2)
 
-        self.logger.end()
         self.experiment.close()
 
 

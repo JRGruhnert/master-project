@@ -49,11 +49,6 @@ class Agent(ABC):
         raise NotImplementedError("Metadata method not implemented yet.")
 
     @abstractmethod
-    def metrics(self) -> dict[str, float]:
+    def metrics(self) -> dict:
         """Return current agent metrics as a dictionary."""
         raise NotImplementedError("Metrics method not implemented yet.")
-
-    @abstractmethod
-    def weights(self) -> dict[str, float]:
-        """Return current agent weights as a dictionary."""
-        raise NotImplementedError("Weights method not implemented yet.")

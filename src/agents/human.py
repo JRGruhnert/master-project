@@ -61,10 +61,6 @@ class HumanAgent(Agent):
         """Return agent metadata as a dictionary."""
         return {}
 
-    def metrics(self) -> dict[str, float]:
+    def metrics(self) -> dict:
         """Return current agent metrics as a dictionary."""
-        return {}
-
-    def weights(self) -> dict[str, float]:
-        """Return current agent weights as a dictionary."""
         return {}
