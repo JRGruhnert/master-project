@@ -5,7 +5,7 @@ from src.modules.logger import LogMode, LoggerConfig
 from src.modules.storage import StorageConfig
 from src.experiments.pepr import PePrConfig
 from scripts.train import TrainConfig
-from conf.common.evaluator import dense_evaluator
+from conf.common.evaluator import dense2_evaluator
 
 mode = LogMode.WANDB
 render = False
@@ -36,5 +36,5 @@ config = TrainConfig(
         p_rand=0.0,
     ),
     environment=CalvinEnvironmentConfig(render=render),
-    evaluator=dense_evaluator,
+    evaluator=dense2_evaluator,
 )
