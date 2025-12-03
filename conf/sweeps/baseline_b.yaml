@@ -122,8 +122,9 @@ parameters:
   experiment.p_rand:
     distribution: constant
     value: 0.0
-  dense_evaluator:
+  evaluator:
     distribution: categorical
     values:
-      - true
-      - false
+      - "dense1"
+      - "dense2"
+      #- "sparse"

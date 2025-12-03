@@ -24,13 +24,13 @@ class DenseEvaluator(Evaluator):
         current: StateValueDict,
         goal: StateValueDict,
     ) -> tuple[float, bool]:
-        previous_non_equal_states = self.non_equal_states
+        prev_percentage_done = self.percentage_done
         if self.is_equal(current, goal):
             # Success reached
             return self.config.success_reward, True
         else:
             # Success not reached
-            if previous_non_equal_states > self.non_equal_states:
+            if prev_percentage_done > self.percentage_done:
                 return self.config.positive_step_reward, False
             else:
                 return self.config.negative_step_reward, False

@@ -52,7 +52,6 @@ class CalvinEnvironment(Environment):
         self.current = CalvinObservation.from_internal(self.calvin_obs)
 
     def sample_task(self) -> tuple[StateValueDict, StateValueDict]:
-        self.evaluator.reset()
         self.reset()
         # Current and goal should not be equal
         while self.evaluator.is_equal(

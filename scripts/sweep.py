@@ -8,18 +8,23 @@ from src.agents.ppo.baseline import BaselineAgentConfig
 from src.agents.ppo.gnn import GNNAgentConfig
 
 from scripts.train import TrainConfig, Trainer
-from conf.common.evaluator import dense_evaluator, sparse_evaluator
+from conf.common.evaluator import dense1_evaluator, dense2_evaluator, sparse_evaluator
 
 
 def entry_point():
     run = wandb.init()
     # Use wandb.config to override TrainConfig
-    if wandb.config["dense_evaluator"]:
+    if wandb.config["evaluator"] == "dense1":
+        print("Using Dense1EvaluatorConfig from wandb config.")
+        evaluator = dense1_evaluator
+    elif wandb.config["evaluator"] == "dense2":
         print("Using Dense2EvaluatorConfig from wandb config.")
-        evaluator = dense_evaluator
-    else:
+        evaluator = dense2_evaluator
+    elif wandb.config["evaluator"] == "sparse":
         print("Using SparseEvaluatorConfig from wandb config.")
         evaluator = sparse_evaluator
+    else:
+        raise ValueError(f"Unsupported evaluator type: {wandb.config['evaluator']}")
 
     if wandb.config["storage.network"] == "gnn":
         agent_type = GNNAgentConfig

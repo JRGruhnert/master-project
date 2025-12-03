@@ -18,8 +18,7 @@ class Evaluator(ABC):
     ):
         self.storage = storage
         self.states = storage.eval_states
-        self.first_step = True
-        self.non_equal_states = 0.0
+        self.percentage_done: float = 0.0
 
     def is_equal(
         self,
@@ -27,23 +26,13 @@ class Evaluator(ABC):
         goal: StateValueDict,
     ) -> bool:
         """Generic method to check if states match target conditions."""
-        # if current.keys() != goal.keys():
-        #    for key, value in current.items():
-        #        for state in self.states:
-        #            if state.name == key:
-        #                if not state.evaluate(current[state.name], goal[state.name]):
-        #                    print(f"{key} {value} is not {goal[key]}")
-        not_finished_states = 0
+        finished_states = 0
         for state in self.states:
             if state.name in current.keys():
-                if not state.evaluate(current[state.name], goal[state.name]):
-                    # print(
-                    #    f"{state.name}\t{current[state.name]} is not {goal[state.name]}"
-                    # )
-                    not_finished_states += 1
-        self.non_equal_states = not_finished_states / max(len(self.states), 1)
-        # print(f"It's {self.non_equal_states == 0.0}")
-        return self.non_equal_states == 0.0
+                if state.evaluate(current[state.name], goal[state.name]):
+                    finished_states += 1
+        self.percentage_done = finished_states / max(len(self.states), 1)
+        return self.percentage_done == 1.0
 
     def is_good_sample(
         self,
@@ -79,8 +68,3 @@ class Evaluator(ABC):
     ) -> tuple[float, bool]:
         "Returns the step reward and wether the step is a terminal step, cause some ending condition was met."
         raise NotImplementedError()
-
-    def reset(self):
-        # print("Resetting evaluator...")
-        self.first_step = True
-        self.non_equal_states = 0.0
