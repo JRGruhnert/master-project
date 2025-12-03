@@ -57,9 +57,14 @@ class Logger:
             or self.time % self.config.log_weights == 0
             or self.config.mode == LogMode.TERMINAL
         ):
-            for key in data.keys():
-                if isinstance(key, str) and key.startswith("weights/"):
-                    data.pop(key)
+            # Find weight keys to remove
+            keys_to_remove = [
+                key
+                for key in data.keys()
+                if isinstance(key, str) and key.startswith("weights/")
+            ]
+            for key in keys_to_remove:
+                data.pop(key)
         if (
             self.config.mode == LogMode.WANDB or self.config.mode == LogMode.SWEEP
         ) and self.run:
