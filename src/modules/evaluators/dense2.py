@@ -51,5 +51,5 @@ class Dense2Evaluator(Evaluator):
 
         # Add small step penalty
         reward += self.config.step_penalty
-
+        print(f"Evaluator step: improvement={improvement:.3f}, reward={reward:.3f}")
         return reward, False

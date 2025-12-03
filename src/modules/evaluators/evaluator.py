@@ -32,7 +32,7 @@ class Evaluator(ABC):
                 if state.evaluate(current[state.name], goal[state.name]):
                     finished_states += 1
         self.percentage_done = finished_states / max(len(self.states), 1)
-        return self.percentage_done == 1.0
+        return finished_states == len(self.states)
 
     def is_good_sample(
         self,

@@ -30,7 +30,7 @@ class DenseEvaluator(Evaluator):
             return self.config.success_reward, True
         else:
             # Success not reached
-            if prev_percentage_done > self.percentage_done:
+            if prev_percentage_done < self.percentage_done:
                 return self.config.positive_step_reward, False
             else:
                 return self.config.negative_step_reward, False

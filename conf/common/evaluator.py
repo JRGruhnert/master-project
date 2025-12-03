@@ -12,7 +12,7 @@ dense1_evaluator = DenseEvaluatorConfig(
 dense2_evaluator = Dense2EvaluatorConfig(
     success_reward=1.0,
     max_progress_reward=0.5,
-    max_regress_penalty=-0.25,
+    max_regress_penalty=0.25,
     step_penalty=-0.01,
 )
 
