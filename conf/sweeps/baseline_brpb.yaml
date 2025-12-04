@@ -76,7 +76,6 @@ parameters:
       - 0.1
       - 0.05
       - 0.01
-      - 0.0
   agent.critic_coef:
     distribution: categorical
     values:
@@ -123,8 +122,5 @@ parameters:
     distribution: constant
     value: 0.0
   evaluator:
-    distribution: categorical
-    values:
-      - "dense1"
-      - "dense2"
-      #- "sparse"
+    distribution: constant
+    value: "dense2"

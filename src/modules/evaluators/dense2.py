@@ -39,7 +39,11 @@ class Dense2Evaluator(Evaluator):
 
         if improvement > 0:
             # Made progress - reward proportional to fraction improved
-            reward = improvement * self.config.max_progress_reward
+            # Closer to goal yields higher reward
+            closeness_multiplier = 1.0 + self.percentage_done
+            reward = (
+                improvement * self.config.max_progress_reward * closeness_multiplier
+            )
         elif improvement < 0:
             # Regressed - penalty proportional to fraction broken
             reward = (
