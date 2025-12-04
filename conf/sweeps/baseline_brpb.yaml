@@ -100,7 +100,6 @@ parameters:
   buffer.steps:
     distribution: categorical
     values:
-      - 512
       - 1024
       - 2048
   storage.used_skills:
