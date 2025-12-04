@@ -123,7 +123,7 @@ class ProgressWatcher:
         elif current_batch >= self.max_batches:
             return True
         else:
-            return should_stop
+            return False  # should_stop
 
     def _ema_check(self, metric: float) -> bool:
         # Update EMA
