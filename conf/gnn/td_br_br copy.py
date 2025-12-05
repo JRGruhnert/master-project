@@ -1,4 +1,4 @@
-from src.agents.ppo.baseline import BaselineAgentConfig
+from src.agents.ppo.gnn import GNNAgentConfig
 from src.environments.calvin import CalvinEnvironmentConfig
 from src.modules.buffer import BufferConfig
 from src.modules.logger import LogMode, LoggerConfig
@@ -13,7 +13,7 @@ eval = False
 tag = "td_br_br"
 
 config = TrainConfig(
-    agent=BaselineAgentConfig(eval=eval),
+    agent=GNNAgentConfig(eval=eval),
     buffer=BufferConfig(),
     logger=LoggerConfig(
         mode=mode,
@@ -21,10 +21,10 @@ config = TrainConfig(
     ),
     storage=StorageConfig(
         used_skills="BaseRed",
-        used_states="BaseRed",
+        used_states="BaseRedPinkBlue",
         eval_states="BaseRed",
         tag=tag,
-        network="baseline",
+        network="gnn",
     ),
     experiment=PePrConfig(
         p_empty=0.0,
