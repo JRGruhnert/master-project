@@ -104,6 +104,19 @@ class ActorCriticBase(nn.Module, ABC):
         action_logprobs = dist.log_prob(action)
         return action_logprobs, value, dist
 
+    def encode_states(
+        self, current: StateValueDict, goal: StateValueDict
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        encoded_current = [
+            self.encoders[state.type](state.make_input(current[state.name]))
+            for state in self.states
+        ]
+        encoded_goal = [
+            self.encoders[state.type](state.make_input(goal[state.name]))
+            for state in self.states
+        ]
+        return torch.stack(encoded_current, dim=0), torch.stack(encoded_goal, dim=0)
+
 
 class BaselineBase(ActorCriticBase):
 
@@ -114,7 +127,7 @@ class BaselineBase(ActorCriticBase):
         """Group state values by their type strings."""
         grouped = defaultdict(list)
         for state in self.states:
-            value = state.normalize(x[state.name])
+            value = state.make_input(x[state.name])
             grouped[state.type].append(value)
         return {k: torch.stack(v).float() for k, v in grouped.items()}
 
@@ -153,27 +166,15 @@ class GnnBase(ActorCriticBase, ABC):
             data.append(self.to_data(o, g))
         return Batch.from_data_list(data)
 
-    def encode_states(
-        self, current: StateValueDict, goal: StateValueDict
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        encoded_current = [
-            self.encoders[state.type](current[state.name]) for state in self.states
-        ]
-        encoded_goal = [
-            self.encoders[state.type](goal[state.name]) for state in self.states
-        ]
-        return torch.stack(encoded_current, dim=0), torch.stack(encoded_goal, dim=0)
-
     def skill_state_distances(
         self,
         obs: StateValueDict,
-        goal: StateValueDict,
         pad: bool = False,
         sparse: bool = False,
     ) -> torch.Tensor:
         features: list[torch.Tensor] = []
         for skill in self.skills:
-            distances = skill.distances(obs, goal, self.states, pad, sparse)
+            distances = skill.distances(obs, self.states, pad, sparse)
             features.append(distances)
         return torch.stack(features, dim=0).float()
 
@@ -257,13 +258,10 @@ class GnnBase(ActorCriticBase, ABC):
     def state_skill_attr_weighted(
         self,
         current: StateValueDict,
-        goal: StateValueDict,
         pad: bool = True,
         sparse: bool = False,
     ) -> torch.Tensor:
-        dist_matrix = self.skill_state_distances(
-            current, goal, pad, sparse
-        )  # [T, S, 1 or 2]
+        dist_matrix = self.skill_state_distances(current, pad, sparse)  # [T, S, 1 or 2]
         # Now safely get edge attributes for (task, state) pairs: [E, 2]
         edge_attr = dist_matrix[
             self.state_skill_full[1], self.state_skill_full[0]
@@ -278,10 +276,9 @@ class GnnBase(ActorCriticBase, ABC):
     def state_skill_attr_weighted_sparse(
         self,
         current: StateValueDict,
-        goal: StateValueDict,
         pad: bool = True,
     ) -> torch.Tensor:
-        dist_matrix = self.skill_state_distances(current, goal, pad)  # [T, S, 2]
+        dist_matrix = self.skill_state_distances(current, pad)  # [T, S, 2]
         # Now safely get edge attributes for (task, state) pairs: [E, 2]
         edge_attr = dist_matrix[
             self.state_skill_full[1], self.state_skill_full[0]

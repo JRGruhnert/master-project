@@ -115,8 +115,6 @@ class Gnn(GnnBase):
         return logits, value
 
     def to_data(self, obs: StateValueDict, goal: StateValueDict) -> HeteroData:
-        obs.to(device)
-        goal.to(device)
         obs_tensor, goal_tensor = self.encode_states(obs, goal)
         data = HeteroData()
         data["goal"].x = goal_tensor
@@ -129,7 +127,7 @@ class Gnn(GnnBase):
         data[("obs", "obs-task", "task")].edge_index = self.state_skill_full
         # data[("goal", "goal-obs", "obs")].edge_attr = self.cnv.state_state_attr
         data[("obs", "obs-task", "task")].edge_attr = self.state_skill_attr_weighted(
-            obs, goal
+            obs
         )
         data[("task", "task-actor", "actor")].edge_index = self.skill_skill_sparse
         data[("task", "task-critic", "critic")].edge_index = self.skill_to_single

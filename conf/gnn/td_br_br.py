@@ -14,7 +14,7 @@ tag = "td_br_br"
 
 config = TrainConfig(
     agent=GNNAgentConfig(eval=eval),
-    buffer=BufferConfig(),
+    buffer=BufferConfig(steps=1024),
     logger=LoggerConfig(
         mode=mode,
         wandb_tag=tag,

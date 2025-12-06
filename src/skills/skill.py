@@ -35,7 +35,6 @@ class Skill(ABC):
     def distances(
         self,
         obs: StateValueDict,
-        goal: StateValueDict,
         states: list[State],
         pad: bool = False,
         sparse: bool = False,
@@ -45,7 +44,6 @@ class Skill(ABC):
             if state.name in self.precons.keys():
                 value = state.distance_to_skill(
                     obs[state.name],
-                    goal[state.name],
                     self.precons[state.name],
                 )
                 value = torch.tensor([value, 0.0]) if pad else torch.tensor([value])

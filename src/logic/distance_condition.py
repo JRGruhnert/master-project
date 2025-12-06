@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
+import math
 import torch
-
-from src.logic.mixin import BoundedMixin, QuaternionMixin
 
 
 class DistanceCondition(ABC):
@@ -11,90 +10,47 @@ class DistanceCondition(ABC):
     def distance(
         self,
         current: torch.Tensor,
-        goal: torch.Tensor,
-        tp: torch.Tensor,
+        x: torch.Tensor,
     ) -> float:
         """Evaluate goal condition for the given state."""
         raise NotImplementedError("Subclasses must implement the evaluate method.")
 
 
-class EulerDistanceCondition(DistanceCondition, BoundedMixin):
+class EulerDistanceCondition(DistanceCondition):
     """Skill condition based on area matching."""
+
+    def __init__(self):
+        self.max_dist = math.sqrt(3)
 
     def distance(
         self,
         current: torch.Tensor,
-        goal: torch.Tensor,
-        tp: torch.Tensor,
+        x: torch.Tensor,
     ) -> float:
-        assert (
-            isinstance(current, torch.Tensor)
-            and isinstance(goal, torch.Tensor)
-            and isinstance(tp, torch.Tensor)
-        ), "Inputs must be torch.Tensor"
-        cx = torch.clamp(current, self.lower_bound, self.upper_bound)
-        cy = torch.clamp(tp, self.lower_bound, self.upper_bound)
-        nx = self.normalize(cx)
-        ny = self.normalize(cy)
-        return torch.linalg.norm(nx - ny).item()
+        return (torch.linalg.norm(current - x) / self.max_dist).item()
 
 
-class QuaternionDistanceCondition(DistanceCondition, QuaternionMixin):
+class QuaternionDistanceCondition(DistanceCondition):
     """Skill condition based on quaternion distance."""
 
     def distance(
         self,
         current: torch.Tensor,
-        goal: torch.Tensor,
-        tp: torch.Tensor,
+        x: torch.Tensor,
     ) -> float:
-        assert (
-            isinstance(current, torch.Tensor)
-            and isinstance(goal, torch.Tensor)
-            and isinstance(tp, torch.Tensor)
-        ), "Inputs must be torch.Tensor"
-        nx = self.normalize_quat(current)
-        ny = self.normalize_quat(tp)
-        dot = torch.clamp(torch.abs(torch.dot(nx, ny)), -1.0, 1.0)
-        return (2.0 * torch.arccos(dot)).item()
+        dot = torch.clamp(torch.abs(torch.dot(current, x)), -1.0, 1.0)
+        return (2.0 * torch.arccos(dot) / math.pi).item()
 
 
-class RangeDistanceCondition(DistanceCondition, BoundedMixin):
+class RangeDistanceCondition(DistanceCondition):
     """Skill condition based on range distance."""
 
     def distance(
         self,
         current: torch.Tensor,
-        goal: torch.Tensor,
-        tp: torch.Tensor,
+        x: torch.Tensor,
     ) -> float:
-        assert (
-            isinstance(current, torch.Tensor)
-            and isinstance(goal, torch.Tensor)
-            and isinstance(tp, torch.Tensor)
-        ), "Inputs must be torch.Tensor"
-        cx = torch.clamp(current, self.lower_bound, self.upper_bound)
-        cy = torch.clamp(tp, self.lower_bound, self.upper_bound)
-        nx = self.normalize(cx)
-        ny = self.normalize(cy)
-        return torch.abs(nx - ny).item()
-
-
-class BooleanDistanceCondition(DistanceCondition):
-    """Skill condition based on boolean distance."""
-
-    def distance(
-        self,
-        current: torch.Tensor,
-        goal: torch.Tensor,
-        tp: torch.Tensor,
-    ) -> float:
-        assert (
-            isinstance(current, torch.Tensor)
-            and isinstance(goal, torch.Tensor)
-            and isinstance(tp, torch.Tensor)
-        ), "Inputs must be torch.Tensor"
-        return torch.abs(current - tp).item()
+        return torch.abs(current - x).item()
 
 
 class FlipDistanceCondition(DistanceCondition):
@@ -103,12 +59,6 @@ class FlipDistanceCondition(DistanceCondition):
     def distance(
         self,
         current: torch.Tensor,
-        goal: torch.Tensor,
-        tp: torch.Tensor,
+        x: torch.Tensor,
     ) -> float:
-        assert (
-            isinstance(current, torch.Tensor)
-            and isinstance(goal, torch.Tensor)
-            and isinstance(tp, torch.Tensor)
-        ), "Inputs must be torch.Tensor"
-        return (tp - torch.abs(current - goal)).item()  # Flips distance
+        return 0.0  # Always return zero distance for flip conditions

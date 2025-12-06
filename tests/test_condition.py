@@ -120,7 +120,7 @@ class TestTapasState:
         current_tensor = torch.tensor(current, dtype=torch.float32)
         expected_tensor = torch.tensor(expected, dtype=torch.float32)
 
-        result = state.normalize(current_tensor)
+        result = state.make_input(current_tensor)
 
         # Handle multi-element vs single element results
         if result.numel() > 1:
@@ -258,7 +258,7 @@ class TestDebugStates:
     def test_euler_state_value_normalization(self):
         """Debug euler state value normalization."""
         current = torch.tensor([0.0, 0.0, 0.0], dtype=torch.float32)
-        result = euler_precise.normalize(current)
+        result = euler_precise.make_input(current)
         print(
             f"🔍 Euler value result: {result}, type: {type(result)}, shape: {result.shape}"
         )

@@ -12,6 +12,11 @@ class ValueCondition(ABC):
         """Returns the processed value of the state as a tensor."""
         raise NotImplementedError("Subclasses must implement the value method.")
 
+    @abstractmethod
+    def make_input(self, x: torch.Tensor) -> torch.Tensor:
+        """Returns the processed input value as a tensor."""
+        raise NotImplementedError("Subclasses must implement the make_input method.")
+
 
 class IdentityValue(ValueCondition):
     """Value converter for discrete states."""
@@ -20,14 +25,21 @@ class IdentityValue(ValueCondition):
         """Return input value as it is."""
         return x
 
+    def make_input(self, x: torch.Tensor) -> torch.Tensor:
+        """Return input value as it is."""
+        return self.value(x)
+
 
 class LinearValueNormalizer(ValueCondition, BoundedMixin):
     """Default value converter that returns the input as-is."""
 
     def value(self, x: torch.Tensor) -> torch.Tensor:
         """Clamp and normalize the input value."""
-        cx = torch.clamp(x, self.lower_bound, self.upper_bound)
-        return self.normalize(cx)
+        return self.normalize(x)
+
+    def make_input(self, x: torch.Tensor) -> torch.Tensor:
+        """Clamp and normalize the input value."""
+        return self.value(x)
 
 
 class AreaValueNormalizer(ValueCondition, BoundedMixin, AreaMixin):
@@ -35,8 +47,11 @@ class AreaValueNormalizer(ValueCondition, BoundedMixin, AreaMixin):
 
     def value(self, x: torch.Tensor) -> torch.Tensor:
         """Check if the position is within the evaluation areas and normalize."""
-        cx = torch.clamp(x, self.lower_bound, self.upper_bound)
-        nx = self.normalize(cx)
+        return self.normalize(x)
+
+    def make_input(self, x: torch.Tensor) -> torch.Tensor:
+        """Check if the position is within the evaluation areas and normalize."""
+        nx = self.value(x)
         area_name = self.check_eval_area(x)
         one_hot_tensor = self.get_one_hot_area_vector(area_name)
         return torch.cat([nx, one_hot_tensor], dim=0)
@@ -48,3 +63,7 @@ class QuaternionValueNormalizer(ValueCondition, QuaternionMixin):
     def value(self, x: torch.Tensor) -> torch.Tensor:
         """Normalize the quaternion."""
         return self.normalize_quat(x)
+
+    def make_input(self, x: torch.Tensor) -> torch.Tensor:
+        """Normalize the quaternion."""
+        return self.value(x)

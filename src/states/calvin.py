@@ -8,7 +8,6 @@ from src.skills.addons.addon import (
 )
 from src.logic.distance_condition import (
     DistanceCondition,
-    BooleanDistanceCondition,
     EulerDistanceCondition,
     FlipDistanceCondition,
     QuaternionDistanceCondition,
@@ -42,6 +41,7 @@ class CalvinState(State):
         goal_condition: DistanceCondition,
         eval_condition: EvalCondition,
         addon: TapasAddon,
+        eval_normalizer: ValueCondition | None = None,
     ):
         super().__init__(
             name,
@@ -53,6 +53,7 @@ class CalvinState(State):
             goal_condition,
             eval_condition,
             {"tapas": addon},
+            eval_normalizer=eval_normalizer,
         )
 
 
@@ -65,18 +66,14 @@ class EulerState(CalvinState):
         type_str,
         size,
         ignore: bool = False,
-        lower_bound=[-1.0, -1.0, -1.0],
-        upper_bound=[1.0, 1.0, 1.0],
         value_condition: ValueCondition = LinearValueNormalizer(
             lower_bound=[-1.0, -1.0, -1.0],
             upper_bound=[1.0, 1.0, 1.0],
         ),
         eval_condition: EvalCondition = PreciseEvalCondition(
-            condition=EulerDistanceCondition(
-                lower_bound=[-1.0, -1.0, -1.0],
-                upper_bound=[1.0, 1.0, 1.0],
-            ),
+            condition=EulerDistanceCondition(),
         ),
+        eval_normalizer: ValueCondition | None = None,
     ):
         super().__init__(
             name=name,
@@ -84,16 +81,11 @@ class EulerState(CalvinState):
             type_str=type_str,
             size=size,
             value_condition=value_condition,
-            skill_condition=EulerDistanceCondition(
-                lower_bound=lower_bound,
-                upper_bound=upper_bound,
-            ),
-            goal_condition=EulerDistanceCondition(
-                lower_bound=lower_bound,
-                upper_bound=upper_bound,
-            ),
+            skill_condition=EulerDistanceCondition(),
+            goal_condition=EulerDistanceCondition(),
             eval_condition=IgnoreEvalCondition() if ignore else eval_condition,
             addon=EulerTapasAddon(),
+            eval_normalizer=eval_normalizer,
         )
 
 
@@ -111,10 +103,7 @@ class PreciseEulerState(EulerState):
             size=3,
             ignore=ignore,
             eval_condition=PreciseEvalCondition(
-                condition=EulerDistanceCondition(
-                    lower_bound=[-1.0, -1.0, -1.0],
-                    upper_bound=[1.0, 1.0, 1.0],
-                ),
+                condition=EulerDistanceCondition(),
             ),
         )
 
@@ -157,6 +146,7 @@ class AreaEulerState(EulerState):
                 spawn_surfaces=spawn_surfaces,
                 eval_surfaces=eval_surfaces,
             ),
+            eval_normalizer=IdentityValue(),
         )
 
     def is_in_an_existing_area(self, value: torch.Tensor) -> bool:
@@ -208,19 +198,10 @@ class RangeState(CalvinState):
                 lower_bound=[lower_bound],
                 upper_bound=[upper_bound],
             ),
-            skill_condition=RangeDistanceCondition(
-                lower_bound=[lower_bound],
-                upper_bound=[upper_bound],
-            ),
-            goal_condition=RangeDistanceCondition(
-                lower_bound=[lower_bound],
-                upper_bound=[upper_bound],
-            ),
+            skill_condition=RangeDistanceCondition(),
+            goal_condition=RangeDistanceCondition(),
             eval_condition=PreciseEvalCondition(
-                condition=RangeDistanceCondition(
-                    lower_bound=[lower_bound],
-                    upper_bound=[upper_bound],
-                ),
+                condition=RangeDistanceCondition(),
             ),
             addon=ScalarTapasAddon(
                 lower_bound=[lower_bound],
@@ -241,10 +222,10 @@ class BoolState(CalvinState):
             type_str="Bool",
             size=1,
             value_condition=IdentityValue(),
-            skill_condition=BooleanDistanceCondition(),
-            goal_condition=BooleanDistanceCondition(),
+            skill_condition=RangeDistanceCondition(),
+            goal_condition=RangeDistanceCondition(),
             eval_condition=PreciseEvalCondition(
-                condition=BooleanDistanceCondition(),
+                condition=RangeDistanceCondition(),
             ),
             addon=ScalarTapasAddon(
                 lower_bound=[0.0],
@@ -266,9 +247,9 @@ class FlipState(CalvinState):
             size=1,
             value_condition=IdentityValue(),
             skill_condition=FlipDistanceCondition(),
-            goal_condition=BooleanDistanceCondition(),
+            goal_condition=RangeDistanceCondition(),
             eval_condition=PreciseEvalCondition(
-                condition=BooleanDistanceCondition(),
+                condition=RangeDistanceCondition(),
             ),
             addon=FlipTapasAddon(),
         )

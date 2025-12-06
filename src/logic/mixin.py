@@ -1,5 +1,6 @@
 # Mixin classes for common functionality
 from functools import cached_property
+import math
 from typing import Dict, Optional
 import numpy as np
 import torch
@@ -13,10 +14,10 @@ class QuaternionMixin:
 
     def normalize_quat(self, x: torch.Tensor) -> torch.Tensor:
         """Normalize quaternion and ensure positive w component."""
-        x = x / torch.linalg.norm(x)
-        if x[3] < 0:
-            return -x
-        return x
+        nx = x / torch.linalg.norm(x)
+        if nx[3] < 0:
+            return -nx
+        return nx
 
     def _quaternion_mean(self, quaternions: torch.Tensor) -> torch.Tensor:
         """
@@ -41,7 +42,7 @@ class QuaternionMixin:
         """Calculate the angular distance between two quaternions."""
         dot_product = torch.abs(torch.dot(q1, q2))
         dot_product = torch.clamp(dot_product, -1.0, 1.0)
-        angle = 2 * torch.acos(dot_product)
+        angle = 2 * torch.acos(dot_product) / math.pi
         return angle.item()
 
 
@@ -61,7 +62,8 @@ class BoundedMixin:
 
     def normalize(self, x: torch.Tensor) -> torch.Tensor:
         """Normalize a value x to the range [0, 1] based on bounds."""
-        return (x - self.lower_bound) / (self.upper_bound - self.lower_bound)
+        cx = torch.clamp(x, self.lower_bound, self.upper_bound)
+        return (cx - self.lower_bound) / (self.upper_bound - self.lower_bound)
 
 
 class ThresholdMixin:
