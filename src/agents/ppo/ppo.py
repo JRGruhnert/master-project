@@ -123,7 +123,7 @@ class ProgressWatcher:
         elif current_batch >= self.max_batches:
             return True
         else:
-            return False  # should_stop
+            return should_stop
 
     def _ema_check(self, metric: float) -> bool:
         # Update EMA
@@ -137,14 +137,12 @@ class ProgressWatcher:
         return self._metric_check(self.ema)
 
     def _metric_check(self, metric: float) -> bool:
-        # Check if metric improves
         if metric > self.best_value:
             self.best_value = metric
-            self.counter = 0  # Reset patience counter
-            return False  # No stop
+            self.counter = 0
         else:
-            self.counter += 1  # Increment patience counter
-            return self.counter >= self.patience
+            self.counter += 1
+        return self.counter >= self.patience
 
 
 class PPOAgent(Agent):
