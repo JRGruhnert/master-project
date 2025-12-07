@@ -13,7 +13,12 @@ eval = False
 tag = "td_brpb_br"
 
 config = TrainConfig(
-    agent=GNNAgentConfig(eval=eval),
+    agent=GNNAgentConfig(
+        eval=eval,
+        max_batches=1000,
+        early_stop_patience=50,
+        min_batches=100,
+    ),
     buffer=BufferConfig(steps=1024),
     logger=LoggerConfig(
         mode=mode,
