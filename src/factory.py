@@ -7,6 +7,7 @@ from src.environments.environment import Environment, EnvironmentConfig
 from src.modules.buffer import Buffer
 from src.modules.evaluators.dense import DenseEvaluator, DenseEvaluatorConfig
 from src.modules.evaluators.dense2 import Dense2Evaluator, Dense2EvaluatorConfig
+from src.modules.evaluators.dense3 import Dense3Evaluator, Dense3EvaluatorConfig
 from src.modules.evaluators.evaluator import Evaluator, EvaluatorConfig
 from src.modules.evaluators.sparse import SparseEvaluator, SparseEvaluatorConfig
 from src.modules.storage import Storage
@@ -63,6 +64,8 @@ def select_evaluator(
         return DenseEvaluator(config, storage)
     elif isinstance(config, Dense2EvaluatorConfig):
         return Dense2Evaluator(config, storage)
+    elif isinstance(config, Dense3EvaluatorConfig):
+        return Dense3Evaluator(config, storage)
     elif isinstance(config, SparseEvaluatorConfig):
         return SparseEvaluator(config, storage)
     else:

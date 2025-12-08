@@ -22,7 +22,6 @@ class Dense2Evaluator(Evaluator):
     ):
         super().__init__(storage)
         self.config = config
-        self.prev_percentage_done: float | None = None
 
     def step(
         self,
@@ -31,21 +30,16 @@ class Dense2Evaluator(Evaluator):
     ) -> tuple[float, bool]:
         prev_percentage_done = self.percentage_done
         if self.is_equal(current, goal):
-            # Success! Big reward
             return self.config.success_reward, True
 
-        # Calculate change in correctness (-1 to +1)
         improvement = self.percentage_done - prev_percentage_done
 
         if improvement > 0:
-            # Made progress - reward proportional to fraction improved
-            # Closer to goal yields higher reward
             closeness_multiplier = 1.0 + self.percentage_done
             reward = (
                 improvement * self.config.max_progress_reward * closeness_multiplier
             )
         elif improvement < 0:
-            # Regressed - penalty proportional to fraction broken
             reward = (
                 improvement * self.config.max_regress_penalty
             )  # improvement is negative

@@ -20,6 +20,16 @@ class Evaluator(ABC):
         self.states = storage.eval_states
         self.percentage_done: float = 0.0
 
+    def is_valid_sample(
+        self,
+        current: StateValueDict,
+        goal: StateValueDict,
+    ) -> bool:
+        """Checks if the sampled states are valid for starting an episode."""
+        is_done = self.is_equal(current, goal)
+        is_good = self.is_good_sample(current, goal)
+        return not is_done and is_good
+
     def is_equal(
         self,
         current: StateValueDict,

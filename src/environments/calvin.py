@@ -54,12 +54,7 @@ class CalvinEnvironment(Environment):
     def sample_task(self) -> tuple[StateValueDict, StateValueDict]:
         self.reset()
         # Current and goal should not be equal
-        while self.evaluator.is_equal(
-            self.current, self.goal
-        ) or not self.evaluator.is_good_sample(self.current, self.goal):
-            # print("Resampling task...")
-            # print(self.evaluator.is_equal(self.current, self.goal))
-            # print(not self.evaluator.is_good_sample(self.current, self.goal))
+        while not self.evaluator.is_valid_sample(self.current, self.goal):
             self.reset()
         return self.current, self.goal
 
