@@ -7,7 +7,7 @@ from src.experiments.pepr import PePrConfig
 from scripts.train import TrainConfig
 from conf.common.evaluator import dense3_evaluator
 
-mode = LogMode.TERMINAL
+mode = LogMode.WANDB
 render = False
 eval = False
 tag = "td3_brpb_brpb"
