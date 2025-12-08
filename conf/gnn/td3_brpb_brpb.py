@@ -5,12 +5,12 @@ from src.modules.logger import LogMode, LoggerConfig
 from src.modules.storage import StorageConfig
 from src.experiments.pepr import PePrConfig
 from scripts.train import TrainConfig
-from conf.common.evaluator import dense2_evaluator
+from conf.common.evaluator import dense3_evaluator
 
-mode = LogMode.WANDB
+mode = LogMode.TERMINAL
 render = False
 eval = False
-tag = "t_brpb_br"
+tag = "td3_brpb_brpb"
 
 config = TrainConfig(
     agent=GNNAgentConfig(
@@ -25,9 +25,9 @@ config = TrainConfig(
         wandb_tag=tag,
     ),
     storage=StorageConfig(
-        used_skills="BaseRed",
+        used_skills="BaseRedPinkBlue",
         used_states="BaseRedPinkBlue",
-        eval_states="BaseRed",
+        eval_states="BaseRedPinkBlue",
         tag=tag,
         network="gnn",
     ),
@@ -36,5 +36,5 @@ config = TrainConfig(
         p_rand=0.0,
     ),
     environment=CalvinEnvironmentConfig(render=render),
-    evaluator=dense2_evaluator,
+    evaluator=dense3_evaluator,
 )
