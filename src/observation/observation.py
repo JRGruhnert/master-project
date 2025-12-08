@@ -21,3 +21,10 @@ class StateValueDict(TensorDict):
     def same_fields(self, other: "StateValueDict") -> bool:
         """Check if two StateValueDicts have the same keys"""
         return set(self.keys()) == set(other.keys())  # type: ignore
+
+    def equal(self, other: "StateValueDict") -> bool:
+        """Check if two TensorDicts are equal"""
+        result = self == other
+        if isinstance(result, bool):
+            return result
+        return bool(result.all())
