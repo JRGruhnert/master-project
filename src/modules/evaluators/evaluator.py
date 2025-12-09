@@ -17,7 +17,6 @@ class Evaluator(ABC):
         storage: Storage,
     ):
         self.storage = storage
-        self.states = storage.eval_states
         self.percentage_done: float = 0.0
 
     def is_valid_sample(
@@ -37,12 +36,12 @@ class Evaluator(ABC):
     ) -> bool:
         """Generic method to check if states match target conditions."""
         finished_states = 0
-        for state in self.states:
+        for state in self.storage.eval_states:
             if state.name in current.keys():
                 if state.evaluate(current[state.name], goal[state.name]):
                     finished_states += 1
-        self.percentage_done = finished_states / max(len(self.states), 1)
-        return finished_states == len(self.states)
+        self.percentage_done = finished_states / max(len(self.storage.eval_states), 1)
+        return finished_states == len(self.storage.eval_states)
 
     def is_good_sample(
         self,
@@ -51,7 +50,7 @@ class Evaluator(ABC):
     ) -> bool:
         """Special method to check wether the sampled states are buggy or not."""
         # print(f"Checking states dense reward module...")
-        for state in self.states:
+        for state in self.storage.states:
             if isinstance(state, AreaEulerState) and state.name in goal.keys():
                 if not state.is_in_an_existing_area(goal[state.name]):
                     # print(f"Bad sample: goal {goal[state.name]} not in an area.")

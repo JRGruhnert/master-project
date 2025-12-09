@@ -248,6 +248,18 @@ SKILLS_BY_TAG = {
         _S["OpenSlideBack"],
         _S["CloseSlideBack"],
     ],
+    "SmallRed": [
+        _S["CloseDrawer"],
+        _S["CloseDrawerBack"],
+        _S["OpenDrawer"],
+        _S["OpenDrawerBack"],
+        _S["PressButton"],
+        _S["PressButtonBack"],
+        _S["GrabRedTable"],
+        _S["PlaceRedTable"],
+        _S["GrabRedDrawer"],
+        _S["PlaceRedDrawer"],
+    ],
     "BaseRed": [
         _S["CloseDrawer"],
         _S["CloseDrawerBack"],
