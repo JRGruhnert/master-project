@@ -115,7 +115,8 @@ class Gnn(GnnBase):
         return logits, value
 
     def to_data(self, obs: StateValueDict, goal: StateValueDict) -> HeteroData:
-        obs_tensor, goal_tensor = self.encode_states(obs, goal)
+        obs_tensor = self.encode_states(obs)
+        goal_tensor = self.encode_states(goal)
         data = HeteroData()
         data["goal"].x = goal_tensor
         data["obs"].x = obs_tensor
