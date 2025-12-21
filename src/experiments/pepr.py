@@ -25,6 +25,24 @@ class PePrExperiment(Experiment):
         self.config = config
         ls = len(self.storage.skills)
         num_skills = 6 if ls == 10 else 8 + (ls - 10) / 2
+        if storage.config.used_skills == "Base":
+            num_skills = 6
+        elif (
+            storage.config.used_skills == "SmallRed"
+            or storage.config.used_skills == "SmallBlue"
+            or storage.config.used_skills == "SmallPink"
+        ):
+            num_skills = 8
+        elif (
+            storage.config.used_skills == "BaseRed"
+            or storage.config.used_skills == "BaseBlue"
+            or storage.config.used_skills == "BasePink"
+        ):
+            num_skills = 10
+        elif storage.config.used_skills == "BaseRedPink":
+            num_skills = 12
+        elif storage.config.used_skills == "BaseRedPinkBlue":
+            num_skills = 14
         # NOTE: This is for my skills setup
         self.max_episode_length = int(
             num_skills
