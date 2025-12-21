@@ -10,7 +10,7 @@ from conf.common.evaluator import dense3_evaluator
 mode = LogMode.WANDB
 render = False
 eval = False
-tag = "r_brpb_brp"
+tag = "rf_brpb_brp"
 
 config = TrainConfig(
     agent=GNNAgentConfig(

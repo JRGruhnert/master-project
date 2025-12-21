@@ -1,4 +1,4 @@
-from src.agents.ppo.gnn import GNNAgentConfig
+from src.agents.ppo.baseline import BaselineAgentConfig
 from src.environments.calvin import CalvinEnvironmentConfig
 from src.modules.buffer import BufferConfig
 from src.modules.logger import LogMode, LoggerConfig
@@ -13,7 +13,7 @@ eval = False
 tag = "tf_sp_sp"
 
 config = TrainConfig(
-    agent=GNNAgentConfig(
+    agent=BaselineAgentConfig(
         eval=eval,
         max_batches=300,
         early_stop_patience=50,
@@ -29,7 +29,7 @@ config = TrainConfig(
         used_states="SmallBlue",
         eval_states="SmallBlue",
         tag=tag,
-        network="gnn",
+        network="baseline",
     ),
     experiment=PePrConfig(
         p_empty=0.0,

@@ -5,31 +5,36 @@ from src.modules.logger import LogMode, LoggerConfig
 from src.modules.storage import StorageConfig
 from src.experiments.pepr import PePrConfig
 from scripts.train import TrainConfig
-from conf.common.evaluator import dense_evaluator
+from conf.common.evaluator import dense3_evaluator
 
 mode = LogMode.WANDB
 render = False
 eval = False
-tag = "td_b_b"
+tag = "tf_sr_sr"
 
 config = TrainConfig(
-    agent=BaselineAgentConfig(eval=eval),
-    buffer=BufferConfig(batch_size=2048),
+    agent=BaselineAgentConfig(
+        eval=eval,
+        max_batches=300,
+        early_stop_patience=50,
+        min_batches=100,
+    ),
+    buffer=BufferConfig(steps=1024),
     logger=LoggerConfig(
         mode=mode,
         wandb_tag=tag,
     ),
     storage=StorageConfig(
-        used_skills="Base",
-        used_states="Base",
-        eval_states="Base",
+        used_skills="SmallRed",
+        used_states="SmallRed",
+        eval_states="SmallRed",
         tag=tag,
         network="baseline",
     ),
     experiment=PePrConfig(
-        p_empty=0.8,
+        p_empty=0.0,
         p_rand=0.0,
     ),
     environment=CalvinEnvironmentConfig(render=render),
-    evaluator=dense_evaluator,
+    evaluator=dense3_evaluator,
 )

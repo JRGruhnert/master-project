@@ -1,4 +1,4 @@
-from src.agents.ppo.gnn import GNNAgentConfig
+from src.agents.ppo.baseline import BaselineAgentConfig
 from src.environments.calvin import CalvinEnvironmentConfig
 from src.modules.buffer import BufferConfig
 from src.modules.logger import LogMode, LoggerConfig
@@ -10,14 +10,15 @@ from conf.common.evaluator import dense3_evaluator
 mode = LogMode.WANDB
 render = False
 eval = False
-tag = "td3_brpb_br"
+tag = "rf_brpb_brp"
 
 config = TrainConfig(
-    agent=GNNAgentConfig(
+    agent=BaselineAgentConfig(
         eval=eval,
         max_batches=1000,
         early_stop_patience=50,
         min_batches=100,
+        retrain=True,
     ),
     buffer=BufferConfig(steps=1024),
     logger=LoggerConfig(
@@ -25,11 +26,12 @@ config = TrainConfig(
         wandb_tag=tag,
     ),
     storage=StorageConfig(
-        used_skills="BaseRed",
+        used_skills="BaseRedPinkBlue",
         used_states="BaseRedPinkBlue",
-        eval_states="BaseRed",
+        eval_states="BaseRedPinkBlue",
         tag=tag,
-        network="gnn",
+        network="baseline",
+        checkpoint_path="results/tf_brpb_br/baseline/best_model.pth",
     ),
     experiment=PePrConfig(
         p_empty=0.0,

@@ -10,12 +10,12 @@ from conf.common.evaluator import dense3_evaluator
 mode = LogMode.WANDB
 render = False
 eval = False
-tag = "tf_sp_sp"
+tag = "tf_brpb_br"
 
 config = TrainConfig(
     agent=GNNAgentConfig(
         eval=eval,
-        max_batches=300,
+        max_batches=1000,
         early_stop_patience=50,
         min_batches=100,
     ),
@@ -25,9 +25,9 @@ config = TrainConfig(
         wandb_tag=tag,
     ),
     storage=StorageConfig(
-        used_skills="SmallBlue",
-        used_states="SmallBlue",
-        eval_states="SmallBlue",
+        used_skills="BaseRed",
+        used_states="BaseRedPinkBlue",
+        eval_states="BaseRed",
         tag=tag,
         network="gnn",
     ),
