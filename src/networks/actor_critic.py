@@ -104,18 +104,12 @@ class ActorCriticBase(nn.Module, ABC):
         action_logprobs = dist.log_prob(action)
         return action_logprobs, value, dist
 
-    def encode_states(
-        self, current: StateValueDict, goal: StateValueDict
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        encoded_current = [
-            self.encoders[state.type](state.make_input(current[state.name]))
+    def encode_states(self, x: StateValueDict) -> torch.Tensor:
+        encoded_x = [
+            self.encoders[state.type](state.make_input(x[state.name]))
             for state in self.states
         ]
-        encoded_goal = [
-            self.encoders[state.type](state.make_input(goal[state.name]))
-            for state in self.states
-        ]
-        return torch.stack(encoded_current, dim=0), torch.stack(encoded_goal, dim=0)
+        return torch.stack(encoded_x, dim=0)
 
 
 class BaselineBase(ActorCriticBase):
@@ -136,17 +130,12 @@ class BaselineBase(ActorCriticBase):
         obs: list[StateValueDict],
         goal: list[StateValueDict],
     ):
-        obs_dicts = [self.state_type_dict_values(o) for o in obs]
-        goal_dicts = [self.state_type_dict_values(g) for g in goal]
 
-        tensor_obs = {
-            k: torch.stack([d[k] for d in obs_dicts], dim=0).detach().to(device)
-            for k in obs_dicts[0].keys()
-        }
-        tensor_goal = {
-            k: torch.stack([d[k] for d in goal_dicts], dim=0).detach().to(device)
-            for k in goal_dicts[0].keys()
-        }
+        obs_encoded = [self.encode_states(o) for o in obs]
+        goal_encoded = [self.encode_states(g) for g in goal]
+
+        tensor_obs = torch.stack(obs_encoded, dim=0).detach().to(device)  # [B, S, D]
+        tensor_goal = torch.stack(goal_encoded, dim=0).detach().to(device)  # [B, S, D]
 
         return tensor_obs, tensor_goal
 
