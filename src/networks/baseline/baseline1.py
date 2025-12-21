@@ -40,16 +40,10 @@ class Baseline(BaselineBase):
         goal: list[StateValueDict],
     ) -> tuple[torch.Tensor, torch.Tensor]:
         # obs and goal are dicts with keys 'euler', 'quat', 'scalar'
-        obs_dict, goal_dict = self.to_batch(obs, goal)
+        obs_encoded, goal_encoded = self.to_batch(obs, goal)
 
-        obs_encoded = [self.encoders[k](v.to(device)) for k, v in obs_dict.items()]
-        goal_encoded = [self.encoders[k](v.to(device)) for k, v in goal_dict.items()]
-
-        # Flatten each encoded component
-        obs_flat = torch.cat([v.flatten(start_dim=1) for v in obs_encoded], dim=1)
-        goal_flat = torch.cat([v.flatten(start_dim=1) for v in goal_encoded], dim=1)
-
-        x = torch.cat([obs_flat, goal_flat], dim=1)  # .unsqueeze(
+        interleaved = torch.stack([obs_encoded, goal_encoded], dim=2)  # [B, S, 2, D]
+        x = interleaved.flatten(start_dim=1)  # [B, S * 2 * D]
         logits = self.actor(x)
         value = self.critic(x).squeeze(-1)  # shape: [B]
         return logits, value
