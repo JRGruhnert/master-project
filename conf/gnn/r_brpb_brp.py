@@ -26,9 +26,9 @@ config = TrainConfig(
         wandb_tag=tag,
     ),
     storage=StorageConfig(
-        used_skills="BaseRedPinkBlue",
+        used_skills="BaseRedPink",
         used_states="BaseRedPinkBlue",
-        eval_states="BaseRedPinkBlue",
+        eval_states="BaseRedPink",
         tag=tag,
         network="gnn",
         checkpoint_path="results/td3_brpb_br/gnn/best_model.pth",
