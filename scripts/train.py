@@ -91,8 +91,12 @@ def train_agent(config: TrainConfig):
     trainer.run()
 
 
-def entry_point():
+def entry_point(p_empty: float | None = None, p_rand: float | None = None):
     _, dict_config = parse_and_build_config(data_load=False, need_task=False)
+    if p_empty is not None:
+        dict_config["experiment"]["p_empty"] = p_empty
+    if p_rand is not None:
+        dict_config["experiment"]["p_rand"] = p_rand
 
     dict_config["storage"]["tag"] = (
         dict_config["storage"]["tag"]
