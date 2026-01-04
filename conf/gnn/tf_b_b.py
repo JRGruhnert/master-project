@@ -15,7 +15,7 @@ prefix = "tf"
 
 skills_eval_states = "b"
 used_states = "b"
-p_empty = 0.6
+p_empty = 0.1
 p_rand = 0.0
 
 tag = f"{prefix}_{skills_eval_states}_{used_states}"
