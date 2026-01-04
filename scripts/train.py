@@ -1,14 +1,7 @@
 from dataclasses import dataclass
-from datetime import datetime
 from omegaconf import OmegaConf, SCMode
 
 from tapas_gmm.utils.argparse import parse_and_build_config
-import wandb
-from src.agents.ppo.ppo import PPOAgentConfig
-from src.environments.calvin import CalvinEnvironmentConfig
-from src.experiments.pepr import PePrConfig
-from src.modules.evaluators.dense2 import Dense2EvaluatorConfig
-from src.modules.evaluators.sparse import SparseEvaluatorConfig
 from src.modules.logger import LoggerConfig, Logger
 from src.modules.buffer import BufferConfig, Buffer
 from src.modules.evaluators.evaluator import EvaluatorConfig
