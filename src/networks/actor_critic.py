@@ -134,8 +134,8 @@ class BaselineBase(ActorCriticBase):
         obs_encoded = [self.encode_states(o) for o in obs]
         goal_encoded = [self.encode_states(g) for g in goal]
 
-        tensor_obs = torch.stack(obs_encoded, dim=0).detach().to(device)  # [B, S, D]
-        tensor_goal = torch.stack(goal_encoded, dim=0).detach().to(device)  # [B, S, D]
+        tensor_obs = torch.stack(obs_encoded, dim=0).to(device)  # [B, S, D]
+        tensor_goal = torch.stack(goal_encoded, dim=0).to(device)  # [B, S, D]
 
         return tensor_obs, tensor_goal
 
