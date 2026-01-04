@@ -236,7 +236,7 @@ SKILLS_BY_TAG = {
         _S["GrabBlueDrawer"],
         _S["PlaceBlueDrawer"],
     ],
-    "Base": [
+    "b": [
         _S["CloseDrawer"],
         _S["CloseDrawerBack"],
         _S["OpenDrawer"],
@@ -248,7 +248,7 @@ SKILLS_BY_TAG = {
         _S["OpenSlideBack"],
         _S["CloseSlideBack"],
     ],
-    "SmallRed": [
+    "sr": [
         _S["CloseDrawer"],
         _S["CloseDrawerBack"],
         _S["OpenDrawer"],
@@ -260,7 +260,7 @@ SKILLS_BY_TAG = {
         _S["GrabRedDrawer"],
         _S["PlaceRedDrawer"],
     ],
-    "SmallBlue": [
+    "sb": [
         _S["CloseDrawer"],
         _S["CloseDrawerBack"],
         _S["OpenDrawer"],
@@ -272,7 +272,7 @@ SKILLS_BY_TAG = {
         _S["GrabBlueDrawer"],
         _S["PlaceBlueDrawer"],
     ],
-    "SmallPink": [
+    "sp": [
         _S["CloseDrawer"],
         _S["CloseDrawerBack"],
         _S["OpenDrawer"],
@@ -284,7 +284,7 @@ SKILLS_BY_TAG = {
         _S["GrabPinkDrawer"],
         _S["PlacePinkDrawer"],
     ],
-    "BaseRed": [
+    "br": [
         _S["CloseDrawer"],
         _S["CloseDrawerBack"],
         _S["OpenDrawer"],
@@ -300,7 +300,7 @@ SKILLS_BY_TAG = {
         _S["GrabRedDrawer"],
         _S["PlaceRedDrawer"],
     ],
-    "BasePink": [
+    "bp": [
         _S["CloseDrawer"],
         _S["CloseDrawerBack"],
         _S["OpenDrawer"],
@@ -316,7 +316,7 @@ SKILLS_BY_TAG = {
         _S["GrabPinkDrawer"],
         _S["PlacePinkDrawer"],
     ],
-    "BaseBlue": [
+    "bb": [
         _S["CloseDrawer"],
         _S["CloseDrawerBack"],
         _S["OpenDrawer"],
@@ -332,7 +332,7 @@ SKILLS_BY_TAG = {
         _S["GrabBlueDrawer"],
         _S["PlaceBlueDrawer"],
     ],
-    "BaseRedPink": [
+    "brp": [
         _S["CloseDrawer"],
         _S["CloseDrawerBack"],
         _S["OpenDrawer"],
@@ -352,7 +352,7 @@ SKILLS_BY_TAG = {
         _S["GrabPinkDrawer"],
         _S["PlacePinkDrawer"],
     ],
-    "BaseRedPinkBlue": [
+    "brpb": [
         _S["CloseDrawer"],
         _S["CloseDrawerBack"],
         _S["OpenDrawer"],
