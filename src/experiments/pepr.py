@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import math
 import random
 
 from loguru import logger
@@ -23,28 +24,26 @@ class PePrExperiment(Experiment):
         # We sort based on Id for the baseline network to be consistent
         super().__init__(config, env, storage)
         self.config = config
-        ls = len(self.storage.skills)
-        num_skills = 6 if ls == 10 else 8 + (ls - 10) / 2
-        if storage.config.used_skills == "Base":
+        if storage.config.used_skills == "b":
             num_skills = 6
         elif (
-            storage.config.used_skills == "SmallRed"
-            or storage.config.used_skills == "SmallBlue"
-            or storage.config.used_skills == "SmallPink"
+            storage.config.used_skills == "sr"
+            or storage.config.used_skills == "sb"
+            or storage.config.used_skills == "sp"
         ):
             num_skills = 8
         elif (
-            storage.config.used_skills == "BaseRed"
-            or storage.config.used_skills == "BaseBlue"
-            or storage.config.used_skills == "BasePink"
+            storage.config.used_skills == "br"
+            or storage.config.used_skills == "bb"
+            or storage.config.used_skills == "bp"
         ):
             num_skills = 10
-        elif storage.config.used_skills == "BaseRedPink":
+        elif storage.config.used_skills == "brb":
             num_skills = 12
-        elif storage.config.used_skills == "BaseRedPinkBlue":
+        elif storage.config.used_skills == "brbp":
             num_skills = 14
         # NOTE: This is for my skills setup
-        self.max_episode_length = int(
+        self.max_episode_length = math.ceil(
             num_skills
             + num_skills * self.config.p_empty
             + num_skills * self.config.p_rand
@@ -53,7 +52,7 @@ class PePrExperiment(Experiment):
         self.current_step = 0
         self.current: StateValueDict | None = None
         logger.info(
-            f"Number of skills: {ls}, max episode length: {self.max_episode_length}"
+            f"Number of skills: {num_skills}, max episode length: {self.max_episode_length}"
         )
 
     def sample_task(self) -> tuple[StateValueDict, StateValueDict]:
