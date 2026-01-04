@@ -136,7 +136,7 @@ STATES_BY_TAG = {
         _S["block_blue_scalar"],
         _S["block_pink_scalar"],
     ],
-    "Base": [
+    "b": [
         _S["ee_position"],
         _S["base__slide_position"],
         _S["base__drawer_position"],
@@ -152,7 +152,7 @@ STATES_BY_TAG = {
         _S["base__drawer_scalar"],
         _S["base__button_scalar"],
     ],
-    "SmallRed": [
+    "sr": [
         _S["ee_position"],
         _S["ee_rotation"],
         _S["ee_scalar"],
@@ -168,7 +168,7 @@ STATES_BY_TAG = {
         _S["block_red_rotation"],
         _S["block_red_scalar"],
     ],
-    "SmallBlue": [
+    "sb": [
         _S["ee_position"],
         _S["ee_rotation"],
         _S["ee_scalar"],
@@ -184,7 +184,7 @@ STATES_BY_TAG = {
         _S["block_blue_rotation"],
         _S["block_blue_scalar"],
     ],
-    "SmallPink": [
+    "sp": [
         _S["ee_position"],
         _S["ee_rotation"],
         _S["ee_scalar"],
@@ -200,7 +200,7 @@ STATES_BY_TAG = {
         _S["block_pink_rotation"],
         _S["block_pink_scalar"],
     ],
-    "BaseRed": [
+    "br": [
         _S["ee_position"],
         _S["ee_rotation"],
         _S["ee_scalar"],
@@ -219,7 +219,7 @@ STATES_BY_TAG = {
         _S["block_red_rotation"],
         _S["block_red_scalar"],
     ],
-    "BaseRedPink": [
+    "brp": [
         _S["ee_position"],
         _S["ee_rotation"],
         _S["ee_scalar"],
@@ -241,7 +241,7 @@ STATES_BY_TAG = {
         _S["block_pink_rotation"],
         _S["block_pink_scalar"],
     ],
-    "BaseRedPinkBlue": [
+    "brpb": [
         _S["ee_position"],
         _S["ee_rotation"],
         _S["ee_scalar"],
@@ -266,7 +266,7 @@ STATES_BY_TAG = {
         _S["block_blue_rotation"],
         _S["block_blue_scalar"],
     ],
-    "BasePink": [
+    "bp": [
         _S["ee_position"],
         _S["ee_rotation"],
         _S["ee_scalar"],
@@ -285,7 +285,7 @@ STATES_BY_TAG = {
         _S["block_pink_rotation"],
         _S["block_pink_scalar"],
     ],
-    "BaseBlue": [
+    "bb": [
         _S["ee_position"],
         _S["ee_rotation"],
         _S["ee_scalar"],
