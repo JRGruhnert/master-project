@@ -41,8 +41,8 @@ config = TrainConfig(
         network=network,
     ),
     experiment=PePrConfig(
-        p_empty=0.0,
-        p_rand=0.0,
+        p_empty=p_empty,
+        p_rand=p_rand,
     ),
     environment=CalvinEnvironmentConfig(render=render),
     evaluator=dense3_evaluator,
