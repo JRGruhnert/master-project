@@ -27,6 +27,7 @@ config = TrainConfig(
         max_batches=300,
         early_stop_patience=50,
         min_batches=100,
+        use_ema_for_early_stopping=False,
     ),
     buffer=BufferConfig(steps=1024),
     logger=LoggerConfig(
