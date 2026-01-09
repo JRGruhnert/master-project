@@ -10,7 +10,16 @@ from conf.common.evaluator import dense3_evaluator
 mode = LogMode.WANDB
 render = False
 eval = False
-tag = "tf_b_b"
+network = "baseline"
+prefix = "tf"
+
+skills_eval_states = "b"
+used_states = "b"
+p_empty = 0.6
+p_rand = 0.0
+
+tag = f"{prefix}_{skills_eval_states}_{used_states}"
+wandb_tag = f"{network}_{tag}"
 
 config = TrainConfig(
     agent=BaselineAgentConfig(
@@ -18,22 +27,23 @@ config = TrainConfig(
         max_batches=300,
         early_stop_patience=50,
         min_batches=100,
+        use_ema_for_early_stopping=False,
     ),
     buffer=BufferConfig(steps=1024),
     logger=LoggerConfig(
         mode=mode,
-        wandb_tag=tag,
+        wandb_tag=wandb_tag,
     ),
     storage=StorageConfig(
-        used_skills="Base",
-        used_states="Base",
-        eval_states="Base",
+        used_skills=skills_eval_states,
+        used_states=used_states,
+        eval_states=skills_eval_states,
         tag=tag,
-        network="baseline",
+        network=network,
     ),
     experiment=PePrConfig(
-        p_empty=0.0,
-        p_rand=0.0,
+        p_empty=p_empty,
+        p_rand=p_rand,
     ),
     environment=CalvinEnvironmentConfig(render=render),
     evaluator=dense3_evaluator,
