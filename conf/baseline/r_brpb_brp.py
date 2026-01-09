@@ -10,28 +10,41 @@ from conf.common.evaluator import dense3_evaluator
 mode = LogMode.WANDB
 render = False
 eval = False
-tag = "rf_brpb_brp"
+
+retrain = True
+retrain_tag = "td3_brpb_brpb"
+
+network = "baseline"
+
+skills_eval_states = "brp"
+used_states = "brpb"
+
+
+prefix = "rf" if retrain else "tf"
+tag = f"{prefix}_{skills_eval_states}_{used_states}"
+wandb_tag = f"{network}_{tag}"
 
 config = TrainConfig(
     agent=BaselineAgentConfig(
         eval=eval,
-        max_batches=1000,
+        max_batches=500,
         early_stop_patience=50,
         min_batches=100,
-        retrain=True,
+        retrain=retrain,
+        use_ema_for_early_stopping=False,
     ),
     buffer=BufferConfig(steps=1024),
     logger=LoggerConfig(
         mode=mode,
-        wandb_tag=tag,
+        wandb_tag=wandb_tag,
     ),
     storage=StorageConfig(
-        used_skills="BaseRedPinkBlue",
+        used_skills="BaseRedPink",
         used_states="BaseRedPinkBlue",
-        eval_states="BaseRedPinkBlue",
+        eval_states="BaseRedPink",
         tag=tag,
-        network="baseline",
-        checkpoint_path="results/tf_brpb_br/baseline/best_model.pth",
+        network=network,
+        checkpoint_path=f"results/{retrain_tag}/{network}/best_model.pth",
     ),
     experiment=PePrConfig(
         p_empty=0.0,
