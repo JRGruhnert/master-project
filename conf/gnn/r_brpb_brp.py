@@ -12,11 +12,11 @@ render = False
 eval = False
 
 retrain = True
-retrain_tag = "td3_brpb_brpb"
+retrain_tag = "rf_brpb_brp"
 
 network = "gnn"
 
-skills_eval_states = "brp"
+skills_eval_states = "brpb"
 used_states = "brpb"
 
 
@@ -27,10 +27,11 @@ wandb_tag = f"{network}_{tag}"
 config = TrainConfig(
     agent=GNNAgentConfig(
         eval=eval,
-        max_batches=1000,
+        max_batches=500,
         early_stop_patience=50,
         min_batches=100,
         retrain=retrain,
+        use_ema_for_early_stopping=False,
     ),
     buffer=BufferConfig(steps=1024),
     logger=LoggerConfig(
