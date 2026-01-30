@@ -19,7 +19,7 @@ class StorageConfig:
     results_path: str = "results"
     buffer_path: str = "logs"
     plots_path: str = "plots"
-    checkpoint_path: str = "checkpoint.pth"
+    checkpoint_path: str | None = None
     eval_states: str | None = None
 
 

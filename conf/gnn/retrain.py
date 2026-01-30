@@ -1,4 +1,4 @@
-from src.agents.ppo.baseline import BaselineAgentConfig
+from src.agents.ppo.gnn import GNNAgentConfig
 from src.environments.calvin import CalvinEnvironmentConfig
 from src.modules.buffer import BufferConfig
 from src.modules.logger import LogMode, LoggerConfig
@@ -12,24 +12,24 @@ render = False
 eval = False
 
 retrain = True
-retrain_tag = "td3_brpb_brpb"
+retrain_tag = "tf_brpb_br_pe0.0_pr0.0"
 
-network = "baseline"
+network = "gnn"
 
 skills_eval_states = "brp"
 used_states = "brpb"
 
 
 prefix = "rf" if retrain else "tf"
-tag = f"{prefix}_{skills_eval_states}_{used_states}"
+tag = f"{prefix}_{used_states}_{skills_eval_states}"
 wandb_tag = f"{network}_{tag}"
 
 config = TrainConfig(
-    agent=BaselineAgentConfig(
+    agent=GNNAgentConfig(
         eval=eval,
-        max_batches=500,
+        max_batches=750,
         early_stop_patience=50,
-        min_batches=100,
+        min_batches=250,
         retrain=retrain,
         use_ema_for_early_stopping=False,
     ),
@@ -39,12 +39,12 @@ config = TrainConfig(
         wandb_tag=wandb_tag,
     ),
     storage=StorageConfig(
-        used_skills="BaseRedPink",
-        used_states="BaseRedPinkBlue",
-        eval_states="BaseRedPink",
+        used_skills=skills_eval_states,
+        used_states=used_states,
+        eval_states=skills_eval_states,
         tag=tag,
         network=network,
-        checkpoint_path=f"results/{retrain_tag}/{network}/best_model.pth",
+        checkpoint_path=f"results/{network}/{retrain_tag}/model_cp_best.pth",
     ),
     experiment=PePrConfig(
         p_empty=0.0,

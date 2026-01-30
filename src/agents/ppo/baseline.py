@@ -30,8 +30,14 @@ class BaselineAgent(PPOAgent):
             storage,
         )
 
+        self.load()
+
     def load(self):
         """Load state_dict and expand dimensions where needed"""
+        if self.storage.config.checkpoint_path is None:
+            # No checkpoint specified
+            return
+
         logger.info(
             "Loading Baseline checkpoint from: {}".format(
                 self.storage.config.checkpoint_path

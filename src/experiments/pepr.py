@@ -38,10 +38,11 @@ class PePrExperiment(Experiment):
             or storage.config.used_skills == "bp"
         ):
             num_skills = 10
-        elif storage.config.used_skills == "brb":
+        elif storage.config.used_skills == "brp":
             num_skills = 12
-        elif storage.config.used_skills == "brbp":
+        elif storage.config.used_skills == "brpb":
             num_skills = 14
+        print(storage.config.used_skills)
         # NOTE: This is for my skills setup
         self.max_episode_length = math.ceil(
             num_skills

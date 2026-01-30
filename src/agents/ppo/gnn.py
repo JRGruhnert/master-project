@@ -29,11 +29,16 @@ class GNNAgent(PPOAgent):
             buffer,
             storage,
         )
+        self.load()
 
     def load(self):
         """
         Load the model from the specified path.
         """
+        if self.storage.config.checkpoint_path is None:
+            # No checkpoint specified
+            return
+
         logger.info(
             "Loading GNN checkpoint from: {}".format(
                 self.storage.config.checkpoint_path
