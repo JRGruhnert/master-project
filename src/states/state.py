@@ -13,7 +13,6 @@ from src.logic.eval_condition import (
 
 
 class State:
-
     def __init__(
         self,
         name: str,

@@ -31,17 +31,6 @@ class TreeNode:
     def __lt__(self, other: "TreeNode") -> bool:
         # Compare based on distance to goal, then distance to obs, then distance to skill
         return (
-            self.distance_to_obs,
-            self.distance_to_goal,
-            self.distance_to_skill,
-            self.depth,
-        ) < (
-            other.distance_to_obs,
-            other.distance_to_goal,
-            other.distance_to_skill,
-            other.depth,
-        )
-        return (
             self.distance_to_goal,
             self.distance_to_skill,
             self.distance_to_obs,
@@ -66,11 +55,8 @@ class SearchTreeAgentConfig(AgentConfig):
     replan_every_step: bool = False
     max_epochs: int = 5
     beam_size: int = 5
-    max_nodes: int = 10000
-    evaluator_config: TreeEvaluatorConfig = TreeEvaluatorConfig(
-        step_reward=-0.01,
-        success_reward=1.0,
-    )
+    max_nodes: int = 10000  # guard to avoid infinite loops
+    evaluator_config: TreeEvaluatorConfig = TreeEvaluatorConfig()
 
 
 class SearchTreeAgent(Agent):
@@ -136,7 +122,6 @@ class SearchTreeAgent(Agent):
                 if self.config.allow_skill_reuse or skill.id not in current.path:
                     skill_distance = self.evaluator.distance_to_skill(
                         current.obs,
-                        self.goal,
                         skill,
                     )
                     if skill_distance < self.config.distance_threshold:

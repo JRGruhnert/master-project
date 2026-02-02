@@ -64,6 +64,7 @@ from loguru import logger
 @dataclass
 class PPOAgentConfig(AgentConfig):
     # Default values
+    retrain: bool = False
     eval: bool = False
     early_stop_patience: int = 5
     use_ema_for_early_stopping: bool = True

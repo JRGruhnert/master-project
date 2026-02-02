@@ -7,8 +7,7 @@ from src.skills.skill import Skill
 
 @dataclass
 class AgentConfig:
-    batch_size: int = 2048
-    retrain: bool = False
+    pass
 
 
 class Agent(ABC):

@@ -10,8 +10,9 @@ from conf.common.evaluator import dense3_evaluator
 mode = LogMode.WANDB
 render = False
 eval = False
-
 retrain = True
+
+
 retrain_tag = "tf_brpb_br_pe0.0_pr0.0"
 
 network = "baseline"
