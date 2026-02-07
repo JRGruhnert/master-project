@@ -31,13 +31,13 @@ class TreeNode:
     def __lt__(self, other: "TreeNode") -> bool:
         # Compare based on distance to goal, then distance to obs, then distance to skill
         return (
-            self.distance_to_goal,
             self.distance_to_skill,
+            self.distance_to_goal,
             self.distance_to_obs,
             self.depth,
         ) < (
-            other.distance_to_goal,
             other.distance_to_skill,
+            other.distance_to_goal,
             other.distance_to_obs,
             other.depth,
         )
@@ -49,12 +49,11 @@ class TreeNode:
 
 @dataclass
 class SearchTreeAgentConfig(AgentConfig):
-    distance_threshold: float = 0.2
+    distance_threshold: float = 0.1
     max_depth: int = 15
     allow_skill_reuse: bool = False
     replan_every_step: bool = False
-    max_epochs: int = 5
-    beam_size: int = 5
+    max_epochs: int = 1
     max_nodes: int = 10000  # guard to avoid infinite loops
     evaluator_config: TreeEvaluatorConfig = TreeEvaluatorConfig()
 
@@ -83,24 +82,27 @@ class SearchTreeAgent(Agent):
         goal: StateValueDict,
     ) -> Skill:
         # Initialize root if first observation
-        if self.config.replan_every_step or not self.heap:
+        if self.config.replan_every_step or self.solution is None:
             self.goal = goal
             self.index = 0
             self.heap: list[TreeNode] = [TreeNode(obs=obs)]
             heapify(self.heap)
             self.solution = self.best_first_search()
+            # print(f"New Solution Found: {self.solution}")
 
         if not self.solution or self.index >= len(self.solution.path):
             # print("Empty Skill taken cause of index too high.")
             skill = EmptySkill()
         else:
+
             skill = self.storage.skills[
                 self.solution.path[self.index]
             ]  # Next skill in path
-            assert (
-                skill.id == self.solution.path[self.index]
-            )  # Just for checking if its really the same
+            # assert (
+            #    skill.id == self.solution.path[self.index]
+            # )  # Just for checking if its really the same
         self.index += 1
+        # print(f"Chosen Skill: {skill.name}")
         self.buffer.act_values_tree(obs, goal, skill.id)
         return skill
 
@@ -118,8 +120,8 @@ class SearchTreeAgent(Agent):
                 return current
 
             # Try applying each available skill
-            for skill in self.storage.skills:
-                if self.config.allow_skill_reuse or skill.id not in current.path:
+            for idx, skill in enumerate(self.storage.skills):
+                if self.config.allow_skill_reuse or idx not in current.path:
                     skill_distance = self.evaluator.distance_to_skill(
                         current.obs,
                         skill,
@@ -142,7 +144,7 @@ class SearchTreeAgent(Agent):
                                 self.heap,
                                 TreeNode(
                                     obs=simulated_obs,
-                                    path=current.path + [skill.id],
+                                    path=current.path + [idx],
                                     distance_to_obs=current.distance_to_obs
                                     + skill_distance,
                                     distance_to_goal=goal_distance,
@@ -177,6 +179,8 @@ class SearchTreeAgent(Agent):
         if terminal:
             # Reset tree for next episode
             self.heap = []  # Clear tree
+            self.solution = None  # Reset solution to trigger replan
+            # print(f"Reward: {reward}, Success: {success}. Resetting tree.")
         return self.buffer.feedback(reward, success, terminal)
 
     def learn(self) -> bool:
@@ -188,7 +192,7 @@ class SearchTreeAgent(Agent):
         self.buffer.clear()
 
         self.heap = []  # Clear tree
-        return self.config.max_epochs == self.current_epoch - 1
+        return self.config.max_epochs >= self.current_epoch
 
     def save(self, tag: str = ""):
         # No parameters to save
@@ -205,7 +209,6 @@ class SearchTreeAgent(Agent):
             "allow_skill_reuse": self.config.allow_skill_reuse,
             "replan_every_step": self.config.replan_every_step,
             "max_epochs": self.config.max_epochs,
-            "beam_size": self.config.beam_size,
             "max_nodes": self.config.max_nodes,
         }
 

@@ -7,15 +7,21 @@ from src.experiments.pepr import PePrConfig
 from scripts.train import TrainConfig
 from conf.common.evaluator import dense3_evaluator
 
-mode = LogMode.WANDB
+mode = LogMode.TERMINAL
 render = False
 retrain = False
 eval = True
 
 
 network = "tree"
-skills_eval_states = "brp"
-used_states = "brpb"
+skills_eval_states = "br"
+used_states = "br"
+max_depth = 10
+# b = 6
+# sr, sb, sp = 8
+# br, bb, bp = 10
+# brp = 12
+# brpb = 14
 
 prefix = "ef"
 tag = f"{prefix}_{used_states}_{skills_eval_states}"
@@ -23,7 +29,7 @@ wandb_tag = f"{network}_{tag}"
 
 config = TrainConfig(
     agent=SearchTreeAgentConfig(
-        retrain=retrain,
+        max_depth=max_depth,
     ),
     buffer=BufferConfig(steps=1024),
     logger=LoggerConfig(
