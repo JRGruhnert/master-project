@@ -14,11 +14,11 @@ eval = True
 
 
 network = "gnn"
-checkpoint_tag = "tf_brpb_br_pe0.0_pr0.0"
-skills_eval_states = "brp"
-used_states = "brpb"
+checkpoint_tag = "tf_b_b_pe0.0_pr0.0"
+skills_eval_states = "red"
+used_states = "red"
 
-prefix = "ef"
+prefix = "e"
 tag = f"{prefix}_{used_states}_{skills_eval_states}"
 wandb_tag = f"{network}_{tag}"
 
@@ -31,7 +31,7 @@ config = TrainConfig(
         retrain=retrain,
         use_ema_for_early_stopping=False,
     ),
-    buffer=BufferConfig(steps=1024),
+    buffer=BufferConfig(steps=2048),
     logger=LoggerConfig(
         mode=mode,
         wandb_tag=wandb_tag,

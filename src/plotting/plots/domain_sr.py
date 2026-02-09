@@ -6,13 +6,13 @@ from src.plotting.run import RunData, RunDataCollection
 
 def plot(collection: RunDataCollection):
     data: dict[str, list] = {
-        "domains": ["slide -> blue", "blue -> red", "red -> pink", "pink -> slide"],
+        "domains": ["slider -> red", "red -> pink", "pink -> blue", "blue -> slider"],
         "gnn": [],
-        "baseline": [],
+        "mlp": [],
     }
 
-    for nt in ["gnn", "baseline"]:
-        for domain in ["blue", "red", "pink", "slide"]:
+    for nt in ["gnn", "mlp"]:
+        for domain in ["slider", "red", "pink", "blue"]:
             run_t = collection.get(
                 nt=nt,
                 mode="t",
