@@ -16,7 +16,7 @@ prefix = "tf"
 skills_eval_states = "b"
 used_states = "b"
 p_empty = 0.0
-p_rand = 0.6
+p_rand = 0.8
 
 tag = f"{prefix}_{used_states}_{skills_eval_states}"
 wandb_tag = f"{network}_{tag}"

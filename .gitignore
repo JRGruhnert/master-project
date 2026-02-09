@@ -120,6 +120,7 @@ data/calvin/tapas/
 /wandb
 /conf/machine.py
 conf/machine.py
-
+results_old/
+results.zip
 
 /dependencies/

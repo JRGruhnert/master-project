@@ -13,11 +13,11 @@ eval = False
 retrain = True
 
 
-retrain_tag = "tf_brpb_br_pe0.0_pr0.0"
+retrain_tag = "tf_brpb_brp_pe0.0_pr0.0"
 
 network = "baseline"
 
-skills_eval_states = "brp"
+skills_eval_states = "brpb"
 used_states = "brpb"
 
 

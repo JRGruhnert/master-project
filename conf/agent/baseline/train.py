@@ -11,12 +11,12 @@ mode = LogMode.WANDB
 render = False
 eval = False
 network = "baseline"
-prefix = "tf"
+prefix = "t"
 
 skills_eval_states = "b"
 used_states = "b"
 p_empty = 0.0
-p_rand = 0.6
+p_rand = 1.0
 
 tag = f"{prefix}_{used_states}_{skills_eval_states}"
 wandb_tag = f"{network}_{tag}"
@@ -24,12 +24,12 @@ wandb_tag = f"{network}_{tag}"
 config = TrainConfig(
     agent=BaselineAgentConfig(
         eval=eval,
-        max_batches=750,
-        early_stop_patience=50,
-        min_batches=250,
+        max_batches=1,
+        early_stop_patience=1,
+        min_batches=1,
         use_ema_for_early_stopping=False,
     ),
-    buffer=BufferConfig(steps=1024),
+    buffer=BufferConfig(steps=4096),
     logger=LoggerConfig(
         mode=mode,
         wandb_tag=wandb_tag,
