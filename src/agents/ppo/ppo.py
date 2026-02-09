@@ -11,6 +11,7 @@ from src.observation.observation import StateValueDict
 from src.networks.actor_critic import ActorCriticBase
 from src.skills.skill import Skill
 from loguru import logger
+from thop import profile
 
 # Batch Size	The number of samples used
 # in each training batch.	Larger batch sizes typically lead
@@ -497,3 +498,15 @@ class PPOAgent(Agent):
 
     def metrics(self) -> dict:
         return self._metrics
+
+    def measure_flops(
+        self, obs: StateValueDict, goal: StateValueDict
+    ) -> tuple[int, int]:
+        """Measure FLOPs for a single forward pass through the policy network."""
+        with torch.no_grad():
+            obs_batch = [obs]
+            goal_batch = [goal]
+            result = profile(
+                self.policy_new, inputs=(obs_batch, goal_batch), verbose=False
+            )
+            return int(result[0]), int(result[1])

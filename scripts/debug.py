@@ -1,97 +1,96 @@
-from dataclasses import dataclass
 from omegaconf import OmegaConf, SCMode
 
-from src.modules.rewards.reward import EvaluatorConfig, SparseRewardModule
-from src.modules.storage import Storage, StorageConfig
-from src.environments.environment import EnvironmentConfig
-from src.networks import NetworkType
-from src.experiments.pepr import PePrExperiment, PePrConfig
-from src.environments.calvin import CalvinEnvironment
 from tapas_gmm.utils.argparse import parse_and_build_config
+from scripts.train import TrainConfig
+from src.agents.ppo.ppo import PPOAgent
+from src.modules.buffer import Buffer
+from src.modules.logger import LoggerConfig, Logger
+from src.modules.storage import Storage, StorageConfig
+from src.modules.evaluators.evaluator import EvaluatorConfig
+from src.environments.environment import EnvironmentConfig
+from src.agents.agent import AgentConfig
+from src.experiments.experiment import ExperimentConfig
+from src.factory import (
+    select_agent,
+    select_environment,
+    select_experiment,
+    select_evaluator,
+)
 
 
-@dataclass
-class DebugConfig:
-    tag: str
-    nt: NetworkType
-    experiment: PePrConfig
-    env: EnvironmentConfig
-    reward: EvaluatorConfig
-    storage: StorageConfig
+class NetworkDebugger:
+    """Lightweight debugger for inspecting loaded networks"""
+
+    def __init__(self, config: TrainConfig, storage: Storage):
+        self.storage = storage
+        self.buffer = Buffer(config.buffer)
+
+        evaluator = select_evaluator(config.evaluator, self.storage)
+        env = select_environment(config.environment, evaluator, self.storage)
+        self.experiment = select_experiment(config.experiment, env, self.storage)
+        self.agent = select_agent(config.agent, self.storage, self.buffer)
+
+    def measure_stats(self):
+        """Single-step network inspection (no training)"""
+        obs, goal = self.experiment.sample_task()
+        if isinstance(self.agent, PPOAgent):
+            flops, params = self.agent.measure_flops(obs, goal)
+        return flops, params
+
+    def close(self):
+        self.experiment.close()
 
 
-def train_agent(config: DebugConfig):
-    # Initialize the environment and agent
-    storage_module = Storage(
-        config.storage,
-        config.tag,
-        config.nt,
-    )
-    storage_module2 = Storage(
-        StorageConfig(
-            used_skills="Normal",
-            used_states="Normal",
-            # checkpoint_path="results/gnn4/t1_pe_0.0_pr_0.0/model_cp_best.pth",
-        ),
-        config.tag,
-        config.nt,
-    )
-    reward_module = SparseRewardModule(
-        config.reward,
-        storage_module.states,
-    )
-    reward_module2 = SparseRewardModule(
-        config.reward,
-        storage_module2.states,
-    )
-    experiment = PePrExperiment(
-        config.experiment,
-        CalvinEnvironment(
-            config.env,
-            reward_module,
-            storage_module,
-        ),
-    )  # Wrap environment in experiment
-
-    obs, goal = experiment.sample()
-    while True:
-        print(f"{0}: Reset")
-        for i, task in enumerate(storage_module.skills, start=1):
-            print(f"{i}: {task.name}")
-        choice = input("Enter the Task id: ")
-        task_id = int(choice)
-        if task_id == 0:
-            print("Resetting environment...")
-            obs, goal = experiment.sample()
-        else:
-            print(
-                f"Executing task {task_id}: {storage_module.skills[task_id - 1].name}"
-            )
-            obs = experiment.step(
-                storage_module.skills[task_id - 1]
-            )  # Adjust for zero-based index
-            reward2, done = reward_module2.step(obs, goal)
-            reward, terminal = experiment.evaluate()
-            print(f"Step Reward: {reward}")  # Debug output
-            print(f"Step Reward 2: {reward2}")
+def debug_network(config: TrainConfig):
+    test_dict = [
+        ("slider", "slider"),
+        ("red", "red"),
+        ("pink", "pink"),
+        ("blue", "blue"),
+        ("sr", "sr"),
+        ("srp", "srp"),
+        ("srpb", "srpb"),
+        ("srpb", "slider"),
+        ("slider", "srpb"),
+    ]
+    results = {}
+    for item in test_dict:
+        overwrite = StorageConfig(
+            eval_states=item[1],
+            used_skills=item[1],
+            used_states=item[0],
+            network=config.storage.network,
+        )
+        storage = Storage(overwrite)
+        debugger = NetworkDebugger(config, storage)
+        flops, params = debugger.measure_stats()
+        results[item] = (flops, params)
+        debugger.close()
+    print("Results:")
+    for key, value in results.items():
+        print(f"{key}: FLOPs={value[0]}, Parameters={value[1]}")
 
 
-def entry_point():
-
+def entry_point(p_empty: float | None = None, p_rand: float | None = None):
     _, dict_config = parse_and_build_config(data_load=False, need_task=False)
+    if p_empty is not None:
+        dict_config["experiment"]["p_empty"] = p_empty
+    if p_rand is not None:
+        dict_config["experiment"]["p_rand"] = p_rand
 
-    dict_config["tag"] = (
-        dict_config["tag"]
-        + f"_pe_{dict_config['experiment']['p_empty']}_pr_{dict_config['experiment']['p_rand']}"
+    dict_config["storage"]["tag"] = (
+        dict_config["storage"]["tag"]
+        + f"_pe{dict_config['experiment']['p_empty']}_pr{dict_config['experiment']['p_rand']}"
     )
-
+    dict_config["logger"]["wandb_tag"] = (
+        dict_config["logger"]["wandb_tag"]
+        + f"_pe{dict_config['experiment']['p_empty']}_pr{dict_config['experiment']['p_rand']}"
+    )
     config = OmegaConf.to_container(
         dict_config, resolve=True, structured_config_mode=SCMode.INSTANTIATE
     )
-
-    train_agent(config)  # type: ignore
+    debug_network(config)  # type: ignore
 
 
 if __name__ == "__main__":
-    print("Starting training script...")
     entry_point()

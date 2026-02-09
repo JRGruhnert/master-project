@@ -7,7 +7,7 @@ from src.experiments.pepr import PePrConfig
 from scripts.train import TrainConfig
 from conf.common.evaluator import dense3_evaluator
 
-mode = LogMode.WANDB
+mode = LogMode.TERMINAL
 render = False
 retrain = False
 eval = True

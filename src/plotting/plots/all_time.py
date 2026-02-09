@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from run import RunData, RunDataCollection
-from helper import (
+from src.plotting.run import RunData, RunDataCollection
+from src.plotting.helper import (
     MAP_LABEL,
     MAP_COLOR,
     LIST_DOMAIN,
@@ -11,6 +11,7 @@ from helper import (
     NT_TREE,
     save_plot,
 )
+import src.plotting.helper as helper
 
 
 def plot(collection: RunDataCollection):
@@ -36,6 +37,4 @@ def plot(collection: RunDataCollection):
 
     ax.legend()
 
-    plt.tight_layout()
-    plt.show()
     save_plot("comparison_all_time.png")

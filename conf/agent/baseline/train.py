@@ -7,26 +7,25 @@ from src.experiments.pepr import PePrConfig
 from scripts.train import TrainConfig
 from conf.common.evaluator import dense3_evaluator
 
-mode = LogMode.WANDB
+mode = LogMode.TERMINAL
 render = False
 eval = False
 network = "baseline"
-prefix = "tf"
 
-skills_eval_states = "b"
-used_states = "b"
+skills_eval_states = "slide"
+used_states = "slide"
 p_empty = 0.0
-p_rand = 0.6
+p_rand = 1.0
 
-tag = f"{prefix}_{used_states}_{skills_eval_states}"
+tag = f"t_{used_states}_{skills_eval_states}"
 wandb_tag = f"{network}_{tag}"
 
 config = TrainConfig(
     agent=BaselineAgentConfig(
         eval=eval,
-        max_batches=750,
-        early_stop_patience=50,
-        min_batches=250,
+        max_batches=1,
+        early_stop_patience=1,
+        min_batches=1,
         use_ema_for_early_stopping=False,
     ),
     buffer=BufferConfig(steps=1024),

@@ -1,22 +1,35 @@
 import matplotlib.pyplot as plt
-import helper
-from run import RunData, RunDataCollection
+import src.plotting.helper as helper
+from src.plotting.run import RunData, RunDataCollection
 
 
 def plot(collection: RunDataCollection):
-    x_values = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
-    data: dict[str, dict[str, list[float]]] = {}
+    x_values = [0.0, 0.2, 0.4]  # , 0.6]  # , 0.8, 1.0]
+    data: dict[str, dict[str, list[float]]] = {
+        "pe": {"gnn": [], "baseline": []},
+        "pr": {"gnn": [], "baseline": []},
+    }
     for p in ["pe", "pr"]:
         for nt in ["gnn", "baseline"]:
             for value in x_values:
                 # Collect data for plotting
                 if p == "pe":
                     run = collection.get(
-                        nt=nt, mode="t", origin="b", dest="b", pe=value, pr=0.0
+                        nt=nt,
+                        mode="t",
+                        origin="slider",
+                        dest="slider",
+                        pe=value,
+                        pr=0.0,
                     )
                 else:
                     run = collection.get(
-                        nt=nt, mode="t", origin="b", dest="b", pe=0.0, pr=value
+                        nt=nt,
+                        mode="t",
+                        origin="slider",
+                        dest="slider",
+                        pe=0.0,
+                        pr=value,
                     )
                 data[p][nt].append(run.stats["run_stats"]["max_sr"])
 
@@ -51,6 +64,5 @@ def plot(collection: RunDataCollection):
         plt.grid(True, alpha=0.3)
         plt.ylim(0, 1.05)
         plt.legend(fontsize=11, loc="best")
-        plt.tight_layout()
 
         helper.save_plot(f"comparison_{p_tag}.png")

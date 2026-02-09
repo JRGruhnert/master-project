@@ -6,6 +6,16 @@ from src.states.calvin import (
     QuatState,
     RangeState,
 )
+from src.variables import (
+    SET_SLIDE,
+    SET_BLUE,
+    SET_RED,
+    SET_PINK,
+    SET_SR,
+    SET_SRP,
+    SET_SRPB,
+    SET_SRPB,
+)
 
 
 _S = {
@@ -136,7 +146,7 @@ STATES_BY_TAG = {
         _S["block_blue_scalar"],
         _S["block_pink_scalar"],
     ],
-    "b": [
+    SET_SLIDE: [
         _S["ee_position"],
         _S["base__slide_position"],
         _S["base__drawer_position"],
@@ -152,7 +162,7 @@ STATES_BY_TAG = {
         _S["base__drawer_scalar"],
         _S["base__button_scalar"],
     ],
-    "sr": [
+    SET_RED: [
         _S["ee_position"],
         _S["ee_rotation"],
         _S["ee_scalar"],
@@ -168,7 +178,7 @@ STATES_BY_TAG = {
         _S["block_red_rotation"],
         _S["block_red_scalar"],
     ],
-    "sb": [
+    SET_BLUE: [
         _S["ee_position"],
         _S["ee_rotation"],
         _S["ee_scalar"],
@@ -184,7 +194,7 @@ STATES_BY_TAG = {
         _S["block_blue_rotation"],
         _S["block_blue_scalar"],
     ],
-    "sp": [
+    SET_PINK: [
         _S["ee_position"],
         _S["ee_rotation"],
         _S["ee_scalar"],
@@ -200,7 +210,7 @@ STATES_BY_TAG = {
         _S["block_pink_rotation"],
         _S["block_pink_scalar"],
     ],
-    "br": [
+    SET_SR: [
         _S["ee_position"],
         _S["ee_rotation"],
         _S["ee_scalar"],
@@ -219,7 +229,7 @@ STATES_BY_TAG = {
         _S["block_red_rotation"],
         _S["block_red_scalar"],
     ],
-    "brp": [
+    SET_SRP: [
         _S["ee_position"],
         _S["ee_rotation"],
         _S["ee_scalar"],
@@ -241,7 +251,7 @@ STATES_BY_TAG = {
         _S["block_pink_rotation"],
         _S["block_pink_scalar"],
     ],
-    "brpb": [
+    SET_SRPB: [
         _S["ee_position"],
         _S["ee_rotation"],
         _S["ee_scalar"],

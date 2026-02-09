@@ -1,12 +1,12 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import helper
-from run import RunData, RunDataCollection
+import src.plotting.helper as helper
+from src.plotting.run import RunData, RunDataCollection
 
 
 def plot(collection: RunDataCollection):
     data: dict[str, list] = {
-        "domains": ["br", "brp", "brpb"],
+        "domains": ["sr", "srp", "srpb"],
         "gnn_scratch": [],
         "baseline_scratch": [],
         "gnn_retrain": [],
@@ -17,17 +17,22 @@ def plot(collection: RunDataCollection):
     for nt in ["gnn", "baseline"]:
         for domain in data["domains"]:
             run_t = collection.get(
-                nt=nt, mode="t", origin="brpb", dest=domain, pe=0.0, pr=0.0
+                nt=nt, mode="t", origin="srpb", dest=domain, pe=0.0, pr=0.0
             )
-            run_r = collection.get(
-                nt=nt, mode="r", origin="brpb", dest=domain, pe=0.0, pr=0.0
-            )
-
             data[nt + "_scratch"].append(run_t.stats["run_stats"]["max_sr"])
-            data[nt + "_retrain"].append(run_r.stats["run_stats"]["max_sr"])
-            data[nt + "_improvement"].append(
-                run_r.stats["run_stats"]["max_sr"] - run_t.stats["run_stats"]["max_sr"]
-            )
+
+            if domain != "sr":
+                run_r = collection.get(
+                    nt=nt, mode="r", origin="srpb", dest=domain, pe=0.0, pr=0.0
+                )
+                data[nt + "_retrain"].append(run_r.stats["run_stats"]["max_sr"])
+                data[nt + "_improvement"].append(
+                    run_r.stats["run_stats"]["max_sr"]
+                    - run_t.stats["run_stats"]["max_sr"]
+                )
+            else:
+                data[nt + "_retrain"].append(0.0)
+                data[nt + "_improvement"].append(0.0)
 
     x = np.arange(len(data["domains"]))
     width = 0.35
@@ -65,3 +70,4 @@ def plot(collection: RunDataCollection):
     ax.set_xticklabels(data["domains"])
     ax.set_ylabel("max SR")
     ax.legend()
+    helper.save_plot("comparison_retrain_sr.png")

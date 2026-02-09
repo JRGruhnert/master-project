@@ -1,11 +1,12 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from run import RunData, RunDataCollection
-from helper import (
+from src.plotting.run import RunData, RunDataCollection
+from src.plotting.helper import (
     MAP_LABEL,
     MAP_COLOR,
     LIST_DOMAIN,
     FIG_SIZE,
+    MODE_EVAL,
     NT_MLP,
     NT_GNN,
     NT_TREE,
@@ -24,20 +25,47 @@ def plot(collection: RunDataCollection):
 
     for set in LIST_DOMAIN:
         for nt in [NT_GNN, NT_MLP, NT_TREE]:
-            run = collection.get(
-                nt=nt,
-                mode=MODE_TRAIN,
-                origin=set,
-                dest=set,
-                pe=0.0,
-                pr=0.0,
-            )
-            sr[nt].append(run.stats["run_stats"]["max_sr"])
+            if nt == NT_TREE:
+                try:
+                    run = collection.get(
+                        nt=nt,
+                        mode=MODE_EVAL,
+                        origin=set,
+                        dest=set,
+                        pe=0.0,
+                        pr=0.0,
+                    )
+                except ValueError:
+                    run = None
+                if run is not None:
+                    sr[nt].append(run.stats["run_stats"]["max_sr"])
+                else:
+                    sr[nt].append(0.0)
+            else:
+                if set in ["sr", "srp", "srpb"]:
+                    run = collection.get(
+                        nt=nt,
+                        mode=MODE_TRAIN,
+                        origin="srpb",
+                        dest=set,
+                        pe=0.0,
+                        pr=0.0,
+                    )
+                else:
+                    run = collection.get(
+                        nt=nt,
+                        mode=MODE_TRAIN,
+                        origin=set,
+                        dest=set,
+                        pe=0.0,
+                        pr=0.0,
+                    )
+                sr[nt].append(run.stats["run_stats"]["max_sr"])
 
     x = np.arange(len(LIST_DOMAIN))
     width = 0.25
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=FIG_SIZE)
 
     ax.bar(x - width, sr[NT_MLP], width, label=MAP_LABEL[NT_MLP])
     ax.bar(x, sr[NT_GNN], width, label=MAP_LABEL[NT_GNN])
@@ -52,6 +80,4 @@ def plot(collection: RunDataCollection):
 
     ax.legend()
 
-    plt.tight_layout()
-    plt.show()
     save_plot("comparison_all_sr.png")

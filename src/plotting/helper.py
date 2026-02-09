@@ -12,32 +12,15 @@ SUBFIG_SIZE = (8, 5)
 # Global easy access constants for mapping
 MAP_COLOR = {"gnn": "blue", "baseline": "pink", "tree": "green"}
 MAP_LABEL = {"gnn": "GNN", "baseline": "MLP", "tree": "Tree"}
-MAP_DOMAIN = {
-    "b": "Blue",
-    "r": "Red",
-    "p": "Pink",
-    "s": "Slide",
-    "br": "BR",
-    "brp": "BRP",
-    "brpb": "BRPB",
-}
 
 # Lists for easy access
-LIST_DOMAIN = ["Blue", "Red", "Pink", "Slide", "BR", "BRP", "BRPB"]
+LIST_DOMAIN = ["slider", "blue", "red", "pink", "sr", "srp", "srpb"]
 
 # Network Types
 NT_GNN = "gnn"
 NT_MLP = "baseline"
 NT_TREE = "tree"
 
-# Set Names
-SET_S = "slide"
-SET_B = "blue"
-SET_R = "red"
-SET_P = "pink"
-SET_BR = "br"
-SET_BRP = "brp"
-SET_BRPB = "brpb"
 
 # Mode Types
 MODE_TRAIN = "t"
@@ -56,6 +39,7 @@ def save_plot(filename: str, subdir: str = ""):
     save_dir = os.path.join(_SAVE_PATH, subdir)
     os.makedirs(save_dir, exist_ok=True)
     plot_path = os.path.join(save_dir, filename)
+    plt.tight_layout()
     plt.savefig(plot_path, dpi=300, bbox_inches="tight")
     plt.close()
     print(f"Saved Plot: {plot_path}")

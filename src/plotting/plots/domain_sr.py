@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import helper
-from run import RunData, RunDataCollection
+import src.plotting.helper as helper
+from src.plotting.run import RunData, RunDataCollection
 
 
 def plot(collection: RunDataCollection):
@@ -56,3 +56,4 @@ def plot(collection: RunDataCollection):
     ax.set_xticklabels(data["domains"])
     ax.set_ylabel("Δ max SR")
     ax.legend()
+    helper.save_plot("comparison_domain_sr.png")

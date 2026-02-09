@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-import helper
+import src.plotting.helper as helper
 from src.plotting.run import RunData, RunDataCollection
 
 
@@ -7,9 +7,6 @@ def plot(collection: RunDataCollection):
     """Plot training progress over time"""
     for run in collection.runs:
         batch_stats = run.stats["batch_stats"]
-        if not batch_stats:
-            print("No data to plot")
-            return
 
         epoch_indices = list(range(len(batch_stats)))
         episode_rewards = [batch["mean_episode_reward"] for batch in batch_stats]

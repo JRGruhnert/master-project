@@ -35,7 +35,9 @@ class RunData:
         print(f"Found {len(files)} rollout files")
 
         run_data = []
-        for file_path in sorted(files):
+        for file_path in sorted(
+            files, key=lambda f: int(os.path.basename(f).split("_")[-1].split(".")[0])
+        ):
             try:
                 # Extract epoch number from filename
                 filename = os.path.basename(file_path)
@@ -54,8 +56,8 @@ class RunData:
                     "terminals": loaded_data["terminals"].numpy(),
                 }
 
-                run_data[epoch] = epoch_data
-                print(f"Loaded epoch {epoch}: {len(epoch_data['rewards'])} timesteps")
+                run_data.append(epoch_data)
+                # print(f"Loaded epoch {epoch}: {len(epoch_data['rewards'])} timesteps")
 
             except Exception as e:
                 print(f"Error loading {file_path}: {e}")
@@ -63,7 +65,11 @@ class RunData:
 
         return run_data
 
-    def compute_batch_stats(self, batch_data: dict[str, np.ndarray]) -> dict:
+    def compute_batch_stats(
+        self,
+        batch_data: dict[str, np.ndarray],
+        prev_sr=0.0,
+    ) -> dict:
         """Compute statistics for a single batch"""
         # values = batch_data["values"]
         actions = batch_data["actions"]
@@ -72,6 +78,25 @@ class RunData:
         terminals: list[bool] = batch_data["terminals"].tolist()
 
         batch_size = len(rewards)
+        # Handle action distribution with -1 as special category
+        if len(actions.shape) > 1:
+            action_indices = actions.argmax(axis=1)
+        else:
+            action_indices = actions.astype(int)
+
+        # Count -1s separately, then bincount the rest
+        negative_count = np.sum(action_indices == -1)
+        positive_actions = action_indices[action_indices >= 0]
+
+        if len(positive_actions) > 0:
+            action_distribution = np.bincount(positive_actions).tolist()
+        else:
+            action_distribution = []
+
+        # Append -1 count at the end
+        action_distribution.append(int(negative_count))
+
+        sr = success.count(True) / max(1, terminals.count(True))
 
         return {
             "batch_size": batch_size,
@@ -79,58 +104,45 @@ class RunData:
             "mean_episode_length": batch_size / max(1, terminals.count(True)),
             "total_rewards": sum(rewards),
             "mean_episode_reward": sum(rewards) / max(1, terminals.count(True)),
-            "success_rate": success.count(True) / max(1, terminals.count(True)),
+            "success_rate": sr,
+            "max_success_rate": max(sr, prev_sr),
             "successes": success.count(True),
-            "action_distribution": (
-                np.bincount(actions.argmax(axis=1))
-                if len(actions.shape) > 1
-                else np.bincount(actions.astype(int))
-            ),
+            "action_distribution": action_distribution,
         }
 
     def compute_stats(self) -> dict:
         """Compute summary statistics across all batches"""
-        all_batch_stats = self.load_all_batches()
-
-        # Check if we have any data
-        if not all_batch_stats:
-            raise ValueError(
-                "No batch data available for computing summary statistics."
-            )
         # Compute stats for each batch
-        run_episode_rewards = []
         all_success_rates = []
         all_episode_lengths = []
         total_timesteps = 0
         total_episodes = 0
+        total_rewards = 0.0
+        total_successes = 0
+        max_success_rate = 0.0
 
-        for value in all_batch_stats:
-            batch_stats = self.compute_batch_stats(value)
+        computed_batch_stats = []
+        all_batch_data = self.load_all_batches()
+        # Check if we have any data
+        if not all_batch_data:
+            raise ValueError(
+                "No batch data available for computing summary statistics."
+            )
+        prev_sr = 0.0
+        for idx, batch_data in enumerate(all_batch_data):
+            batch_stats = self.compute_batch_stats(batch_data, prev_sr=prev_sr)
+            prev_sr = batch_stats["max_success_rate"]
 
-            # Collect data for overall statss
-            rewards = value["rewards"]
-            terminals = value["terminals"]
-
-            # Extract episode rewards for this batch
-            current_episode_reward = 0
-            for reward, terminal in zip(rewards, terminals):
-                current_episode_reward += reward
-                if terminal:
-                    run_episode_rewards.append(current_episode_reward)
-                    current_episode_reward = 0
-
+            computed_batch_stats.append(batch_stats)
             all_success_rates.append(batch_stats["success_rate"])
             all_episode_lengths.append(batch_stats["mean_episode_length"])
-            total_timesteps += batch_stats["total_timesteps"]
+            total_timesteps += batch_stats["batch_size"]
             total_episodes += batch_stats["total_episodes"]
+            total_rewards += batch_stats["total_rewards"]
+            total_successes += batch_stats["successes"]
+            max_success_rate = max(max_success_rate, batch_stats["success_rate"])
 
-        # Overall statistics
-        total_timesteps = sum(d["total_timesteps"] for d in all_batch_stats)
-        total_episodes = sum(d["total_episodes"] for d in all_batch_stats)
-        total_rewards = sum(d["total_rewards"] for d in all_batch_stats)
-        total_successes = sum(d["successes"] for d in all_batch_stats)
-        max_success_rate = max(d["success_rate"] for d in all_batch_stats)
-        index_of_max = int(np.argmax([d["success_rate"] for d in all_batch_stats]))
+        index_of_max = int(np.argmax(all_success_rates))
         index_of_first_90 = (
             int(np.argmax(np.array(all_success_rates) >= 0.9))
             if any(np.array(all_success_rates) >= 0.9)
@@ -144,7 +156,7 @@ class RunData:
 
         overall_stats = {
             "total_timesteps": total_timesteps,
-            "total_batches": len(all_batch_stats),
+            "total_batches": len(all_batch_data),
             "total_episodes": total_episodes,
             "mean_episode_reward": total_rewards / max(1, total_episodes),
             "mean_sr": total_successes / max(1, total_episodes),
@@ -164,7 +176,7 @@ class RunData:
         }
 
         return {
-            "batch_stats": all_batch_stats,
+            "batch_stats": computed_batch_stats,
             "run_stats": overall_stats,
         }
 

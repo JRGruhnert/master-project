@@ -120,6 +120,6 @@ data/calvin/tapas/
 /wandb
 /conf/machine.py
 conf/machine.py
-
+plots/
 
 /dependencies/
