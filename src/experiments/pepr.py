@@ -9,6 +9,16 @@ from src.skills.empty import EmptySkill
 from src.experiments.experiment import Experiment, ExperimentConfig
 from src.environments.environment import Environment
 from src.observation.observation import StateValueDict
+from src.variables import (
+    SET_SLIDE,
+    SET_BLUE,
+    SET_RED,
+    SET_PINK,
+    SET_SR,
+    SET_SRP,
+    SET_SRPB,
+    SET_SRPB,
+)
 
 
 @dataclass
@@ -24,23 +34,19 @@ class PePrExperiment(Experiment):
         # We sort based on Id for the baseline network to be consistent
         super().__init__(config, env, storage)
         self.config = config
-        if storage.config.used_skills == "b":
+        if storage.config.used_skills == SET_SLIDE:
             num_skills = 6
         elif (
-            storage.config.used_skills == "sr"
-            or storage.config.used_skills == "sb"
-            or storage.config.used_skills == "sp"
+            storage.config.used_skills == SET_RED
+            or storage.config.used_skills == SET_BLUE
+            or storage.config.used_skills == SET_PINK
         ):
             num_skills = 8
-        elif (
-            storage.config.used_skills == "br"
-            or storage.config.used_skills == "bb"
-            or storage.config.used_skills == "bp"
-        ):
+        elif storage.config.used_skills == SET_SR:
             num_skills = 10
-        elif storage.config.used_skills == "brp":
+        elif storage.config.used_skills == SET_SRP:
             num_skills = 12
-        elif storage.config.used_skills == "brpb":
+        elif storage.config.used_skills == SET_SRPB:
             num_skills = 14
         print(storage.config.used_skills)
         # NOTE: This is for my skills setup

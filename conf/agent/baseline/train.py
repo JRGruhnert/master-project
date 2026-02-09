@@ -7,18 +7,18 @@ from src.experiments.pepr import PePrConfig
 from scripts.train import TrainConfig
 from conf.common.evaluator import dense3_evaluator
 
-mode = LogMode.WANDB
+mode = LogMode.TERMINAL
 render = False
 eval = False
 network = "baseline"
 prefix = "t"
 
-skills_eval_states = "b"
-used_states = "b"
+skills_eval_states = "slide"
+used_states = "slide"
 p_empty = 0.0
 p_rand = 1.0
 
-tag = f"{prefix}_{used_states}_{skills_eval_states}"
+tag = f"t_{used_states}_{skills_eval_states}"
 wandb_tag = f"{network}_{tag}"
 
 config = TrainConfig(
