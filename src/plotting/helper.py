@@ -4,14 +4,25 @@ import numpy as np
 
 # Sets a gloabal style. Every plot uses this still if this file is imported.
 plt.style.use("seaborn-v0_8")
-_SAVE_PATH = "plots"
+plt.rcParams["font.family"] = "sans-serif"
+plt.rcParams["font.sans-serif"] = ["Arial"]
+plt.rcParams["font.size"] = 14
 
+_SAVE_PATH = "plots"
+EVAL = "eval"
+TRAIN = "train"
 # Global constants for plotting
 FIG_SIZE = (10, 6)
 FIG_SIZE_FLAT = (12, 6)
 FIG_SIZE_HIGH = (10, 6)
 SUBFIG_SIZE = (8, 5)
 
+LABEL_EPOCH = "Epoch"
+LABEL_REWARD = "Mean Reward"
+LABEL_SR = "Success Rate"
+LABEL_MAX_SR = "Maximal Success Rate"
+LABEL_LENGTH = "Mean Episode Length"
+LABEL_SKILLSET = "Skill Set"
 # Global easy access constants for mapping
 
 MAP_COLOR = {

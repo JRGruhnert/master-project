@@ -69,5 +69,7 @@ def plot(collection: RunDataCollection):
     ax.set_xticks(x + width / 2)
     ax.set_xticklabels(data["domains"])
     ax.set_ylabel("Δ max SR")
+    ax.set_xlabel("Skill Set Transfer")
+    ax.set_title("Change in max SR from Training to Evaluation for Each Domain")
     ax.legend()
     helper.save_plot("comparison_domain_sr.png")

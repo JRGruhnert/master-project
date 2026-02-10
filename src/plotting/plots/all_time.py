@@ -4,6 +4,8 @@ from src.plotting.run import RunData, RunDataCollection
 from src.plotting.helper import (
     FIG_SIZE_FLAT,
     LIST_DOMAIN_SMALL,
+    LABEL_EPOCH,
+    LABEL_SKILLSET,
     MAP_LABEL,
     MAP_COLOR,
     LIST_DOMAIN,
@@ -68,11 +70,11 @@ def plot(collection: RunDataCollection):
         color=MAP_COLOR[NT_GNN]["main"],
     )
 
-    ax.set_xlabel("Skill Sets")
-    ax.set_ylabel("Epochs")
-    ax.set_title("All Comparison Time Plot")
+    ax.set_xlabel(LABEL_SKILLSET)
+    ax.set_ylabel(LABEL_EPOCH)
+    set_y_ticks(ax)
     ax.set_xticks(x)
     ax.set_xticklabels(LIST_DOMAIN_SMALL)
     ax.legend()
-    # set_y_ticks(ax)
+    ax.set_title("Comparison of Epochs count until 80% Success Rate across Skill Sets")
     save_plot("comparison_all_time.png")
