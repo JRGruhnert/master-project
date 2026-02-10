@@ -13,25 +13,39 @@ def plot(collection: RunDataCollection):
         for nt in ["gnn", "baseline"]:
             for value in x_values:
                 # Collect data for plotting
-                if p == "pe":
-                    run = collection.get(
-                        nt=nt,
-                        mode="t",
-                        origin="slider",
-                        dest="slider",
-                        pe=value,
-                        pr=0.0,
-                    )
+                if value == 1.0:
+                    if p == "pe":
+                        data[p][nt].append(0.0)
+                    else:
+                        run = collection.get(
+                            nt="baseline",
+                            mode="t",
+                            origin="slider",
+                            dest="slider",
+                            pe=0.0,
+                            pr=value,
+                        )
+                        data[p][nt].append(run.stats["run_stats"]["max_sr"])
                 else:
-                    run = collection.get(
-                        nt=nt,
-                        mode="t",
-                        origin="slider",
-                        dest="slider",
-                        pe=0.0,
-                        pr=value,
-                    )
-                data[p][nt].append(run.stats["run_stats"]["max_sr"])
+                    if p == "pe":
+                        run = collection.get(
+                            nt=nt,
+                            mode="t",
+                            origin="slider",
+                            dest="slider",
+                            pe=value,
+                            pr=0.0,
+                        )
+                    else:
+                        run = collection.get(
+                            nt=nt,
+                            mode="t",
+                            origin="slider",
+                            dest="slider",
+                            pe=0.0,
+                            pr=value,
+                        )
+                    data[p][nt].append(run.stats["run_stats"]["max_sr"])
 
     # Plot each tag with all networks
     for p_tag in data.keys():

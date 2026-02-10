@@ -49,7 +49,7 @@ class BaselineAgent(PPOAgent):
         )
 
         old_state_dict: dict[str, torch.Tensor] = (
-            checkpoint["state_dict"] if "state_dict" in checkpoint else checkpoint
+            checkpoint["model_state"] if "model_state" in checkpoint else checkpoint
         )
 
         # Get current model state dict

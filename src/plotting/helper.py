@@ -34,6 +34,8 @@ MAP_LABEL = {"gnn": "GNN", "baseline": "MLP", "tree": "Tree"}
 
 # Lists for easy access
 LIST_DOMAIN = ["slider", "blue", "red", "pink", "sr", "srp", "srpb"]
+# Lists for easy access
+LIST_DOMAIN_SMALL = ["slider", "blue", "red", "pink"]
 
 # Network Types
 NT_GNN = "gnn"

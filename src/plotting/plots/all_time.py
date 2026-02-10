@@ -3,6 +3,7 @@ import numpy as np
 from src.plotting.run import RunData, RunDataCollection
 from src.plotting.helper import (
     FIG_SIZE_FLAT,
+    LIST_DOMAIN_SMALL,
     MAP_LABEL,
     MAP_COLOR,
     LIST_DOMAIN,
@@ -25,7 +26,7 @@ def plot(collection: RunDataCollection):
     """
     sr: dict[str, list[float]] = {NT_GNN: [], NT_MLP: []}
 
-    for set in LIST_DOMAIN:
+    for set in LIST_DOMAIN_SMALL:
         for nt in [NT_GNN, NT_MLP]:
             if set in ["sr", "srp", "srpb"]:
                 run = collection.get(
@@ -47,7 +48,7 @@ def plot(collection: RunDataCollection):
                 )
             sr[nt].append(run.stats["run_stats"]["sr_until_80"])
 
-    x = np.arange(len(LIST_DOMAIN))
+    x = np.arange(len(LIST_DOMAIN_SMALL))
     width = 0.20
 
     fig, ax = plt.subplots(figsize=FIG_SIZE_FLAT)
@@ -71,7 +72,7 @@ def plot(collection: RunDataCollection):
     ax.set_ylabel("Epochs")
     ax.set_title("All Comparison Time Plot")
     ax.set_xticks(x)
-    ax.set_xticklabels(LIST_DOMAIN)
+    ax.set_xticklabels(LIST_DOMAIN_SMALL)
     ax.legend()
-    set_y_ticks(ax)
+    # set_y_ticks(ax)
     save_plot("comparison_all_time.png")

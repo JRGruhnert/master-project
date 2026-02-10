@@ -39,7 +39,11 @@ def plot(collection: RunDataCollection):
     fig, ax = plt.subplots(figsize=helper.FIG_SIZE_FLAT)
 
     gnn_values = np.array(data["gnn"])
-    gnn_colors = np.where(gnn_values >= 0, "green", "red")
+    gnn_colors = np.where(
+        gnn_values >= 0,
+        helper.MAP_COLOR["baseline"]["main"],
+        helper.MAP_COLOR["tree"]["secondary"],
+    )
 
     ax.bar(
         x + width / 2,
@@ -61,7 +65,7 @@ def plot(collection: RunDataCollection):
     )
 
     ax.axhline(0, linewidth=1)
-    ax.set_ylim(-0.25, 0.25)
+    # ax.set_ylim(-0.25, 0.25)
     ax.set_xticks(x + width / 2)
     ax.set_xticklabels(data["domains"])
     ax.set_ylabel("Δ max SR")

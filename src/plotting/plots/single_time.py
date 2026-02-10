@@ -11,7 +11,7 @@ def plot(collection: RunDataCollection):
         epoch_indices = list(range(len(batch_stats)))
         episode_rewards = [batch["mean_episode_reward"] for batch in batch_stats]
         success_rates = [batch["success_rate"] for batch in batch_stats]
-        max_success_rates = [batch["max_success_rate"] for batch in batch_stats]
+        max_success_rates = [batch["max_sr"] for batch in batch_stats]
         episode_lengths = [batch["mean_episode_length"] for batch in batch_stats]
 
         _, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=helper.FIG_SIZE)
@@ -33,7 +33,7 @@ def plot(collection: RunDataCollection):
         ax2.plot(
             epoch_indices,
             success_rates,
-            color=helper.MAP_COLOR["mlp"]["main"],
+            color=helper.MAP_COLOR["baseline"]["main"],
             alpha=0.7,
         )
         ax2.set_xlabel("Epoch")
@@ -58,7 +58,7 @@ def plot(collection: RunDataCollection):
         ax4.plot(
             epoch_indices,
             max_success_rates,
-            color=helper.MAP_COLOR["mlp"]["main"],
+            color=helper.MAP_COLOR["baseline"]["main"],
             alpha=0.7,
         )
         ax4.set_xlabel("Epoch")

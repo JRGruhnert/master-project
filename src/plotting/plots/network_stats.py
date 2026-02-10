@@ -106,13 +106,13 @@ def plot_ratio():
         x + width / 2,
         params_ratio,
         width,
-        color=helper.MAP_COLOR["gnn"]["secondary"],
+        color=helper.MAP_COLOR["tree"]["main"],
         label="Params ratio (MLP/GNN)",
     )
 
     ax.set_xlabel("Domain")
     ax.set_ylabel("Ratio (MLP / GNN)")
-    ax.set_title("GNN Efficiency: How many times smaller than MLP")
+    ax.set_title("How many times smaller than MLP")
     ax.set_xticks(x)
     ax.set_xticklabels(domains)
     ax.legend()

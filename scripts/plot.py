@@ -14,12 +14,12 @@ import src.plotting.plots.network_stats as network_stats
 
 def make_plots(collection: RunDataCollection):
     print("Making plots...")
-    single_time.plot(collection)  # done
-    all_sr.plot(collection)  # done
-    all_time.plot(collection)  # done
-    domain_sr.plot(collection)  # (cant say yet)
-    p_sr.plot(collection)  # done
-    retrain_sr.plot(collection)  # done
+    # single_time.plot(collection)  # done
+    # all_sr.plot(collection)  # done
+    # all_time.plot(collection)  # done
+    # domain_sr.plot(collection)  # (cant say yet)
+    # p_sr.plot(collection)  # done
+    # retrain_sr.plot(collection)  # done
     network_stats.plot()  # done
     network_stats.plot_ratio()  # done
 
