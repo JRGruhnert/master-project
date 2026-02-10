@@ -15,16 +15,27 @@ def plot(collection: RunDataCollection):
         episode_lengths = [batch["mean_episode_length"] for batch in batch_stats]
 
         _, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=helper.FIG_SIZE)
-
+        helper.set_y_ticks(ax2)
+        helper.set_y_ticks(ax4)
         # Episode rewards
-        ax1.plot(epoch_indices, episode_rewards, "b-", alpha=0.7)
+        ax1.plot(
+            epoch_indices,
+            episode_rewards,
+            color=helper.MAP_COLOR["gnn"]["main"],
+            alpha=0.7,
+        )
         ax1.set_xlabel("Epoch")
         ax1.set_ylabel("Mean Reward")
         ax1.set_title("Episode Rewards")
         ax1.grid(True, alpha=0.3)
 
         # Success rate
-        ax2.plot(epoch_indices, success_rates, "g-", alpha=0.7)
+        ax2.plot(
+            epoch_indices,
+            success_rates,
+            color=helper.MAP_COLOR["mlp"]["main"],
+            alpha=0.7,
+        )
         ax2.set_xlabel("Epoch")
         ax2.set_ylabel("Success Rate")
         ax2.set_title("Success Rates")
@@ -32,14 +43,24 @@ def plot(collection: RunDataCollection):
         ax2.grid(True, alpha=0.3)
 
         # Episode lengths
-        ax3.plot(epoch_indices, episode_lengths, "r-", alpha=0.7)
+        ax3.plot(
+            epoch_indices,
+            episode_lengths,
+            color=helper.MAP_COLOR["tree"]["main"],
+            alpha=0.7,
+        )
         ax3.set_xlabel("Epoch")
         ax3.set_ylabel("Mean Length")
         ax3.set_title("Episode Lengths")
         ax3.grid(True, alpha=0.3)
 
         # Max success rates
-        ax4.plot(epoch_indices, max_success_rates, "y-", alpha=0.7)
+        ax4.plot(
+            epoch_indices,
+            max_success_rates,
+            color=helper.MAP_COLOR["mlp"]["main"],
+            alpha=0.7,
+        )
         ax4.set_xlabel("Epoch")
         ax4.set_ylabel("Success Rate")
         ax4.set_title("Max Success Rates")
@@ -47,5 +68,4 @@ def plot(collection: RunDataCollection):
         ax4.grid(True, alpha=0.3)
 
         plt.tight_layout()
-
         helper.save_plot(f"{run.name}.png", subdir=f"{run.metadata['nt']}")

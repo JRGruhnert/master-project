@@ -48,5 +48,5 @@ class GNNAgent(PPOAgent):
             self.storage.config.checkpoint_path, map_location=device
         )
 
-        self.policy_old.load_state_dict(checkpoint["model_state"])
-        self.policy_new.load_state_dict(checkpoint["model_state"])
+        self.policy_old.load_state_dict(checkpoint["model_state"], strict=False)
+        self.policy_new.load_state_dict(checkpoint["model_state"], strict=False)

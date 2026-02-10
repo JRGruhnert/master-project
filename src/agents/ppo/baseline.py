@@ -75,8 +75,8 @@ class BaselineAgent(PPOAgent):
                     )
 
         # Load the modified state dict
-        self.policy_old.load_state_dict(new_state_dict, strict=True)
-        self.policy_new.load_state_dict(new_state_dict, strict=True)
+        self.policy_old.load_state_dict(new_state_dict, strict=False)
+        self.policy_new.load_state_dict(new_state_dict, strict=False)
 
     def _expand_tensor_dims(self, old_tensor, target_shape):
         """Expand tensor dimensions by copying/padding"""

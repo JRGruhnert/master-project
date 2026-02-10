@@ -8,10 +8,10 @@ def plot(collection: RunDataCollection):
     data: dict[str, list] = {
         "domains": ["slider -> red", "red -> pink", "pink -> blue", "blue -> slider"],
         "gnn": [],
-        "mlp": [],
+        "baseline": [],
     }
 
-    for nt in ["gnn", "mlp"]:
+    for nt in ["gnn", "baseline"]:
         for domain in ["slider", "red", "pink", "blue"]:
             run_t = collection.get(
                 nt=nt,
@@ -34,21 +34,31 @@ def plot(collection: RunDataCollection):
             )
 
     x = np.arange(len(data["domains"]))
-    width = 0.35
+    width = 0.2
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=helper.FIG_SIZE_FLAT)
 
-    for i, model in enumerate(["gnn", "baseline"]):
-        values = np.array(data[model])
-        colors = np.where(values >= 0, "green", "red")
+    gnn_values = np.array(data["gnn"])
+    gnn_colors = np.where(gnn_values >= 0, "green", "red")
 
-        ax.bar(
-            x + i * width,
-            values,
-            width,
-            color=colors,
-            label=model,
-        )
+    ax.bar(
+        x + width / 2,
+        gnn_values,
+        width,
+        color=gnn_colors,
+        label=f"{helper.MAP_LABEL['gnn']} Δ max SR",
+    )
+
+    baseline_values = np.array(data["baseline"])
+    baseline_colors = np.where(baseline_values >= 0, "green", "red")
+
+    ax.bar(
+        x - width / 2,
+        baseline_values,
+        width,
+        color=baseline_colors,
+        label=f"{helper.MAP_LABEL['baseline']} Δ max SR",
+    )
 
     ax.axhline(0, linewidth=1)
     ax.set_ylim(-0.25, 0.25)

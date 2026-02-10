@@ -14,9 +14,9 @@ eval = True
 
 
 network = "baseline"
-checkpoint_tag = "tf_b_b_pe0.0_pr0.0"
-skills_eval_states = "red"
-used_states = "red"
+checkpoint_tag = "t_red_red_pe0.0_pr0.0"
+skills_eval_states = "pink"
+used_states = "pink"
 
 prefix = "e"
 tag = f"{prefix}_{used_states}_{skills_eval_states}"

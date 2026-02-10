@@ -105,7 +105,7 @@ class RunData:
             "total_rewards": sum(rewards),
             "mean_episode_reward": sum(rewards) / max(1, terminals.count(True)),
             "success_rate": sr,
-            "max_success_rate": max(sr, prev_sr),
+            "max_sr": max(sr, prev_sr),
             "successes": success.count(True),
             "action_distribution": action_distribution,
         }
@@ -131,7 +131,7 @@ class RunData:
         prev_sr = 0.0
         for idx, batch_data in enumerate(all_batch_data):
             batch_stats = self.compute_batch_stats(batch_data, prev_sr=prev_sr)
-            prev_sr = batch_stats["max_success_rate"]
+            prev_sr = batch_stats["max_sr"]
 
             computed_batch_stats.append(batch_stats)
             all_success_rates.append(batch_stats["success_rate"])

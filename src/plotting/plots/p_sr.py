@@ -4,7 +4,7 @@ from src.plotting.run import RunData, RunDataCollection
 
 
 def plot(collection: RunDataCollection):
-    x_values = [0.0, 0.2, 0.4]  # , 0.6]  # , 0.8, 1.0]
+    x_values = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
     data: dict[str, dict[str, list[float]]] = {
         "pe": {"gnn": [], "baseline": []},
         "pr": {"gnn": [], "baseline": []},
@@ -43,12 +43,10 @@ def plot(collection: RunDataCollection):
                 markersize=10,
                 linewidth=2.5,
                 alpha=0.7,
-                color=helper.MAP_COLOR[network],
+                color=helper.MAP_COLOR[network]["main"],
                 markeredgewidth=1.5,
                 label=network.upper(),
             )
-
-        helper.plot_threshold_lines()
 
         plt.xlabel(
             f"Percentage of Alternation",
@@ -64,5 +62,5 @@ def plot(collection: RunDataCollection):
         plt.grid(True, alpha=0.3)
         plt.ylim(0, 1.05)
         plt.legend(fontsize=11, loc="best")
-
+        helper.set_y_ticks()
         helper.save_plot(f"comparison_{p_tag}.png")

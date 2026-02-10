@@ -1,6 +1,7 @@
 import glob
 import re
 
+
 from src.plotting.run import RunData, RunDataCollection
 import src.plotting.plots.single_time as single_time
 import src.plotting.plots.all_sr as all_sr
@@ -8,16 +9,19 @@ import src.plotting.plots.all_time as all_time
 import src.plotting.plots.domain_sr as domain_sr
 import src.plotting.plots.p_sr as p_sr
 import src.plotting.plots.retrain_sr as retrain_sr
+import src.plotting.plots.network_stats as network_stats
 
 
 def make_plots(collection: RunDataCollection):
     print("Making plots...")
-    # single_time.plot(collection)
-    all_sr.plot(collection)
-    all_time.plot(collection)
-    # domain_sr.plot(collection)
-    # p_sr.plot(collection)
-    # retrain_sr.plot(collection)
+    # single_time.plot(collection) # done
+    # all_sr.plot(collection) # done
+    # all_time.plot(collection) #
+    # domain_sr.plot(collection) #(cant say yet)
+    # p_sr.plot(collection) # done
+    # retrain_sr.plot(collection)  # done
+    network_stats.plot()
+    network_stats.plot_ratio()
 
 
 def entry_point():
@@ -49,6 +53,7 @@ def entry_point():
     tag_pattern = re.compile(
         rf"(?P<ident>{'|'.join(['t', 'r', 'e'])})_(?P<origin>\w+)_(?P<dest>\w+)?"
     )
+    # ...existing code...
     collection = RunDataCollection()
     for nt in networks:
         read_path = f"results/{nt}/"
@@ -69,6 +74,11 @@ def entry_point():
                     }
                     # Collect data for further analysis
                     collection.add(RunData(path, metadata))
+                else:
+                    print(f"    No tag match for: {file_match.group('tag')}")  # Debug
+            else:
+                print(f"    No file match")  # Debug
+    # ...existing code...
 
     for run in collection.runs:
         print(run.name)

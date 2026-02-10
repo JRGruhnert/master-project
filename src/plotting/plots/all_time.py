@@ -10,6 +10,7 @@ from src.plotting.helper import (
     NT_GNN,
     NT_TREE,
     save_plot,
+    set_y_ticks,
 )
 import src.plotting.helper as helper
 
@@ -34,7 +35,6 @@ def plot(collection: RunDataCollection):
     ax.set_title("All Comparison Time Plot")
     ax.set_xticks(x)
     ax.set_xticklabels(domains)
-
     ax.legend()
-
+    set_y_ticks(ax)
     save_plot("comparison_all_time.png")
