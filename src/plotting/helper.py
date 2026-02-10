@@ -16,17 +16,17 @@ SUBFIG_SIZE = (8, 5)
 
 MAP_COLOR = {
     "gnn": {
-        "main": "#003554",
-        "secondary": "#006494",
+        "main": "#1557c0",
+        "secondary": "#0f3375",
         "tertiary": "#00a6fb",
     },
     "baseline": {
-        "main": "#10451d",
-        "secondary": "#1a7431",
+        "main": "#1a7431",
+        "secondary": "#10451d",
         "tertiary": "#4ad66d",
     },
     "tree": {
-        "main": "#580c1f",
+        "main": "#9f040e",
         "secondary": "#a51c30",
     },
 }

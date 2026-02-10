@@ -148,10 +148,10 @@ class RunData:
             if any(np.array(all_success_rates) >= 0.9)
             else None
         )
-        index_of_first_95 = (
-            int(np.argmax(np.array(all_success_rates) >= 0.95))
-            if any(np.array(all_success_rates) >= 0.95)
-            else None
+        index_of_first_80 = (
+            int(np.argmax(np.array(all_success_rates) >= 0.80))
+            if any(np.array(all_success_rates) >= 0.80)
+            else 0
         )
 
         overall_stats = {
@@ -168,11 +168,7 @@ class RunData:
                 if index_of_first_90 is not None
                 else []
             ),
-            "sr_until_95": (
-                all_success_rates[: index_of_first_95 + 1]
-                if index_of_first_95 is not None
-                else []
-            ),
+            "sr_until_80": index_of_first_80,
         }
 
         return {
