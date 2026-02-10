@@ -122,6 +122,6 @@ data/calvin/tapas/
 conf/machine.py
 results_old/
 results.zip
-plots/
+/plots/
 
 /dependencies/
