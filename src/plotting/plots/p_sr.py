@@ -1,16 +1,16 @@
 import matplotlib.pyplot as plt
-import src.plotting.helper as helper
+from src.plotting.helper import *
 from src.plotting.run import RunData, RunDataCollection
 
 
 def plot(collection: RunDataCollection):
     x_values = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
     data: dict[str, dict[str, list[float]]] = {
-        "pe": {"gnn": [], "baseline": []},
-        "pr": {"gnn": [], "baseline": []},
+        "pe": {NT_GNN: [], NT_MLP: []},
+        "pr": {NT_GNN: [], NT_MLP: []},
     }
     for p in ["pe", "pr"]:
-        for nt in ["gnn", "baseline"]:
+        for nt in [NT_GNN, NT_MLP]:
             for value in x_values:
                 # Collect data for plotting
                 if value == 1.0:
@@ -18,8 +18,8 @@ def plot(collection: RunDataCollection):
                         data[p][nt].append(0.0)
                     else:
                         run = collection.get(
-                            nt="baseline",
-                            mode="t",
+                            nt=NT_MLP,
+                            mode=MODE_TRAIN,
                             origin="slider",
                             dest="slider",
                             pe=0.0,
@@ -30,7 +30,7 @@ def plot(collection: RunDataCollection):
                     if p == "pe":
                         run = collection.get(
                             nt=nt,
-                            mode="t",
+                            mode=MODE_TRAIN,
                             origin="slider",
                             dest="slider",
                             pe=value,
@@ -39,7 +39,7 @@ def plot(collection: RunDataCollection):
                     else:
                         run = collection.get(
                             nt=nt,
-                            mode="t",
+                            mode=MODE_TRAIN,
                             origin="slider",
                             dest="slider",
                             pe=0.0,
@@ -49,32 +49,19 @@ def plot(collection: RunDataCollection):
 
     # Plot each tag with all networks
     for p_tag in data.keys():
-        plt.figure(figsize=helper.FIG_SIZE)
+        plt.figure(figsize=FIG_SIZE)
         for network in data[p_tag].keys():
             plt.plot(
                 x_values,
                 data[p_tag][network],
-                markersize=10,
-                linewidth=2.5,
-                alpha=0.7,
-                color=helper.MAP_COLOR[network]["main"],
-                markeredgewidth=1.5,
+                color=MAP_COLOR[network]["main"],
                 label=network.upper(),
             )
 
-        plt.xlabel(
-            f"Percentage of Alternation",
-            fontsize=13,
-            fontweight="bold",
-        )
-        plt.ylabel("Maximum Success Rate", fontsize=13, fontweight="bold")
-        plt.title(
-            f"Network Comparison: {p_tag}",
-            fontsize=15,
-            fontweight="bold",
-        )
+        plt.xlabel(MAP_LABEL[p_tag])
+        plt.ylabel(LABEL_SR)
+        # plt.title(f"Network Comparison: {p_tag}")
         plt.grid(True, alpha=0.3)
-        plt.ylim(0, 1.05)
-        plt.legend(fontsize=11, loc="best")
-        helper.set_y_ticks()
-        helper.save_plot(f"comparison_{p_tag}.png")
+        plt.ylim(0, 1.0)
+        set_y_ticks()
+        save_plot(f"comparison_{p_tag}.png")

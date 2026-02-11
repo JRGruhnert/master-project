@@ -1,6 +1,7 @@
 import os
 import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.patches as mpatches
 
 # Sets a gloabal style. Every plot uses this still if this file is imported.
 plt.style.use("seaborn-v0_8")
@@ -9,18 +10,16 @@ plt.rcParams["font.sans-serif"] = ["Arial"]
 plt.rcParams["font.size"] = 14
 
 _SAVE_PATH = "plots"
-EVAL = "eval"
-TRAIN = "train"
 # Global constants for plotting
 FIG_SIZE = (10, 6)
 FIG_SIZE_FLAT = (12, 6)
 FIG_SIZE_HIGH = (10, 6)
 SUBFIG_SIZE = (8, 5)
+HATCH_PATTERN = "///"
 
 LABEL_EPOCH = "Epoch"
 LABEL_REWARD = "Mean Reward"
 LABEL_SR = "Success Rate"
-LABEL_MAX_SR = "Maximal Success Rate"
 LABEL_LENGTH = "Mean Episode Length"
 LABEL_SKILLSET = "Skill Set"
 # Global easy access constants for mapping
@@ -41,7 +40,13 @@ MAP_COLOR = {
         "secondary": "#a51c30",
     },
 }
-MAP_LABEL = {"gnn": "GNN", "baseline": "MLP", "tree": "Tree"}
+MAP_LABEL = {
+    "gnn": "GNN",
+    "baseline": "MLP",
+    "tree": "Tree",
+    "pe": "Percentage of skipped actions",
+    "pr": "Percentage of random actions",
+}
 
 # Lists for easy access
 LIST_DOMAIN = ["slider", "blue", "red", "pink", "sr", "srp", "srpb"]
@@ -57,7 +62,23 @@ NT_TREE = "tree"
 # Mode Types
 MODE_TRAIN = "t"
 MODE_EVAL = "e"
+MODE_DOMAIN = "d"
 MODE_RETRAIN = "r"
+MODE_RETRAIN_EVAL = "re"
+
+
+LEGEND_WITHOUT_TREE = [
+    mpatches.Patch(facecolor=MAP_COLOR[NT_MLP]["main"], label=MAP_LABEL[NT_MLP]),
+    mpatches.Patch(facecolor=MAP_COLOR[NT_GNN]["main"], label=MAP_LABEL[NT_GNN]),
+    mpatches.Patch(facecolor="white", hatch=HATCH_PATTERN, label="Evaluation"),
+]
+
+LEGEND_WITH_TREE = [
+    mpatches.Patch(facecolor=MAP_COLOR[NT_MLP]["main"], label=MAP_LABEL[NT_MLP]),
+    mpatches.Patch(facecolor=MAP_COLOR[NT_GNN]["main"], label=MAP_LABEL[NT_GNN]),
+    mpatches.Patch(facecolor=MAP_COLOR[NT_TREE]["main"], label=MAP_LABEL[NT_TREE]),
+    mpatches.Patch(facecolor="white", hatch=HATCH_PATTERN, label="Evaluation"),
+]
 
 
 def set_y_ticks(ax=None, step=0.1, ymin=0.0, ymax=1.0):
