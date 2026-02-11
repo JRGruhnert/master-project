@@ -43,15 +43,11 @@ def entry_point():
     idents = ["t", "r", "e"]
     origins = ["slider", "red", "pink", "blue", "srpb"]
     dests = ["slider", "red", "pink", "blue", "sr", "srp", "srpb"]
-    percentages = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 
     # Generate all combinations of tags
     tags = [
-        f"{ident}_{origin}_{dest}_pe{p1}_pr{p2}"
-        for ident, origin, dest, p1, p2 in product(
-            idents, origins, dests, percentages, percentages
-        )
-        if ident not in ["r", "e"] or (p1 == 0.0 and p2 == 0.0)
+        f"{ident}_{origin}_{dest}"
+        for ident, origin, dest in product(idents, origins, dests)
     ]
 
     tags += special_tags
@@ -85,9 +81,9 @@ def entry_point():
                     # Collect data for further analysis
                     collection.add(RunData(path, metadata))
                 else:
-                    print(f"    No tag match for: {file_match.group('tag')}")  # Debug
+                    pass  # print(f"    No tag match for: {file_match.group('tag')}")  # Debug
             else:
-                print(f"    No file match")  # Debug
+                pass  # print(f"    No file match")  # Debug
 
     print(f"Total runs collected: {len(collection.runs)}")
     make_plots(collection)
