@@ -19,13 +19,13 @@ def plot(collection: RunDataCollection):
         nt="baseline", mode="t", origin="srpb", dest="sr", pe=0.0, pr=0.0
     )
 
-    _, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=FIG_SIZE)
+    _, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=FIG_SIZE_HIGH)
     set_y_ticks(ax2)
     set_y_ticks(ax4)
 
     for run in [
-        {"run": run_s_g, "name": "GNN Sparse", "color": MAP_COLOR[NT_GNN]["main"]},
-        {"run": run_s_b, "name": "MLP Sparse", "color": MAP_COLOR[NT_MLP]["main"]},
+        {"run": run_s_g, "name": "GNN Sparse", "color": MAP_COLOR[NT_GNN]["secondary"]},
+        {"run": run_s_b, "name": "MLP Sparse", "color": MAP_COLOR[NT_MLP]["secondary"]},
         {"run": run_t_g, "name": "GNN Dense", "color": MAP_COLOR[NT_GNN]["main"]},
         {"run": run_t_b, "name": "MLP Dense", "color": MAP_COLOR[NT_MLP]["main"]},
     ]:

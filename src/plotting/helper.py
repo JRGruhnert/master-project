@@ -13,8 +13,7 @@ _SAVE_PATH = "plots"
 # Global constants for plotting
 FIG_SIZE = (10, 6)
 FIG_SIZE_FLAT = (12, 6)
-FIG_SIZE_HIGH = (10, 6)
-SUBFIG_SIZE = (8, 5)
+FIG_SIZE_HIGH = (8, 6)
 HATCH_PATTERN = "///"
 
 LABEL_EPOCH = "Epoch"
