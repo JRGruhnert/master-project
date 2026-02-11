@@ -1,59 +1,69 @@
 import glob
 import re
+from itertools import product
 
 
 from src.plotting.run import RunData, RunDataCollection
-import src.plotting.plots.single_time as single_time
+import src.plotting.plots.dual_time as dual_time
 import src.plotting.plots.all_sr as all_sr
 import src.plotting.plots.all_time as all_time
 import src.plotting.plots.domain_sr as domain_sr
 import src.plotting.plots.p_sr as p_sr
 import src.plotting.plots.retrain_sr as retrain_sr
+import src.plotting.plots.reward_sr as reward_sr
 import src.plotting.plots.network_stats as network_stats
 
 
 def make_plots(collection: RunDataCollection):
     print("Making plots...")
-    # single_time.plot(collection)  # done
+    # dual_time.plot(collection)  # done
     # all_sr.plot(collection)  # done
     # all_time.plot(collection)  # done
-    # domain_sr.plot(collection)  # (cant say yet)
+    # domain_sr.plot(collection)  # done
     # p_sr.plot(collection)  # done
     # retrain_sr.plot(collection)  # done
+    # reward_sr.plot(collection)  # done
     network_stats.plot()  # done
     network_stats.plot_ratio()  # done
 
 
 def entry_point():
     networks = ["gnn", "baseline", "tree"]
-    training_tags = [
-        "t_slider_slider",
-        "t_red_red",
-        "t_pink_pink",
-        "t_blue_blue",
-        "t_srpb_sr",
-        "t_srpb_srp",
-        "t_srpb_srpb",
+    special_idents = ["d", "re", "s"]
+    special_tags = [
+        "d_slider_slider",
+        "d_red_red",
+        "d_pink_pink",
+        "d_blue_blue",
+        "re_srpb_srp",
+        "re_srpb_srpb",
+        "s_srpb_sr",
     ]
-    retraining_tags = [
-        "r_srpb_srp",
-        "r_srpb_srpb",
+    # Default tags and patterns for parsing filenames
+    idents = ["t", "r", "e"]
+    origins = ["slider", "red", "pink", "blue", "srpb"]
+    dests = ["slider", "red", "pink", "blue", "sr", "srp", "srpb"]
+    percentages = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+
+    # Generate all combinations of tags
+    tags = [
+        f"{ident}_{origin}_{dest}_pe{p1}_pr{p2}"
+        for ident, origin, dest, p1, p2 in product(
+            idents, origins, dests, percentages, percentages
+        )
+        if ident not in ["r", "e"] or (p1 == 0.0 and p2 == 0.0)
     ]
-    eval_tags = [
-        "e_slider_slider",
-        "e_red_red",
-        "e_pink_pink",
-        "e_blue_blue",
-    ]
-    tags = training_tags + retraining_tags + eval_tags
+
+    tags += special_tags
+    idents += special_idents
 
     file_pattern = re.compile(
         rf"(?P<tag>{'|'.join(tags)})_pe(?P<pe>[0-9.]+)_pr(?P<pr>[0-9.]+)"
     )
     tag_pattern = re.compile(
-        rf"(?P<ident>{'|'.join(['t', 'r', 'e'])})_(?P<origin>\w+)_(?P<dest>\w+)?"
+        rf"(?P<ident>{'|'.join(idents )})_(?P<origin>\w+)_(?P<dest>\w+)?"
     )
-    # ...existing code...
+
     collection = RunDataCollection()
     for nt in networks:
         read_path = f"results/{nt}/"
@@ -78,9 +88,6 @@ def entry_point():
                     print(f"    No tag match for: {file_match.group('tag')}")  # Debug
             else:
                 print(f"    No file match")  # Debug
-    # ...existing code...
 
-    for run in collection.runs:
-        print(run.name)
     print(f"Total runs collected: {len(collection.runs)}")
     make_plots(collection)

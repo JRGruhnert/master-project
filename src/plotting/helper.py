@@ -81,6 +81,11 @@ LEGEND_WITH_TREE = [
 ]
 
 
+def smooth_data(data, window_size=5):
+    """Smooth data using a moving average."""
+    return np.convolve(data, np.ones(window_size) / window_size, mode="same")
+
+
 def set_y_ticks(ax=None, step=0.1, ymin=0.0, ymax=1.0):
     """Set y-axis ticks at regular intervals"""
     if ax is None:

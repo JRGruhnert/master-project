@@ -4,11 +4,6 @@ from src.plotting.run import RunData, RunDataCollection
 import numpy as np
 
 
-def smooth_data(data, window_size=5):
-    """Smooth data using a moving average."""
-    return np.convolve(data, np.ones(window_size) / window_size, mode="same")
-
-
 def plot(collection: RunDataCollection):
     """Plot training progress over time"""
     for run1 in collection.runs:
@@ -137,8 +132,10 @@ def plot(collection: RunDataCollection):
         ax4.set_title("Max Success Rates")
         ax4.set_ylim(0, 1)
 
-        plt.title(f"Comparison of Training Progress")
-        save_plot(
-            f"{run1.name}{run2.name if run2 else ''}_comparison.png",
-            subdir=f"comparison",
-        )
+    handles, labels = ax1.get_legend_handles_labels()
+    plt.legend(handles, labels)
+    plt.title(f"Comparison of Training Progress")
+    save_plot(
+        f"{run1.name}{run2.name if run2 else ''}_comparison.png",
+        subdir=f"comparison",
+    )
