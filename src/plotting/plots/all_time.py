@@ -1,23 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from src.plotting.run import RunData, RunDataCollection
-from src.plotting.helper import (
-    FIG_SIZE_FLAT,
-    LIST_DOMAIN_SMALL,
-    LABEL_EPOCH,
-    LABEL_SKILLSET,
-    MAP_LABEL,
-    MAP_COLOR,
-    LIST_DOMAIN,
-    FIG_SIZE,
-    MODE_EVAL,
-    NT_MLP,
-    NT_GNN,
-    NT_TREE,
-    MODE_TRAIN,
-    save_plot,
-    set_y_ticks,
-)
+from src.plotting.helper import *
 
 
 def plot(collection: RunDataCollection):
@@ -75,6 +59,6 @@ def plot(collection: RunDataCollection):
     set_y_ticks(ax)
     ax.set_xticks(x)
     ax.set_xticklabels(LIST_DOMAIN_SMALL)
-    ax.legend()
-    ax.set_title("Comparison of Epochs count until 80% Success Rate across Skill Sets")
+    ax.legend(handles=LEGEND_WITHOUT_TREE)
+    ax.set_title("Comparison of time until 80% Success Rate")
     save_plot("comparison_all_time.png")

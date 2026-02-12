@@ -29,7 +29,7 @@ def make_plots(collection: RunDataCollection):
 
 def entry_point():
     networks = ["gnn", "baseline", "tree"]
-    special_idents = ["d", "re", "s"]
+    special_idents = ["d", "re", "rd", "s"]
     special_tags = [
         "d_slider_slider",
         "d_red_red",

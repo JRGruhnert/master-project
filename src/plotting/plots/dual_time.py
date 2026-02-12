@@ -7,9 +7,8 @@ import numpy as np
 def plot(collection: RunDataCollection):
     """Plot training progress over time"""
     for run1 in collection.runs:
-        print(run1.name)
         if (run1.metadata["nt"] in ["gnn", "tree"]) or (
-            run1.metadata["mode"] in ["d", "re", "e"]
+            run1.metadata["mode"] in ["d", "re", "e", "rd"]
         ):
             continue  # Skip GNN runs for this plot
         try:

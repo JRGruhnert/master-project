@@ -86,11 +86,34 @@ MODE_EVAL = "e"
 MODE_DOMAIN = "d"
 MODE_RETRAIN = "r"
 MODE_RETRAIN_EVAL = "re"
+MODE_RETRAIN_DOMAIN = "rd"
 
 
 LEGEND_WITHOUT_TREE = [
     mpatches.Patch(facecolor=MAP_COLOR[NT_MLP]["main"], label=MAP_LABEL[NT_MLP]),
     mpatches.Patch(facecolor=MAP_COLOR[NT_GNN]["main"], label=MAP_LABEL[NT_GNN]),
+    mpatches.Patch(
+        facecolor="white",
+        hatch=HATCH_PATTERN,
+        label="Evaluation",
+        edgecolor="black",
+        linewidth=1.0,
+    ),
+]
+
+LEGEND_RETRAIN = [
+    mpatches.Patch(
+        facecolor=MAP_COLOR[NT_MLP]["main"], label=MAP_LABEL[NT_MLP] + " scratch"
+    ),
+    mpatches.Patch(
+        facecolor=MAP_COLOR[NT_GNN]["main"], label=MAP_LABEL[NT_GNN] + " scratch"
+    ),
+    mpatches.Patch(
+        facecolor=MAP_COLOR[NT_MLP]["secondary"], label=MAP_LABEL[NT_MLP] + " retrain"
+    ),
+    mpatches.Patch(
+        facecolor=MAP_COLOR[NT_GNN]["secondary"], label=MAP_LABEL[NT_GNN] + " retrain"
+    ),
     mpatches.Patch(
         facecolor="white",
         hatch=HATCH_PATTERN,

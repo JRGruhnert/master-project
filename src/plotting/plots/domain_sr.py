@@ -13,9 +13,9 @@ def plot(collection: RunDataCollection):
 
     for nt in [NT_GNN, NT_MLP]:
         for domain in ["slider", "red", "pink", "blue"]:
-            run_e = collection.get(
+            run_t = collection.get(
                 nt=nt,
-                mode=MODE_EVAL,
+                mode=MODE_TRAIN,
                 origin=domain,
                 dest=domain,
                 pe=0.0,
@@ -30,7 +30,7 @@ def plot(collection: RunDataCollection):
                 pr=0.0,
             )
             data[nt].append(
-                run_d.stats["run_stats"]["max_sr"] - run_e.stats["run_stats"]["max_sr"]
+                run_d.stats["run_stats"]["max_sr"] - run_t.stats["run_stats"]["max_sr"]
             )
 
     x = np.arange(len(data["domains"]))
