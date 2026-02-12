@@ -35,9 +35,7 @@ def plot(collection: RunDataCollection):
             [batch["mean_episode_reward"] for batch in batch_stats]
         )
         success_rates = smooth_data([batch["success_rate"] for batch in batch_stats])
-        max_success_rates = smooth_data(
-            [batch["max_success_rate"] for batch in batch_stats]
-        )
+        max_success_rates = smooth_data([batch["max_sr"] for batch in batch_stats])
         episode_lengths = smooth_data(
             [batch["mean_episode_length"] for batch in batch_stats]
         )
@@ -47,7 +45,6 @@ def plot(collection: RunDataCollection):
             epoch_indices,
             episode_rewards,
             color=run["color"],
-            alpha=0.7,
             label=run["name"],
         )
         ax1.set_xlabel(LABEL_EPOCH)
@@ -60,7 +57,6 @@ def plot(collection: RunDataCollection):
             epoch_indices,
             success_rates,
             color=run["color"],
-            alpha=0.7,
             label=run["name"],
         )
 
@@ -74,7 +70,6 @@ def plot(collection: RunDataCollection):
             epoch_indices,
             episode_lengths,
             color=run["color"],
-            alpha=0.7,
             label=run["name"],
         )
 
@@ -88,7 +83,6 @@ def plot(collection: RunDataCollection):
             epoch_indices,
             max_success_rates,
             color=run["color"],
-            alpha=0.7,
             label=run["name"],
         )
 

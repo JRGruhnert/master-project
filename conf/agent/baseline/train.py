@@ -6,30 +6,31 @@ from src.modules.storage import StorageConfig
 from src.experiments.pepr import PePrConfig
 from scripts.train import TrainConfig
 from conf.common.evaluator import dense3_evaluator
+from conf.common.evaluator import sparse_evaluator
 
-mode = LogMode.TERMINAL
+mode = LogMode.WANDB
 render = False
 eval = False
 network = "baseline"
-prefix = "t"
+prefix = "s"
 
-skills_eval_states = "slide"
-used_states = "slide"
+skills_eval_states = "sr"
+used_states = "srpb"
 p_empty = 0.0
-p_rand = 1.0
+p_rand = 0.0
 
-tag = f"t_{used_states}_{skills_eval_states}"
+tag = f"{prefix}_{used_states}_{skills_eval_states}"
 wandb_tag = f"{network}_{tag}"
 
 config = TrainConfig(
     agent=BaselineAgentConfig(
         eval=eval,
-        max_batches=1,
-        early_stop_patience=1,
-        min_batches=1,
+        max_batches=750,
+        early_stop_patience=50,
+        min_batches=250,
         use_ema_for_early_stopping=False,
     ),
-    buffer=BufferConfig(steps=4096),
+    buffer=BufferConfig(steps=1024),
     logger=LoggerConfig(
         mode=mode,
         wandb_tag=wandb_tag,
@@ -46,5 +47,5 @@ config = TrainConfig(
         p_rand=p_rand,
     ),
     environment=CalvinEnvironmentConfig(render=render),
-    evaluator=dense3_evaluator,
+    evaluator=sparse_evaluator,
 )

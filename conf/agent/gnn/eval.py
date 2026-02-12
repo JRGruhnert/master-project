@@ -7,31 +7,32 @@ from src.experiments.pepr import PePrConfig
 from scripts.train import TrainConfig
 from conf.common.evaluator import dense3_evaluator
 
-mode = LogMode.WANDB
+mode = LogMode.TERMINAL
 render = False
 retrain = False
 eval = True
 
-
-network = "gnn"
-checkpoint_tag = "t_srpb_srpb_pe0.0_pr0.0"
 skills_eval_states = "srpb"
 used_states = "srpb"
 
-prefix = "test"
+network = "gnn"
+checkpoint_tag = f"r_{used_states}_{skills_eval_states}_pe0.0_pr0.0"
+
+
+prefix = "re"
 tag = f"{prefix}_{used_states}_{skills_eval_states}"
 wandb_tag = f"{network}_{tag}"
 
 config = TrainConfig(
     agent=GNNAgentConfig(
         eval=eval,
-        max_batches=10,
-        early_stop_patience=10,
-        min_batches=10,
+        max_batches=1,
+        early_stop_patience=1,
+        min_batches=1,
         retrain=retrain,
         use_ema_for_early_stopping=False,
     ),
-    buffer=BufferConfig(steps=1024),
+    buffer=BufferConfig(steps=2048),
     logger=LoggerConfig(
         mode=mode,
         wandb_tag=wandb_tag,

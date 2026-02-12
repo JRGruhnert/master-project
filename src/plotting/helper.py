@@ -5,16 +5,38 @@ import matplotlib.patches as mpatches
 
 # Sets a gloabal style. Every plot uses this still if this file is imported.
 plt.style.use("seaborn-v0_8")
-plt.rcParams["font.family"] = "sans-serif"
-plt.rcParams["font.sans-serif"] = ["Arial"]
-plt.rcParams["font.size"] = 14
+plt.rcParams.update(
+    {
+        "font.size": 20,
+        "font.weight": "bold",
+    }
+)
+FONT_SIZE = 20
+FONT_SIZE_MEDIUM = 18
+FONT_SIZE_SMALLER = 16
 
+plt.rcParams.update(
+    {
+        "font.family": "sans-serif",
+        "font.sans-serif": ["Arial", "Liberation Sans"],
+        "font.weight": "bold",
+        "axes.labelweight": "bold",
+        "axes.titleweight": "bold",
+        "font.size": FONT_SIZE_MEDIUM,
+        "axes.titlesize": FONT_SIZE,
+        "axes.labelsize": FONT_SIZE_MEDIUM,
+        "xtick.labelsize": FONT_SIZE_SMALLER,
+        "ytick.labelsize": FONT_SIZE_SMALLER,
+        "legend.fontsize": FONT_SIZE_SMALLER,
+        "figure.titlesize": FONT_SIZE,
+    }
+)
 _SAVE_PATH = "plots"
 # Global constants for plotting
 FIG_SIZE = (10, 6)
 FIG_SIZE_FLAT = (12, 6)
 FIG_SIZE_HIGH = (8, 6)
-HATCH_PATTERN = "///"
+HATCH_PATTERN = "xxxxx"
 
 LABEL_EPOCH = "Epoch"
 LABEL_REWARD = "Mean Reward"
@@ -48,7 +70,7 @@ MAP_LABEL = {
 }
 
 # Lists for easy access
-LIST_DOMAIN = ["slider", "blue", "red", "pink", "sr", "srp", "srpb"]
+LIST_DOMAIN = ["slider", "red", "pink", "blue", "sr", "srp", "srpb"]
 # Lists for easy access
 LIST_DOMAIN_SMALL = ["slider", "blue", "red", "pink"]
 
@@ -69,20 +91,34 @@ MODE_RETRAIN_EVAL = "re"
 LEGEND_WITHOUT_TREE = [
     mpatches.Patch(facecolor=MAP_COLOR[NT_MLP]["main"], label=MAP_LABEL[NT_MLP]),
     mpatches.Patch(facecolor=MAP_COLOR[NT_GNN]["main"], label=MAP_LABEL[NT_GNN]),
-    mpatches.Patch(facecolor="white", hatch=HATCH_PATTERN, label="Evaluation"),
+    mpatches.Patch(
+        facecolor="white",
+        hatch=HATCH_PATTERN,
+        label="Evaluation",
+        edgecolor="black",
+        linewidth=1.0,
+    ),
 ]
 
 LEGEND_WITH_TREE = [
     mpatches.Patch(facecolor=MAP_COLOR[NT_MLP]["main"], label=MAP_LABEL[NT_MLP]),
     mpatches.Patch(facecolor=MAP_COLOR[NT_GNN]["main"], label=MAP_LABEL[NT_GNN]),
     mpatches.Patch(facecolor=MAP_COLOR[NT_TREE]["main"], label=MAP_LABEL[NT_TREE]),
-    mpatches.Patch(facecolor="white", hatch=HATCH_PATTERN, label="Evaluation"),
+    mpatches.Patch(
+        facecolor="white",
+        hatch=HATCH_PATTERN,
+        label="Evaluation",
+        edgecolor="black",
+        linewidth=1.0,
+    ),
 ]
 
 
 def smooth_data(data, window_size=5):
-    """Smooth data using a moving average."""
-    return np.convolve(data, np.ones(window_size) / window_size, mode="same")
+    kernel = np.ones(window_size) / window_size
+    pad = window_size // 2
+    data = np.pad(data, pad, mode="edge")  # or "reflect"
+    return np.convolve(data, kernel, mode="valid")
 
 
 def set_y_ticks(ax=None, step=0.1, ymin=0.0, ymax=1.0):

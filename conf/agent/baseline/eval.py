@@ -7,16 +7,17 @@ from src.experiments.pepr import PePrConfig
 from scripts.train import TrainConfig
 from conf.common.evaluator import dense3_evaluator
 
-mode = LogMode.WANDB
+mode = LogMode.TERMINAL
 render = False
 retrain = False
 eval = True
 
+skills_eval_states = "srpb"
+used_states = "srpb"
 
 network = "baseline"
-checkpoint_tag = "t_red_red_pe0.0_pr0.0"
-skills_eval_states = "pink"
-used_states = "pink"
+checkpoint_tag = f"t_{used_states}_{skills_eval_states}_pe0.0_pr0.0"
+
 
 prefix = "e"
 tag = f"{prefix}_{used_states}_{skills_eval_states}"

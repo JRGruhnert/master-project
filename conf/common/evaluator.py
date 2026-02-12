@@ -25,6 +25,6 @@ dense3_evaluator = Dense3EvaluatorConfig(
 )
 
 sparse_evaluator = SparseEvaluatorConfig(
-    success_reward=1.0,
-    step_reward=-0.01,
+    success_reward=25.0,
+    step_reward=-0.002,
 )

@@ -6,17 +6,18 @@ from src.modules.storage import StorageConfig
 from src.experiments.pepr import PePrConfig
 from scripts.train import TrainConfig
 from conf.common.evaluator import dense3_evaluator
+from conf.common.evaluator import sparse_evaluator
 
 mode = LogMode.WANDB
 render = False
 eval = False
 network = "gnn"
-prefix = "tf"
+prefix = "s"
 
-skills_eval_states = "b"
-used_states = "b"
+skills_eval_states = "sr"
+used_states = "srpb"
 p_empty = 0.0
-p_rand = 0.8
+p_rand = 0.0
 
 tag = f"{prefix}_{used_states}_{skills_eval_states}"
 wandb_tag = f"{network}_{tag}"
@@ -46,5 +47,5 @@ config = TrainConfig(
         p_rand=p_rand,
     ),
     environment=CalvinEnvironmentConfig(render=render),
-    evaluator=dense3_evaluator,
+    evaluator=sparse_evaluator,
 )
