@@ -45,6 +45,11 @@ class TempStore:
     action: torch.Tensor
     logprob: torch.Tensor
     value: torch.Tensor
+    # Timeline-memory bookkeeping (use_timeline_memory): the embedding of the
+    # chosen option and the hidden state used at this step, needed to build
+    # the next timeline event once the outcome (feedback) is known.
+    opt_emb: torch.Tensor
+    mem_used: torch.Tensor
 
     def complete(self, fb: SceneFeedback) -> BufferData:
         return BufferData(
@@ -80,7 +85,7 @@ class Learner(Persistable):
     def __init__(self, cfg: Config):
         self.cfg = cfg
         self.mse_loss = nn.MSELoss()
-        self.network = self._create_network(cfg)
+        self.network = Network.get(cfg.network)
         self.optim: torch.optim.Optimizer = torch.optim.AdamW(
             self.network.parameters(), lr=self.cfg.lr
         )
@@ -90,6 +95,10 @@ class Learner(Persistable):
         self.buffer = Buffer.get(cfg.buffer)
         self.pocket: TempStore | None = None
         self.train_mode = True
+
+        self._mem_pending: tuple[torch.Tensor, torch.Tensor] | None = None
+        self._eval_choice: tuple[torch.Tensor, torch.Tensor] | None = None
+
         self._init_wandb()
         self.explainer = Explainer(
             self.network,
@@ -103,9 +112,6 @@ class Learner(Persistable):
                 return_type="probs",
             ),
         )
-
-    def _create_network(self, cfg: Config):
-        return Network.get(cfg.network)
 
     @cached_property
     def inference_net(self) -> Network:
@@ -135,11 +141,13 @@ class Learner(Persistable):
         self.train_mode = False
 
     def predict(self, data: HeteroData, new_episode: bool) -> int:
+        use_mem = self.network.cfg.use_timeline_memory
         if new_episode:
-            if self.train_mode:
-                self.inference_net.reset_memory()
-            else:
-                self.network.reset_memory()
+            self._mem_pending = None
+            self._eval_choice = None
+        if use_mem and self._mem_pending is not None:
+            data.mem_step = self._mem_pending
+            self._mem_pending = None
         if self.train_mode:
             net = self.inference_net
             with torch.inference_mode():
@@ -152,11 +160,16 @@ class Learner(Persistable):
                 action=action,
                 logprob=logprob,
                 value=value,
+                opt_emb=net._last_option_x[action].detach(),
+                mem_used=net._last_mem.detach(),
             )
         else:
             with torch.inference_mode():
                 logits = self.network.actor(data)
             action = logits.argmax(dim=-1)
+            if use_mem:
+                emb = self.network._last_option_x[action].detach()
+                self._eval_choice = (emb, self.network._last_mem.detach())
         return int(action)
 
     def _init_wandb(self):
@@ -211,11 +224,18 @@ class Learner(Persistable):
                 {k: v for k, v in self.metrics.items()},
             )
 
+    def _memory_input(self, emb: torch.Tensor) -> torch.Tensor:
+        return emb.reshape(1, -1)
+
     def update(self, fb: SceneFeedback) -> bool:
         if self.cfg.normalize_rewards:
             fb.reward = self.normalizer.update(fb.reward)
+        use_mem = self.network.cfg.use_timeline_memory
         if self.train_mode:
             assert isinstance(self.pocket, TempStore)
+            if use_mem:
+                u = self._memory_input(self.pocket.opt_emb)
+                self._mem_pending = (u, self.pocket.mem_used)
             data = self.pocket.complete(fb)
             if self.buffer.add(data):
                 self.learn()
@@ -224,6 +244,11 @@ class Learner(Persistable):
                 self.training_log()
                 self.buffer.reset()
                 return True
+        else:
+            if use_mem and self._eval_choice is not None:
+                emb, mem = self._eval_choice
+                u = self._memory_input(emb)
+                self._mem_pending = (u, mem)
         return False
 
     def _save(self, path: Path):

@@ -66,15 +66,10 @@ class Scene(Persistable):
         x: DCScene,
         y: DCScene,
         elabels: list[str],
-        valid: bool,
+        rand_noise: float = 0.1,
+        fail_noise: float = 0.2,
     ) -> tuple[DCScene, TDImage, SceneFeedback]:
-        if not valid:
-            r = random.random()
-            obs, fb = self._step_virt(x, x, elabels)
-            if r < self.cfg.reject_prob:
-                fb.terminal = True
-        else:
-            obs, fb = self._step_virt(x, y, elabels)
+        obs, fb = self._step_virt(x, y, elabels, rand_noise, fail_noise)
         return self.package_internal(obs, fb)
 
     def package_internal(
@@ -90,7 +85,12 @@ class Scene(Persistable):
 
     @abc.abstractmethod
     def _step_virt(
-        self, x: DCScene, y: DCScene, elabels: list[str]
+        self,
+        x: DCScene,
+        y: DCScene,
+        elabels: list[str],
+        rand_noise: float,
+        fail_noise: float,
     ) -> tuple[Any, SceneFeedback]:
         raise NotImplementedError()
 

@@ -65,6 +65,8 @@ class Heca(Configurable):
         self.graph.set_start(x)
         data = self.graph.export()
         option = self.learner.predict(data, new_ep)
+        # select() expects the compact index (the enabled subset of the last
+        # export) and resolves it back to the blueprint node internally.
         a, s = self.graph.select(option)
         z, fb = ExpertModel.get(a).act(x, s)
         if logger.TRACE:
@@ -105,14 +107,16 @@ class Heca(Configurable):
         probs = torch.softmax(logits, dim=-1)
 
         lines.append("options (logits/probs):")
-        for i, key in enumerate(self.graph.ns_option.keys):
-            agent = self.graph.ns_option.items[i].model.tag
+        for i, key in enumerate(self.graph.export_keys):
+            agent = self.graph.ns_option.items[
+                self.graph.ns_option.get_index(key)
+            ].model.tag
             lines.append(
                 f"    [{i}] key={key:<45} agent={agent:<28} "
                 f"logit={logits[i]:+.3f} prob={probs[i]:.3f}"
             )
         lines.append(
-            f"    selected: idx={option} key={self.graph.ns_option.key_at(option)} "
+            f"    selected: idx={option} key={self.graph.export_keys[option]} "
             f"agent={a.tag}"
         )
 

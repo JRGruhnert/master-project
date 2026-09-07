@@ -228,7 +228,12 @@ class OGScene(Scene):
         )
 
     def _step_virt(
-        self, x: DCScene, y: DCScene, elabels: list[str]
+        self,
+        x: DCScene,
+        y: DCScene,
+        elabels: list[str],
+        rand_noise: float,
+        fail_noise: float,
     ) -> tuple[Any, SceneFeedback]:
         subgoal: dict[str, Any] = {}
         for label in elabels:
@@ -237,7 +242,9 @@ class OGScene(Scene):
                     label, y, unnormalize_pos=self.unnormalize_position
                 )
             )
-        ob, reward, terminated, truncated, info = self.env.step_scene(subgoal)
+        ob, reward, terminated, truncated, info = self.env.step_scene(
+            subgoal, rand_noise, fail_noise
+        )
         obs, _ = self.to_internal(ob, info)
         self._sync_viewer()
         assert isinstance(reward, float)

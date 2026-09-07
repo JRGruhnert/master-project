@@ -1,10 +1,61 @@
 from dataclasses import dataclass
 import torch
 from torch.nn.utils.clip_grad import clip_grad_norm_
+from torch.distributions import Categorical
 
 from heca.learning.learner import Learner
+from heca.heca_gnn.network import Network
 from heca.misc import hardware
 from heca.misc.interrupt import stop_requested
+
+
+def build_chunks(n: int, terminals: list[bool], seq_len: int) -> list[list[int]]:
+    """Split the buffer (episode-ordered transitions) into contiguous chunks
+    that never cross an episode boundary and are at most ``seq_len`` long
+    (``seq_len <= 0`` means one chunk per whole episode). Each chunk is
+    self-contained for truncated BPTT: its first step either starts an episode
+    (no stored memory) or carries the stored ``mem_step`` to bootstrap from.
+    """
+    chunks: list[list[int]] = []
+    seg: list[int] = []
+    for i in range(n):
+        seg.append(i)
+        if terminals[i] or (seq_len > 0 and len(seg) == seq_len):
+            chunks.append(seg)
+            seg = []
+    if seg:
+        chunks.append(seg)
+    return chunks
+
+
+def score_chunks(
+    net: Network,
+    chunks: list[list[int]],
+    data: list,
+    actions: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+
+    logprobs: list[torch.Tensor] = []
+    values: list[torch.Tensor] = []
+    entropies: list[torch.Tensor] = []
+    use_mem = net.cfg.use_timeline_memory
+    for seg in chunks:
+        h: torch.Tensor | None = None
+        for pos, t in enumerate(seg):
+            mem = h if (use_mem and pos > 0) else None
+            logits, value = net.forward(data[t], memory=mem)
+            dist = Categorical(logits=logits)
+            logprobs.append(dist.log_prob(actions[t : t + 1]))
+            values.append(value)
+            entropies.append(dist.entropy())
+            if use_mem and pos < len(seg) - 1:
+                nxt = getattr(data[seg[pos + 1]], "mem_step", None)
+                if nxt is not None:
+                    u, _ = nxt
+                    h = net.timeline(u.clone(), net._last_mem)
+                else:
+                    h = None
+    return torch.cat(logprobs), torch.cat(values), torch.cat(entropies)
 
 
 class PPO(Learner):
@@ -20,6 +71,7 @@ class PPO(Learner):
         max_grad_norm: float = 0.5
         target_kl: float | None = 0.01
         clip_value_loss: bool = True
+        seq_len: int = 0  # Truncated-BPTT chunk
 
     def __init__(self, cfg: Config):
         super().__init__(cfg)
@@ -43,6 +95,12 @@ class PPO(Learner):
         old_actions = self.buffer.actions.detach().squeeze(-1)
         old_logprobs = self.buffer.logprobs.detach().squeeze(-1)
         old_values = self.buffer.values.detach().squeeze(-1)
+        N = len(old_data)
+
+        use_chunked = self.network.cfg.use_timeline_memory
+        if use_chunked:
+            terminals = [d.terminal or d.truncated for d in old_data]
+            chunks = build_chunks(N, terminals, self.cfg.seq_len)
 
         # Accumulators for averaging
         total_policy_loss = 0.0
@@ -60,22 +118,48 @@ class PPO(Learner):
                 # Abort between epochs so a Ctrl-C is not delayed by the whole
                 # PPO update (capacity/batch_size * n_epoch minibatches).
                 break
-            indices = torch.randperm(self.buffer.cfg.capacity)
-            for start in range(0, self.buffer.cfg.capacity, self.cfg.batch_size):
-                end = start + self.cfg.batch_size
-                mb_idx = indices[start:end]
-                mb_ilist = mb_idx.tolist()
+            if use_chunked:
+                # Minibatches are contiguous episode chunks (shuffled at chunk
+                # granularity), each scored by one truncated-BPTT unroll.
+                order = torch.randperm(len(chunks)).tolist()
+                minibatches: list[list[int]] = []
+                cur: list[int] = []
+                cur_n = 0
+                for ci in order:
+                    cur.append(ci)
+                    cur_n += len(chunks[ci])
+                    if cur_n >= self.cfg.batch_size:
+                        minibatches.append(cur)
+                        cur, cur_n = [], 0
+                if cur:
+                    minibatches.append(cur)
+            else:
+                indices = torch.randperm(N).tolist()
+                minibatches = [
+                    indices[s : s + self.cfg.batch_size]
+                    for s in range(0, N, self.cfg.batch_size)
+                ]
 
-                mb_actions = old_actions[mb_idx]
+            for mb in minibatches:
+                if use_chunked:
+                    mb_chunks = [chunks[ci] for ci in mb]
+                    flat = [i for seg in mb_chunks for i in seg]
+                    mb_idx = torch.tensor(flat, dtype=torch.long)
+                    logprobs, state_values, entropies = score_chunks(
+                        self.network, mb_chunks, old_data, old_actions
+                    )
+                else:
+                    mb_idx = torch.tensor(mb, dtype=torch.long)
+                    mb_data = [old_data[i] for i in mb]
+                    logprobs, state_values, entropies = self.network.evaluate(
+                        mb_data, old_actions[mb_idx]
+                    )
+                entropy = entropies.mean()
+
                 mb_logprobs = old_logprobs[mb_idx]
                 mb_adv = adv[mb_idx]
                 mb_rtn = rtn[mb_idx]
                 mb_old_val = old_values[mb_idx]
-                mb_data = [old_data[i] for i in mb_ilist]
-                logprobs, state_values, dist = self.network.evaluate(
-                    mb_data, mb_actions
-                )
-                entropy = dist.mean()
 
                 assert isinstance(entropy, torch.Tensor)
                 # Normalize advantages

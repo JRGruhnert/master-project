@@ -131,7 +131,7 @@ class ExpertModel(Persistable, abc.ABC):
 
     def act(self, x: DCScene, y: DCScene) -> tuple[DCScene, SceneFeedback]:
         if self.act_virtual:
-            return self._act_virt(x, y)
+            return self.virtual_step(x, y)
 
         else:
             return self._act(x, y)
@@ -139,29 +139,9 @@ class ExpertModel(Persistable, abc.ABC):
     def _act(self, x: DCScene, y: DCScene) -> tuple[DCScene, SceneFeedback]:
         raise NotImplementedError
 
-    def _act_virt(self, x: DCScene, y: DCScene) -> tuple[DCScene, SceneFeedback]:
-        for label, entity in self.entities.items():
-            if not entity.score_single(
-                x.get(label).value,
-                self.conditions.pre.models[label].get_parameters(),
-            ):
-                return self.virtual_step(x, y, False)
-        for label in self.conditions.target_entities:
-            if not self.entities[label].score_state(
-                y.get(label).value,
-                self.conditions.post.models[label].get_parameters(),
-            ):
-                return self.virtual_step(x, y, False)
-        return self.virtual_step(x, y, True)
-
-    def virtual_step(
-        self, x: DCScene, y: DCScene, valid: bool
-    ) -> tuple[DCScene, SceneFeedback]:
+    def virtual_step(self, x: DCScene, y: DCScene) -> tuple[DCScene, SceneFeedback]:
         tdscene, tdimage, fb = self.scene.step_virt(
-            x,
-            y,
-            self.conditions.target_entities,
-            valid,
+            x, y, self.conditions.target_entities
         )
         return self.make_scene(tdscene, tdimage), fb
 

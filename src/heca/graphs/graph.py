@@ -17,6 +17,7 @@ from heca.misc import hardware, logger
 from heca.data.data import DCScene
 from heca.data.entity import Entity
 from heca.conditions.condition import Condition
+from heca.conditions.pair import ConPair
 
 
 class SubgoalMode(Enum):
@@ -51,25 +52,134 @@ class Graph:
         self.start: DCScene = DCScene.empty()
         self.goal: DCScene = DCScene.empty()
 
-        # Track expert-condition connections for visualization.
         self._pair_scores: dict[tuple[str, str], dict[str, float]] = {}
         self._agent_tags: list[str] = []
 
-    def export(self) -> HeteroData:
-        data = HeteroData()
-        data[self.ns_entity.type].x = self.ns_entity.x
-        data[self.ns_option.type].x = self.ns_option.x
-        data[self.ns_entity.type].type_ids = self.ns_entity.type_ids
+        self._option_conditions: dict[str, ConPair] = {}
+        self._export_keys: list[str] | None = None
+        self._start_set = False
 
-        data[self.es_stepmix.type].edge_attr = self.es_stepmix.edge_attr
-        data[self.es_summary.type].edge_attr = self.es_summary.edge_attr
-        data[self.es_stepmix.type].edge_index = self.es_stepmix.edge_index
-        data[self.es_summary.type].edge_index = self.es_summary.edge_index
-        data[self.es_tapas.type].edge_index = self.es_tapas.edge_index
+    def export(self) -> HeteroData:
+        option_keys = self.enabled_keys()
+        self._export_keys = option_keys
+        ent_keys = self._entity_closure(option_keys)
+
+        ent_old = [self.ns_entity.get_index(k) for k in ent_keys]
+        opt_old = [self.ns_option.get_index(k) for k in option_keys]
+        e_map = {old: i for i, old in enumerate(ent_old)}
+        o_map = {old: i for i, old in enumerate(opt_old)}
+
+        data = HeteroData()
+        data[self.ns_entity.type].x = self.ns_entity.x[ent_old]
+        data[self.ns_entity.type].type_ids = self.ns_entity.type_ids[ent_old]
+        data[self.ns_option.type].x = self.ns_option.x[opt_old]
+
+        disabled = [k for k in self.ns_option.keys if k not in option_keys]
+        if disabled:
+            logger.debug(
+                f"gated out options ({len(disabled)}/{len(self.ns_option.keys)}): "
+                f"{disabled}"
+            )
+
+        def _compact(
+            es: EdgeSet, src_map: dict[int, int], dst_map: dict[int, int]
+        ) -> tuple[torch.Tensor, torch.Tensor]:
+            """Filter an edge set to edges whose endpoints are kept, remapping
+            both endpoint indices onto the compact node lists."""
+            rows = [
+                i for i, (s, d) in enumerate(es.edges) if s in src_map and d in dst_map
+            ]
+            if rows:
+                idx = (
+                    torch.tensor(
+                        [
+                            [src_map[es.edges[i][0]], dst_map[es.edges[i][1]]]
+                            for i in rows
+                        ],
+                        dtype=torch.long,
+                    )
+                    .t()
+                    .contiguous()
+                )
+                attrs = (
+                    es.edge_attr[rows]
+                    if es.edge_attr.ndim == 2
+                    else torch.empty((0, 0))
+                )
+            else:
+                idx = torch.empty((2, 0), dtype=torch.long)
+                attrs = torch.empty((0, es.edge_attr.shape[1]))
+            return idx, attrs
+
+        si, sa = _compact(self.es_stepmix, e_map, e_map)
+        data[self.es_stepmix.type].edge_index = si
+        data[self.es_stepmix.type].edge_attr = sa
+        si, sa = _compact(self.es_summary, e_map, o_map)
+        data[self.es_summary.type].edge_index = si
+        data[self.es_summary.type].edge_attr = sa
+        si, _ = _compact(self.es_tapas, e_map, e_map)
+        data[self.es_tapas.type].edge_index = si
         return data.to(device=hardware.device.type)
+
+    def _feasible(self, key: str) -> bool:
+        node = self.ns_option.get_by_key(key)
+        con = self._option_conditions.get(key)
+        if con is None or not self._start_set:
+            return True  # no gate info / no current scene -> never disable
+        try:
+            subgoal = self.assemble_subgoal(node)
+        except KeyError:
+            return False
+        for label in con.pre.models:
+            up = con.pre.models[label].get_parameters().copy()
+            try:
+                value = self.start.get(label).value
+            except KeyError:
+                return False
+            if not self.entities[label].score_single(value, up):
+                return False
+        for label in con.post.models:
+            up = con.post.models[label].get_parameters().copy()
+            if not self.entities[label].score_single(subgoal.get(label).value, up):
+                return False
+        return True
+
+    def enabled_keys(self) -> list[str]:
+        keys = [k for k in self.ns_option.keys if self._feasible(k)]
+        if not keys:
+            logger.warning(
+                "No option passes the state gate for the current scene; "
+                f"exporting the ungated full set ({len(self.ns_option.keys)} "
+                "options)."
+            )
+            return list(self.ns_option.keys)
+        return keys
+
+    @property
+    def export_keys(self) -> list[str]:
+        if self._export_keys is None:
+            return list(self.ns_option.keys)
+        return self._export_keys
+
+    def _entity_closure(self, option_keys: list[str]) -> list[str]:
+        keep: set[str] = set()
+        stack: list[str] = []
+        for key in option_keys:
+            node = self.ns_option.get_by_key(key)
+            stack.extend(node.sources.get("entity", ()))
+        while stack:
+            key = stack.pop()
+            if key in keep or not self.ns_entity.has_key(key):
+                continue
+            keep.add(key)
+            node = self.ns_entity.get_by_key(key)
+            stack.extend(node.sources.get("entity", ()))
+            stack.extend(node.sources.get("comp", ()))
+        return [k for k in self.ns_entity.keys if k in keep]
 
     def set_start(self, start: DCScene):
         self.start = start.copy()
+        self._start_set = True
         for key in self.start_keys:
             node = self.ns_entity.get_by_key(key)
             assert isinstance(node, ValueNode)
@@ -148,10 +258,6 @@ class Graph:
         return keys
 
     def set_precon(self, label: str, con: Condition) -> dict[str, str]:
-        """Returns dict[str,str]
-        key: entity
-        value: key for node
-        """
         comp_sources = self.set_comps(label, con)
         pre_sources: dict[str, str] = {}
         for entity, sources in comp_sources.items():
@@ -305,6 +411,7 @@ class Graph:
                             sources={"entity": set(post_sources.values())},
                         ),
                     )
+                    graph._option_conditions[ac.label] = ac
                     if smode == SubgoalMode.SIMPLE:
                         graph.ns_option.add(
                             ac.label + "s",
@@ -313,10 +420,11 @@ class Graph:
                                 sources={"entity": set(post_sources_alt.values())},
                             ),
                         )
+                        graph._option_conditions[ac.label + "s"] = ac
                 if smode == SubgoalMode.CHAIN:
                     graph._pair_scores[(a.cfg.tag, b.cfg.tag)] = bc.pre.scores(ac.post)
                     subgoal = bc.pre.make_subgoal(ac.post)
-                    if subgoal is not None:
+                    if subgoal:
                         sources = graph.set_subgoal(
                             ac.label + "--" + bc.label,
                             post_comp_sources,
@@ -331,6 +439,7 @@ class Graph:
                                 sources={"entity": sources},
                             ),
                         )
+                        graph._option_conditions[ac.label + "--" + bc.label] = ac
 
         graph.es_stepmix.edges_from_sets(graph.ns_entity, graph.ns_entity, "comp")
         graph.es_summary.edges_from_sets(graph.ns_entity, graph.ns_option, "entity")
@@ -338,7 +447,9 @@ class Graph:
 
         return graph
 
-    def select(self, index: int) -> tuple[ExpertModel.Config, DCScene]:
+    def select(self, option: int) -> tuple[ExpertModel.Config, DCScene]:
+        option_key = self.export_keys[option]
+        index = self.ns_option.get_index(option_key)
         node = self.ns_option.idx_get(index)
         assert isinstance(node, OptionNode)
         subgoal = self.assemble_subgoal(node)
@@ -462,13 +573,6 @@ class Graph:
         logger.info("Summary edges:\n" + ", ".join(summary_lines))
 
     def plot_connections(self, path: Path, figsize=(10, 8)):
-        """Plot expert-condition connections computed during generation.
-
-        Cell ``(i, j)`` is the minimum containment score over shared entities
-        for the pair ``post(model i) -> pre(model j)``, regardless of whether
-        it passed the thresholds. Empty cells mean the two models share no
-        entity. Diagonal entries are self-connections (direct options).
-        """
         tags = self._agent_tags
         pair_scores = self._pair_scores
         if not tags:

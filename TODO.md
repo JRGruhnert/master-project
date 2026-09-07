@@ -3,7 +3,7 @@
 ## Short Horizon:
 
 - ogbench: fix bad states
-- heca: add information on which entity is at goal position for network
+- (heca: add information on which entity is at goal position for network)
 - heca: finalize virtual pre post check
 - thesis: start scaffolding red line
 
