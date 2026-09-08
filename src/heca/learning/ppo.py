@@ -10,12 +10,6 @@ from heca.misc.interrupt import stop_requested
 
 
 def build_chunks(n: int, terminals: list[bool], seq_len: int) -> list[list[int]]:
-    """Split the buffer (episode-ordered transitions) into contiguous chunks
-    that never cross an episode boundary and are at most ``seq_len`` long
-    (``seq_len <= 0`` means one chunk per whole episode). Each chunk is
-    self-contained for truncated BPTT: its first step either starts an episode
-    (no stored memory) or carries the stored ``mem_step`` to bootstrap from.
-    """
     chunks: list[list[int]] = []
     seg: list[int] = []
     for i in range(n):
@@ -38,20 +32,20 @@ def score_chunks(
     logprobs: list[torch.Tensor] = []
     values: list[torch.Tensor] = []
     entropies: list[torch.Tensor] = []
-    use_mem = net.cfg.use_timeline_memory
     for seg in chunks:
         h: torch.Tensor | None = None
         for pos, t in enumerate(seg):
-            mem = h if (use_mem and pos > 0) else None
+            mem = h if pos > 0 else None
             logits, value = net.forward(data[t], memory=mem)
             dist = Categorical(logits=logits)
             logprobs.append(dist.log_prob(actions[t : t + 1]))
             values.append(value)
             entropies.append(dist.entropy())
-            if use_mem and pos < len(seg) - 1:
+            if pos < len(seg) - 1:
                 nxt = getattr(data[seg[pos + 1]], "mem_step", None)
                 if nxt is not None:
                     u, _ = nxt
+                    assert net.timeline is not None, "Shouldn't happen."
                     h = net.timeline(u.clone(), net._last_mem)
                 else:
                     h = None
@@ -99,7 +93,12 @@ class PPO(Learner):
 
         use_chunked = self.network.cfg.use_timeline_memory
         if use_chunked:
-            terminals = [d.terminal or d.truncated for d in old_data]
+            # old_data holds the HeteroData graphs; the terminal flags live on
+            # the BufferData records in the queue.
+            terminals = [
+                t or tr
+                for t, tr in zip(self.buffer.terminals, self.buffer.truncates)
+            ]
             chunks = build_chunks(N, terminals, self.cfg.seq_len)
 
         # Accumulators for averaging
@@ -115,12 +114,8 @@ class PPO(Learner):
         kl_stop = False
         for _ in range(self.cfg.n_epoch):
             if stop_requested():
-                # Abort between epochs so a Ctrl-C is not delayed by the whole
-                # PPO update (capacity/batch_size * n_epoch minibatches).
                 break
             if use_chunked:
-                # Minibatches are contiguous episode chunks (shuffled at chunk
-                # granularity), each scored by one truncated-BPTT unroll.
                 order = torch.randperm(len(chunks)).tolist()
                 minibatches: list[list[int]] = []
                 cur: list[int] = []

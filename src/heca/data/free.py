@@ -17,8 +17,7 @@ class FreeEntity(Entity):
     @dataclass(kw_only=True)
     class Config(Entity.Config):
         type_id: int = 0
-        add_rotation: bool = True
-        do_canonicalize: bool = True
+        canonicalize_rot: bool = True
 
     @property
     def measurement(self) -> dict:

@@ -6,7 +6,7 @@ import argparse
 from heca.misc import logger
 from heca.scenes.scene import Scene
 
-from scripts.b03_plot_tapas_reliability import get_env_safely
+from scripts.b03_plot_tapas_models import get_env_safely
 from scripts.common.args import add_scene_argument
 from scripts.common.scenes import iter_scene_configs
 
@@ -31,7 +31,7 @@ def _color(s, name):
 
 
 def plot_scene_boundaries(
-    env,
+    scene: Scene,
     ax=None,
     alpha=0.3,
     show_spawn_outline=True,
@@ -39,21 +39,12 @@ def plot_scene_boundaries(
     label_kwargs=None,
     margin=0.12,
 ):
-    """Top-down plot of every object's spawn/reach geometry.
-
-    Args:
-        env: a SceneEnvBase env (wrapped or unwrapped).
-        ax: optional matplotlib Axes.
-        alpha: fill opacity of the geometry patches.
-        show_spawn_outline: for free bodies, also outline the nominal spawn rect.
-        label: annotate each shape with its object name (the dict key).
-    """
-    u = env.unwrapped if hasattr(env, "unwrapped") else env
+    env = get_env_safely(scene)
     if ax is None:
         _, ax = plt.subplots(figsize=(7, 7))
-    geo = u.get_object_boundaries()
+    geo = env.get_object_boundaries()
 
-    wb = u._workspace_bounds
+    wb = env._workspace_bounds
     ax.add_patch(
         Rectangle(
             wb[0],
@@ -151,9 +142,8 @@ def main():
         scene = Scene.get(scene_cfg)
         out_dir = Scene.save_dir(scene_cfg) / "plots"
         out_dir.mkdir(parents=True, exist_ok=True)
-        env = get_env_safely(scene)
         fig, ax = plt.subplots(figsize=(7, 7))
-        plot_scene_boundaries(env, ax=ax)
+        plot_scene_boundaries(scene, ax=ax)
         path = out_dir / f"floor_plan_{scene.cfg.tag}.png"
         fig.savefig(path, dpi=200, bbox_inches="tight")
         plt.close(fig)

@@ -91,7 +91,7 @@ def add_batch_argument(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--batch",
         type=int,
-        default=1000,
+        default=500,
         help="Number of training batches per client.",
     )
 
@@ -100,7 +100,7 @@ def add_reload_argument(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--reload",
         action="store_true",
-        help="Reload expert conditions instead of loading conditions.joblib.",
+        help="Reload expert conditions instead of loading the condition cache.",
     )
 
 
@@ -148,6 +148,10 @@ def subgoal_tag(smode: SubgoalMode) -> str:
 
 def generate_tag(args: argparse.Namespace) -> str:
     final_tag = ""
+    final_tag += args.tag
+    final_tag += "-"
+    final_tag += args.network
+    final_tag += "-"
     final_tag += "f" if args.federated else "_"
     final_tag += "g" if args.gt else "_"
     final_tag += "v" if args.virtual else "_"

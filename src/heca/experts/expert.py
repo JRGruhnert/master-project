@@ -131,10 +131,12 @@ class ExpertModel(Persistable, abc.ABC):
 
     def act(self, x: DCScene, y: DCScene) -> tuple[DCScene, SceneFeedback]:
         if self.act_virtual:
-            return self.virtual_step(x, y)
-
+            z, fb = self.virtual_step(x, y)
         else:
-            return self._act(x, y)
+            z, fb = self._act(x, y)
+        # One RL/option step == one whole expert execution (not the individual
+        # low-level env actions inside it).
+        return z, self.scene.count_option(fb)
 
     def _act(self, x: DCScene, y: DCScene) -> tuple[DCScene, SceneFeedback]:
         raise NotImplementedError
@@ -166,3 +168,6 @@ class ExpertModel(Persistable, abc.ABC):
         path = cls.instance_dir(scene, scene.folder) / scene.tag / "experts" / cfg.tag
         path.mkdir(parents=True, exist_ok=True)
         return path
+
+    def fit_conditions(self):
+        raise NotImplementedError

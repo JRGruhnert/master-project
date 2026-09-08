@@ -34,6 +34,7 @@ from scripts.common.args import (
     add_use_gt_argument,
     add_viewer_argument,
 )
+from scripts.common.plot_lock import PLOT_LOCK
 from scripts.common.scenes import agents_by_scene
 
 
@@ -63,8 +64,6 @@ def condition_info_dict(con: Condition, scene: Scene) -> dict:
 
 
 def anchor_entities(agent: ExpertModel) -> set[str]:
-    """Entities that do not move in this agent's task (change score below the
-    anchor threshold)."""
     return {
         label
         for label, score in agent.conditions.change_scores.items()
@@ -123,14 +122,16 @@ def evaluate_model(
     return counts
 
 
-def plot_scene(
+def _plot_scene_impl(
     scene_tag: str,
     results: list[dict],
     out_dir: Path,
     max_tries: int,
     episodes: int,
 ) -> Path:
-    """Stacked bar chart of per-attempt success rates for one scene."""
+    results = [
+        {**r, "counts": {int(k): v for k, v in r["counts"].items()}} for r in results
+    ]
     tags = [r["tag"] for r in results]
     n = len(tags)
     pct = np.zeros((n, max_tries + 1))
@@ -193,6 +194,99 @@ def plot_scene(
     return path
 
 
+def plot_scene(
+    scene_tag: str,
+    results: list[dict],
+    out_dir: Path,
+    max_tries: int,
+    episodes: int,
+) -> Path:
+    """Stacked bar chart of per-attempt success rates (pyplot lock held)."""
+    with PLOT_LOCK:
+        return _plot_scene_impl(scene_tag, results, out_dir, max_tries, episodes)
+
+
+def results_path(scene_cfg: Scene.Config) -> Path:
+    """Shared, stateless results file for one scene."""
+    out_dir = Scene.save_dir(scene_cfg) / "plots"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    return out_dir / f"eval_success_{scene_cfg.tag}.json"
+
+
+def load_results(json_path: Path) -> dict:
+    if json_path.exists():
+        try:
+            return json.loads(json_path.read_text())
+        except (json.JSONDecodeError, OSError):
+            pass
+    return {}
+
+
+def update_results(json_path: Path, entry: dict, episodes: int, max_tries: int):
+    """Insert/replace one agent's entry in the scene results json (in place).
+
+    Stateless: reads the current file, updates only this model's record, writes
+    back. Safe to call per model so partial/interrupted runs keep their state.
+    """
+    data = load_results(json_path)
+    data["episodes"] = episodes
+    data["max_tries"] = max_tries
+    agents = data.setdefault("agents", [])
+    for i, agent in enumerate(agents):
+        if agent.get("tag") == entry["tag"]:
+            agents[i] = entry
+            break
+    else:
+        agents.append(entry)
+    data.setdefault("failures", [])
+    json_path.write_text(json.dumps(data, indent=2))
+    return data
+
+
+def plot_results(scene_cfg: Scene.Config, json_path: Path | None = None) -> Path | None:
+    """(Re)plot the current scene chart from the persisted results json."""
+    json_path = json_path or results_path(scene_cfg)
+    data = load_results(json_path)
+    agents = data.get("agents", [])
+    if not agents:
+        return None
+    episodes = int(data.get("episodes", 100))
+    max_tries = int(data.get("max_tries", 3))
+    return plot_scene(scene_cfg.tag, agents, json_path.parent, max_tries, episodes)
+
+
+def evaluate_one(
+    cfg: ExpertModel.Config,
+    scene_cfg: Scene.Config,
+    episodes: int,
+    max_tries: int,
+    gt: bool,
+) -> Counter:
+    """Evaluate one model, persist its result, re-plot the scene chart."""
+    model = ExpertModel.get(cfg).use_gt(gt)
+    counts = evaluate_model(model, model.scene, episodes, max_tries)
+
+    json_path = results_path(scene_cfg)
+    update_results(
+        json_path,
+        {"scene": scene_cfg.tag, "tag": cfg.tag, "counts": dict(counts)},
+        episodes,
+        max_tries,
+    )
+    plot_path = plot_results(scene_cfg, json_path)
+
+    total = sum(counts.values())
+    ok = total - counts.get(0, 0)
+    hist = ", ".join(f"try{t}={counts.get(t, 0)}" for t in range(1, max_tries + 1))
+    logger.info(
+        f"[{scene_cfg.tag}] {cfg.tag}: {ok}/{total} episodes ok "
+        f"({hist}, failed={counts.get(0, 0)})"
+    )
+    if plot_path is not None:
+        logger.info(f"[{scene_cfg.tag}] updated {plot_path}")
+    return counts
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     add_scene_argument(parser)
@@ -221,50 +315,10 @@ def main():
             Scene.get(scene_cfg, auto_load=False).cfg.viewer = True
         logger.info(f"[{scene_cfg.tag}] evaluating {len(models)} agents")
 
-        results: list[dict] = []
-        failures: list[dict] = []
         for cfg in models:
             if args.model and cfg.tag != args.model:
                 continue
-
-            model = ExpertModel.get(cfg).use_gt(args.gt)
-            counts = evaluate_model(
-                model,
-                model.scene,
-                args.episodes,
-                args.max_tries,
-            )
-            results.append(
-                {"scene": scene_cfg.tag, "tag": cfg.tag, "counts": dict(counts)}
-            )
-            total = sum(counts.values())
-            ok = total - counts.get(0, 0)
-            hist = ", ".join(
-                f"try{t}={counts.get(t, 0)}" for t in range(1, args.max_tries + 1)
-            )
-            logger.info(
-                f"[{scene_cfg.tag}] {cfg.tag}: {ok}/{total} episodes ok "
-                f"({hist}, failed={counts.get(0, 0)})"
-            )
-
-        out_dir = Scene.save_dir(scene_cfg) / "plots"
-        out_dir.mkdir(parents=True, exist_ok=True)
-        plot_path = plot_scene(
-            scene_cfg.tag, results, out_dir, args.max_tries, args.episodes
-        )
-        json_path = out_dir / f"eval_success_{scene_cfg.tag}.json"
-        json_path.write_text(
-            json.dumps(
-                {
-                    "episodes": args.episodes,
-                    "max_tries": args.max_tries,
-                    "agents": results,
-                    "failures": failures,
-                },
-                indent=2,
-            )
-        )
-        logger.info(f"[{scene_cfg.tag}] wrote {plot_path}")
+            evaluate_one(cfg, scene_cfg, args.episodes, args.max_tries, args.gt)
 
 
 if __name__ == "__main__":

@@ -45,9 +45,6 @@ class TempStore:
     action: torch.Tensor
     logprob: torch.Tensor
     value: torch.Tensor
-    # Timeline-memory bookkeeping (use_timeline_memory): the embedding of the
-    # chosen option and the hidden state used at this step, needed to build
-    # the next timeline event once the outcome (feedback) is known.
     opt_emb: torch.Tensor
     mem_used: torch.Tensor
 

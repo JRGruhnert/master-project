@@ -36,7 +36,7 @@ class Scene(Persistable):
         reject_prob: float = 0.5
         success_reward: float = 1.0
         step_reward: float = -0.01
-        max_steps: int = 16
+        max_steps: int = 32
 
     def __init__(self, cfg: Config):
         self.cfg = cfg
@@ -52,10 +52,21 @@ class Scene(Persistable):
         return tdscene, tdimage, npimage
 
     def apply_truncation(self, lfb: SceneFeedback) -> SceneFeedback:
+        """Reward shaping for one low-level action (no option counting)."""
         reward = self.cfg.step_reward + self.cfg.success_reward * int(lfb.success)
+        return SceneFeedback(
+            reward=reward, terminal=lfb.terminal, truncated=lfb.truncated
+        )
+
+    def count_option(self, fb: SceneFeedback) -> SceneFeedback:
+        """Count one *executed option* (one expert ``act``) against the
+        per-episode budget ``max_steps``. Low-level actions inside an option
+        do not count; only whole option executions do."""
         self.current_step += 1
-        truncated = self.current_step >= self.cfg.max_steps
-        return SceneFeedback(reward=reward, terminal=lfb.terminal, truncated=truncated)
+        truncated = self.current_step >= self.cfg.max_steps or fb.truncated
+        return SceneFeedback(
+            reward=fb.reward, terminal=fb.terminal, truncated=truncated
+        )
 
     def step(self, action: np.ndarray) -> tuple[DCScene, TDImage, SceneFeedback]:
         obs, fb = self._step(action)

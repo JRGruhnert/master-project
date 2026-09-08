@@ -1,7 +1,11 @@
 from heca.heca_gnn.network import Network
 
 default = Network.Config()
-small = Network.Config(feature_dim=128, encoder_depth=2, gnn_mlp_depth=2)
-big = Network.Config(feature_dim=512, encoder_depth=4, gnn_mlp_depth=4, attn_heads=8)
+interact = Network.Config(use_option_interaction=True)
+timeline = Network.Config(use_timeline_memory=True)
+both = Network.Config(
+    use_timeline_memory=True,
+    use_option_interaction=True,
+)
 
-NETWORK_NAMES = ["default", "small", "big"]
+NETWORK_NAMES = ["default", "interact", "timeline", "both"]

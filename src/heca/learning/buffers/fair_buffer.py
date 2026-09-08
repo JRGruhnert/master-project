@@ -9,7 +9,7 @@ class FairBuffer(Buffer):
     class Config(Buffer.Config):
         capacity: int = 2048
         gae_lambda: float = 0.95
-        gamma: float = 0.99
+        gamma: float = 0.95
 
     def __init__(self, cfg: Config):
         super().__init__(cfg)

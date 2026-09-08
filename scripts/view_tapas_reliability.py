@@ -157,7 +157,7 @@ def run_real_rollout(
 def print_feedback(fb: SceneFeedback):
     print(
         f"Feedback: terminal={fb.terminal} truncated={fb.truncated} "
-        f"success={fb.success:.4f} reward={fb.reward}"
+        f"success={fb.success} reward={fb.reward:.4f}"
     )
 
 
@@ -187,10 +187,11 @@ def subgoal_expectation(graph: Graph, i: int, model: ExpertModel, x: DCScene) ->
 
 def print_menu(graph: Graph, x: DCScene):
     print("\n" + "-" * 78)
-    print("Options (graph)")
-    for i, key in enumerate(graph.ns_option.keys):
-        option = graph.ns_option.items[i]
-        model = ExpertModel.get(option.model)
+    print("Options (graph, state-gated)")
+    keys = graph.export_keys  # mirrors the options the RL graph can choose
+    for i, key in enumerate(keys):
+        node = graph.ns_option.get_by_key(key)
+        model = ExpertModel.get(node.model)
         ok, blocked = precondition_status(model, x)
         flag = "VALID " if ok else "BAD"
         note = "" if ok else f" (Entities: [{', '.join(blocked)}])"
@@ -242,6 +243,7 @@ def main():
             print("=" * 78)
             print_scene("obs.", x)
             print_scene("goal", y)
+            graph.export()  # prune options to those valid for the current state
             print_menu(graph, x)
             ep_step += 1
 
@@ -262,12 +264,12 @@ def main():
                 print(f"  unknown command: {choice!r}")
                 continue
             i = int(idx)
-            if i >= len(graph.ns_option.keys):
+            if i >= len(graph.export_keys):
                 print(f"  no option with index {i}")
                 continue
             model_cfg, subgoal = graph.select(i)
             model = ExpertModel.get(model_cfg)
-            key = graph.ns_option.key_at(i)
+            key = graph.export_keys[i]  # keep in sync with select(i)
             if kind == "v":
                 z, fb = run_virtual_step(scene, model, x, subgoal, key)
             else:

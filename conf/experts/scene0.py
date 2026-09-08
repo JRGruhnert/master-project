@@ -101,7 +101,9 @@ drawer0_b_a = TapasExpert.Config(
         ["drawer0", "ee_target"],
     ],
     segment_ids=[0, 1, 2, 4, 5, 7, 9, 10, 11, 12, 14, 15, 17, 18, 19, 20, 22, 23, 24],
-    fix_bimodal=True,
+    # fix_bimodal=True,
+    # use_ee_frames=True,
+    snap_ee_actions=False,
 )
 
 window0_a_b = TapasExpert.Config(
@@ -117,6 +119,7 @@ window0_a_b = TapasExpert.Config(
     ],
     segment_ids=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
     fix_bimodal=True,
+    snap_ee_actions=False,
 )
 
 window0_b_a = TapasExpert.Config(

@@ -151,12 +151,24 @@ class TapasExpert(ExpertModel):
         assert isinstance(temp, GMMPolicy), "Policy model must be a GMMPolicy."
         self.policy = temp.to(device)
 
+    # Safety cap on predicted plan length. A degenerate HMM-cascade can yield a
+    # near-zero time step and produce a plan of ~1e5-1e6 actions, which would
+    # otherwise freeze the action-replay loop in _act (see "Product did not
+    # converge" warnings). Normal plans are ~40-200 steps.
+    MAX_PLAN_STEPS: int = 2000
+
     def make_batch_prediction(
         self, x: SceneObservation  # type: ignore
     ) -> RobotTrajectory | None:
         # prds, _ = self.policy.predict(x)
         try:
             prds, _ = self.policy.predict(x)  # type: ignore
+            if prds is not None and len(prds.points) > self.MAX_PLAN_STEPS:
+                logger.warning(
+                    f"{self.cfg.tag}: predicted plan of {len(prds.points)} "
+                    f"steps (> {self.MAX_PLAN_STEPS}); aborting this option."
+                )
+                return None
             return prds  # type: ignore
         except Exception as e:
             logger.debug(f"Error: {e}")
@@ -318,37 +330,18 @@ class TapasExpert(ExpertModel):
 
     @cached_property
     def conditions(self) -> ConPair:
-        path = self.load_dir(self.cfg)
-        cache_path = path / "condition.joblib"
+        cache_path = self.conditions_cache_path
         if cache_path.exists() and not self._force_recompute:
             logger.debug(f"Loading cached conditions from {cache_path}")
             return joblib.load(cache_path)
-
-        demos_file = h5py.File(path / f"demos.h5", "r")
-        demos_scenes, demos_images = self.scene.load_dataset(
-            demos_file,
-            only_conditions=True,
-            with_images=not self._use_gt,
-        )
-
-        pre_data: dict[str, np.ndarray] = {}
-        post_data: dict[str, np.ndarray] = {}
-        if self._use_gt:
-            start_scenes = [demo[0] for demo in demos_scenes]
-            end_scenes = [demo[-1] for demo in demos_scenes]
         else:
-            start_scenes = [self.from_image(demo[0]) for demo in demos_images]
-            end_scenes = [self.from_image(demo[-1]) for demo in demos_images]
+            self.fit_conditions()
+        return joblib.load(cache_path)
 
-        for key in self.entities:
-            pre_data[key] = np.stack([s[key].value for s in start_scenes])
-            post_data[key] = np.stack([s[key].value for s in end_scenes])
-
-        pair = ConPair.make(self.cfg.tag, pre_data, post_data, self.entities)
-        pair.plot(path)
-        joblib.dump(pair, cache_path)
-        logger.info(f"Saved conditions to {cache_path}")
-        return pair
+    @property
+    def conditions_cache_path(self) -> Path:
+        name = "condition-gt.joblib" if self._use_gt else "condition-vis.joblib"
+        return self.load_dir(self.cfg) / name
 
     def fit_stage1(self, demos: Demos):
         liks, avg_logliks = self.model.fit_trajectories(
@@ -622,3 +615,34 @@ class TapasExpert(ExpertModel):
             for s in scenes:
                 q = np.asarray(s.extras["ee_pose"][3:7], dtype=float)
                 s.extras["ee_pose"][3:7] = Quaternion.mul(q_z180, q)
+
+    def fit_conditions(self):
+        logger.info(
+            f"[{self.cfg.scene.tag}] Fitting conditions ({self._use_gt}): {self.cfg.tag}"
+        )
+        path = self.load_dir(self.cfg)
+        cache_path = self.conditions_cache_path
+        demos_file = h5py.File(path / f"demos.h5", "r")
+        demos_scenes, demos_images = self.scene.load_dataset(
+            demos_file,
+            only_conditions=True,
+            with_images=not self._use_gt,
+        )
+
+        pre_data: dict[str, np.ndarray] = {}
+        post_data: dict[str, np.ndarray] = {}
+        if self._use_gt:
+            start_scenes = [demo[0] for demo in demos_scenes]
+            end_scenes = [demo[-1] for demo in demos_scenes]
+        else:
+            start_scenes = [self.from_image(demo[0]) for demo in demos_images]
+            end_scenes = [self.from_image(demo[-1]) for demo in demos_images]
+
+        for key in self.entities:
+            pre_data[key] = np.stack([s[key].value for s in start_scenes])
+            post_data[key] = np.stack([s[key].value for s in end_scenes])
+
+        pair = ConPair.make(self.cfg.tag, pre_data, post_data, self.entities)
+        pair.plot(path)
+        joblib.dump(pair, cache_path)
+        logger.info(f"Saved conditions to {cache_path}")

@@ -26,7 +26,7 @@ class Entity(Configurable):
     @dataclass(kw_only=True)
     class Config(Configurable.Config):
         type_id: int
-        add_rotation: bool = False
+        add_rotation: bool = True
         n_states: int = 1
         question: str = ""
         answers: list[str] = field(default_factory=list)

@@ -24,7 +24,7 @@ class Buffer(Configurable):
     @dataclass(kw_only=True)
     class Config(Configurable.Config):
         capacity: int
-        gamma: float = 0.99
+        gamma: float
 
     def __init__(self, cfg: Config):
         self.cfg = cfg
