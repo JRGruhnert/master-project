@@ -16,3 +16,14 @@
 ## Testing:
 
 export WANDB_API_KEY=your_api_key_here
+
+## Meeting:
+
+- tapas model
+- - demos neu aufgenommen mit mehr segmenten (neue oracle plans)
+- - einstellungen rumgespielt
+- - bimodal problem demo daten
+- - hindernisse in scene verhindern Erfolg
+- - 5 neue Scenen (2 alte mit peg sind raus)
+- - ogbench tapas evaluierung (plots)
+- -

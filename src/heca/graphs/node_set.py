@@ -19,6 +19,7 @@ class NodeSet(Generic[T]):
         self.type = type
 
     def add(self, key: str, value: T):
+        assert key not in self.index, f"duplicate node key: {key}"
         self.index[key] = len(self.items)
         self.items.append(value)
         self.keys.append(key)

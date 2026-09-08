@@ -101,7 +101,7 @@ class Graph:
                     .contiguous()
                 )
                 attrs = (
-                    es.edge_attr[rows]
+                    es.edge_attr[rows].clone()
                     if es.edge_attr.ndim == 2
                     else torch.empty((0, 0))
                 )
@@ -158,7 +158,7 @@ class Graph:
     def export_keys(self) -> list[str]:
         if self._export_keys is None:
             return list(self.ns_option.keys)
-        return self._export_keys
+        return list(self._export_keys)
 
     def _entity_closure(self, option_keys: list[str]) -> list[str]:
         keep: set[str] = set()
@@ -182,7 +182,7 @@ class Graph:
         for key in self.start_keys:
             node = self.ns_entity.get_by_key(key)
             assert isinstance(node, ValueNode)
-            self.ns_entity.key_update(key, start[node.entity])
+            self.ns_entity.key_update(key, self.start.get(node.entity))
 
         self.update_nodes()
         self.rebuild()
@@ -215,7 +215,7 @@ class Graph:
         for key in option.sources.get("entity", set()):
             node = self.ns_entity.get_by_key(key)
             assert isinstance(node, EntityNode)
-            subgoal.set(node.entity, node.data)
+            subgoal.set(node.entity, node.data.copy())
         return subgoal
 
     def __str__(self) -> str:
@@ -369,6 +369,8 @@ class Graph:
                     vmode=ValueMode.CHECK,
                 )
                 post_sources = post_start_sources | post_check_sources
+                use_sample_variant = False
+                use_chain = False
             else:  # SIMPLE / CHAIN / BOTH all use goal-pinned targets
                 post_goal_sources = graph.set_postcon(
                     ac.label,
