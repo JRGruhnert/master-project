@@ -24,6 +24,7 @@ class SubgoalMode(Enum):
     NONE = "none"
     SIMPLE = "simple"
     CHAIN = "chain"
+    BOTH = "both"
 
     def __str__(self):
         return self.value
@@ -84,8 +85,6 @@ class Graph:
         def _compact(
             es: EdgeSet, src_map: dict[int, int], dst_map: dict[int, int]
         ) -> tuple[torch.Tensor, torch.Tensor]:
-            """Filter an edge set to edges whose endpoints are kept, remapping
-            both endpoint indices onto the compact node lists."""
             rows = [
                 i for i, (s, d) in enumerate(es.edges) if s in src_map and d in dst_map
             ]
@@ -317,7 +316,7 @@ class Graph:
         post_sources: dict[str, str],
         subgoal: dict[str, np.ndarray],
     ) -> set[str]:
-        temp_sources = post_sources
+        temp_sources = dict(post_sources)
         for entity, value in subgoal.items():
             key = "sub_" + entity + label
             sources = set(comp_sources[entity])
@@ -370,7 +369,7 @@ class Graph:
                     vmode=ValueMode.CHECK,
                 )
                 post_sources = post_start_sources | post_check_sources
-            elif smode == SubgoalMode.SIMPLE:
+            else:  # SIMPLE / CHAIN / BOTH all use goal-pinned targets
                 post_goal_sources = graph.set_postcon(
                     ac.label,
                     ac.post,
@@ -379,27 +378,19 @@ class Graph:
                     entities=ac.target_entities,
                     vmode=ValueMode.GOAL,
                 )
-                post_sample_sources = graph.set_postcon(
-                    ac.label,
-                    ac.post,
-                    post_comp_sources,
-                    pre_sources,
-                    entities=ac.target_entities,
-                    vmode=ValueMode.SAMPLE,
-                )
                 post_sources = post_start_sources | post_goal_sources
-                post_sources_alt = post_start_sources | post_sample_sources
-            elif smode == SubgoalMode.CHAIN:
-                post_goal_sources = graph.set_postcon(
-                    ac.label,
-                    ac.post,
-                    post_comp_sources,
-                    pre_sources,
-                    entities=ac.target_entities,
-                    vmode=ValueMode.GOAL,
-                )
-
-                post_sources = post_start_sources | post_goal_sources
+                use_sample_variant = smode in (SubgoalMode.SIMPLE, SubgoalMode.BOTH)
+                if use_sample_variant:
+                    post_sample_sources = graph.set_postcon(
+                        ac.label,
+                        ac.post,
+                        post_comp_sources,
+                        pre_sources,
+                        entities=ac.target_entities,
+                        vmode=ValueMode.SAMPLE,
+                    )
+                    post_sources_alt = post_start_sources | post_sample_sources
+                use_chain = smode in (SubgoalMode.CHAIN, SubgoalMode.BOTH)
 
             for b in agents:
                 bc = b.conditions
@@ -412,7 +403,7 @@ class Graph:
                         ),
                     )
                     graph._option_conditions[ac.label] = ac
-                    if smode == SubgoalMode.SIMPLE:
+                    if use_sample_variant:
                         graph.ns_option.add(
                             ac.label + "s",
                             OptionNode(
@@ -421,7 +412,7 @@ class Graph:
                             ),
                         )
                         graph._option_conditions[ac.label + "s"] = ac
-                if smode == SubgoalMode.CHAIN:
+                if use_chain:
                     graph._pair_scores[(a.cfg.tag, b.cfg.tag)] = bc.pre.scores(ac.post)
                     subgoal = bc.pre.make_subgoal(ac.post)
                     if subgoal:

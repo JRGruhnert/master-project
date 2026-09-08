@@ -143,6 +143,8 @@ def subgoal_tag(smode: SubgoalMode) -> str:
         return "s"
     elif smode == SubgoalMode.CHAIN:
         return "c"
+    elif smode == SubgoalMode.BOTH:
+        return "b"
     raise ValueError
 
 

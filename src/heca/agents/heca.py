@@ -53,7 +53,7 @@ class Heca(Configurable):
 
         self.graph = Graph.generate(list(self.cfg.agents), smode=cfg.smode)
         self.graph.plot(path=self.scene.save_dir(self.scene.cfg))
-        if self.cfg.smode == SubgoalMode.CHAIN:
+        if self.cfg.smode in (SubgoalMode.CHAIN, SubgoalMode.BOTH):
             self.graph.plot_connections(path=self.scene.save_dir(self.scene.cfg))
         self.graph.log()
 
@@ -65,8 +65,6 @@ class Heca(Configurable):
         self.graph.set_start(x)
         data = self.graph.export()
         option = self.learner.predict(data, new_ep)
-        # select() expects the compact index (the enabled subset of the last
-        # export) and resolves it back to the blueprint node internally.
         a, s = self.graph.select(option)
         z, fb = ExpertModel.get(a).act(x, s)
         if logger.TRACE:
