@@ -5,7 +5,6 @@ import torch
 
 from heca.experts.expert import ExpertModel
 from heca.graphs.graph import Graph, SubgoalMode
-from heca.graphs.edges.edge_set import ResidualMode
 from heca.learning.learner import Learner
 from heca.misc import logger
 from heca.misc.interrupt import stop_requested
@@ -27,7 +26,6 @@ class Heca(Configurable):
         use_gt: bool
 
         fit_rotation: bool = True
-        residual_mode: ResidualMode = ResidualMode.CONSTANT
 
     def __init__(self, cfg: Config):
         super().__init__(cfg)
@@ -53,11 +51,7 @@ class Heca(Configurable):
 
                 expert.virtual()
 
-        self.graph = Graph.generate(
-            list(self.cfg.agents),
-            smode=cfg.smode,
-            residual_mode=cfg.residual_mode,
-        )
+        self.graph = Graph.generate(list(self.cfg.agents), smode=cfg.smode)
         self.graph.plot(path=self.scene.save_dir(self.scene.cfg))
         if self.cfg.smode in (SubgoalMode.CHAIN, SubgoalMode.BOTH):
             self.graph.plot_connections(path=self.scene.save_dir(self.scene.cfg))

@@ -14,7 +14,6 @@ matplotlib.use("Agg")
 
 from heca.agents.heca import Heca
 from heca.experts.expert import ExpertModel
-from heca.graphs.edges.edge_set import ResidualMode
 from heca.learning.fppo import FPPO
 from heca.learning.ppo import PPO
 from heca.learning.server import FLServer
@@ -42,7 +41,6 @@ def generate_clients(
     reload: bool,
     use_gt: bool,
     n_batch: int,
-    residual_mode: ResidualMode = ResidualMode.CONSTANT,
 ):
     wandb = logger.WandBConfig(enabled=use_wandb)
     hecas = []
@@ -68,7 +66,6 @@ def generate_clients(
                 use_gt=use_gt,
                 fit_rotation=fit_rotation,
                 smode=smode,
-                residual_mode=residual_mode,
             )
             hecas.append(heca)
     else:
@@ -89,7 +86,6 @@ def generate_clients(
                 use_gt=use_gt,
                 fit_rotation=fit_rotation,
                 smode=smode,
-                residual_mode=residual_mode,
             )
             hecas.append(heca)
     return hecas, server
@@ -184,7 +180,6 @@ def main():
         fit_rotation=args.rotation,
         smode=args.smode,
         n_batch=args.batch,
-        residual_mode=args.residual_mode,
     )
     train(exp, server, args.batch)
 

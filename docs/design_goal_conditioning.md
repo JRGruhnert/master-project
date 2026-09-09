@@ -2,6 +2,16 @@
 
 Status: proposal for review (not implemented). Read this fresh; decide what fits.
 
+> Already fixed / implemented (kept here only as context, not open design):
+> - exploding summary-residual bug → log-std floor + ±10 clip (`Entity.LSTD_FLOOR`,
+>   `Entity.Z_CLIP`, used in `edges/edge_set.py` residual).
+> - relative residual rulers → `ResidualMode` (CONSTANT/POST) in
+>   `edges/summary_edges.py`; POST uses the best-matching post component via
+>   `Entity.best_component_cov`. (ENTITY mode and the CLI flag plumbing were
+>   dropped in the graph refactor.)
+> - raw pre-clip gradient norms logged to wandb every N updates
+>   (`PPO.Config.grad_norm_log_every`, `src/heca/learning/ppo.py`).
+
 Goal: the network should (a) know what the *goal* is, (b) represent each option by
 what it *causes* (its pre→post effect), and (c) select options by whether their
 effect moves the scene toward the goal — possibly over several steps. Trained
@@ -258,34 +268,3 @@ Suggested path: implement P1–P4 data-side (role ids, goal rows, causal edge
 attrs, post-row pairs) once — all three designs consume the same exports — then
 prototype **B** readout + **§5.1/5.2**, measure deep-task logit of
 `cube0_base_drawer0s` on a deep goal and the deep-task success rate.
-
----
-
-## Addendum (implemented): selectable residual rulers
-
-The exploding-residual fix and both relative rulers are implemented behind a
-flag, defaulting to the safe constant floor:
-
-- `ResidualMode.CONSTANT` (default): fixed `LSTD_FLOOR = -2` log-std floor +
-  ±10 clip (the bug fix).
-- `ResidualMode.ENTITY`: summary-edge z divided by the *entity's* median fitted
-  σ across all its comp nodes in the graph (point-distance in "how much this
-  entity usually moves" units). Falls back to constant when no comps exist.
-- `ResidualMode.POST`: z divided by the σ of the *single best-matching
-  component* of the option's post-condition for the goal value — the same
-  best-component rule `score_single`/`_best_component` uses for gating. This
-  is DRY: the component selection is delegated to
-  `Entity.best_component_cov` (a thin wrapper over `secure_mix_parameters` +
-  `_best_component`), and `edge_set` only reads the returned covariance to
-  build the [3 pos, 3 rot] ruler. Falls back to the constant floor when the
-  source node carries no Condition (chain sub-nodes) or no goal is set.
-  Note: anchors are scaled by the option's *post* comps too (set_postcon
-  attaches post comps to all its value nodes); if you ever want anchors scaled
-  by the pre σ instead, that distinction is not representable today.
-
-Plumbing: `--residual-mode {constant,entity,post}` (scripts/common/args.py →
-Heca.Config.residual_mode → Graph.generate(residual_mode=...) → EdgeSet
-residual_mode → _summary_ruler). test_graph.py exposes the same flag. Tag suffix
-`c`/`e`/`p` appended so runs with different rulers get separate checkpoint dirs.
-Note: old dirs without the suffix (e.g. `..._gv_b`) predate this; retrain anyway
-(the old checkpoints were trained on the exploding values).

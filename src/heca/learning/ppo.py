@@ -66,10 +66,13 @@ class PPO(Learner):
         target_kl: float | None = 0.01
         clip_value_loss: bool = True
         seq_len: int = 0  # Truncated-BPTT chunk
+        grad_norm_log_freq: int = 10
 
     def __init__(self, cfg: Config):
         super().__init__(cfg)
         self.cfg = cfg
+        self._grad_norm_window: dict[str, float] = {}
+        self._grad_norm_updates = 0
 
     def learn(self):
         adv, rtn = self.buffer.compute_advantages()
@@ -96,8 +99,7 @@ class PPO(Learner):
             # old_data holds the HeteroData graphs; the terminal flags live on
             # the BufferData records in the queue.
             terminals = [
-                t or tr
-                for t, tr in zip(self.buffer.terminals, self.buffer.truncates)
+                t or tr for t, tr in zip(self.buffer.terminals, self.buffer.truncates)
             ]
             chunks = build_chunks(N, terminals, self.cfg.seq_len)
 
@@ -110,6 +112,10 @@ class PPO(Learner):
         total_loss = 0.0
         total_fedprox_loss = 0.0
         num_minibatches = 0
+
+        # Gradient-norm accumulators (raw, pre-clip; see the gradient step).
+        grad_acc: dict[str, float] = {}
+        grad_cnt: dict[str, float] = {}
 
         kl_stop = False
         for _ in range(self.cfg.n_epoch):
@@ -195,7 +201,19 @@ class PPO(Learner):
                 # Gradient step
                 self.optim.zero_grad()
                 loss.mean().backward()
-                clip_grad_norm_(self.network.parameters(), self.cfg.max_grad_norm)
+
+                total_norm = clip_grad_norm_(
+                    self.network.parameters(), self.cfg.max_grad_norm
+                )
+                grad_acc["grad_norm/total"] = grad_acc.get(
+                    "grad_norm/total", 0.0
+                ) + float(total_norm)
+                grad_cnt["grad_norm/total"] = grad_cnt.get("grad_norm/total", 0.0) + 1.0
+                for pname, p in self.network.named_parameters():
+                    if p.grad is not None:
+                        key = f"grad_norm/{pname}"
+                        grad_acc[key] = grad_acc.get(key, 0.0) + float(p.grad.norm())
+                        grad_cnt[key] = grad_cnt.get(key, 0.0) + 1.0
                 self.optim.step()
 
                 # KL early stopping
@@ -232,8 +250,6 @@ class PPO(Learner):
             explained_var = 0.0
 
         if num_minibatches == 0:
-            # Aborted by stop_requested() before any minibatch ran; nothing to
-            # report (avoid a ZeroDivisionError in the metrics below).
             return
 
         self.metrics.update(
@@ -249,3 +265,19 @@ class PPO(Learner):
                 "train/lr": self.optim.param_groups[0]["lr"],
             }
         )
+
+        window = self._grad_norm_window
+        for key in grad_acc:
+            n = grad_cnt.get(key, 0.0)
+            if n > 0:
+                key_short = key.removeprefix("grad_norm/")
+                avg = grad_acc[key] / n
+                w = window.setdefault(key_short, [0.0, 0])
+                w[0] += avg
+                w[1] += 1
+        self._grad_norm_updates += 1
+        if self._grad_norm_updates >= self.cfg.grad_norm_log_freq:
+            for key_short, (total, count) in window.items():
+                self.metrics[f"network/grad_norm/{key_short}"] = total / count
+            self._grad_norm_window = {}
+            self._grad_norm_updates = 0
