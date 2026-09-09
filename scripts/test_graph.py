@@ -23,6 +23,7 @@ from heca.scenes.ogbench.scene import OGScene
 from heca.scenes.scene import Scene, SceneFeedback
 
 from scripts.common.args import (
+    add_residual_mode_argument,
     add_scene_argument,
     add_smode_argument,
     add_use_gt_argument,
@@ -210,6 +211,7 @@ def main():
     add_use_gt_argument(parser)
     add_viewer_argument(parser)
     add_smode_argument(parser)
+    add_residual_mode_argument(parser)
     args = parser.parse_args()
 
     scene_cfg = find_scene_config(args.scene)
@@ -225,7 +227,9 @@ def main():
         agent = ExpertModel.get(agent_cfg, auto_load=False)
         agent.use_gt(args.gt)
         agent.load()
-    graph = Graph.generate(list(agent_cfgs), smode=args.smode)
+    graph = Graph.generate(
+        list(agent_cfgs), smode=args.smode, residual_mode=args.residual_mode
+    )
 
     try:
         quitting = False

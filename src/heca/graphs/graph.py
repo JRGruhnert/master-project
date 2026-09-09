@@ -10,9 +10,10 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 
 from heca.experts.expert import ExpertModel
+from heca.graphs.edge_set import EdgeSet, ResidualMode
 from heca.graphs.node import *
 from heca.graphs.node_set import NodeSet
-from heca.graphs.edge_set import EdgeSet
+from heca.graphs.edge_set import EdgeSet, ResidualMode
 from heca.misc import hardware, logger
 from heca.data.data import DCScene
 from heca.data.entity import Entity
@@ -31,22 +32,27 @@ class SubgoalMode(Enum):
 
 
 class Graph:
-    def __init__(self, entities: dict[str, Entity]):
+    def __init__(
+        self,
+        entities: dict[str, Entity],
+        residual_mode: ResidualMode = ResidualMode.CONSTANT,
+    ):
         self.entities: dict[str, Entity] = entities
+        self.residual_mode = residual_mode
         self.ns_entity: NodeSet[EntityNode] = NodeSet[EntityNode]("entity")
 
         self.ns_option: NodeSet[OptionNode] = NodeSet[OptionNode]("option")
 
         self.es_summary: EdgeSet[EntityNode, OptionNode] = EdgeSet[
             EntityNode, OptionNode
-        ](("entity", "summary", "option"))
+        ](("entity", "summary", "option"), residual_mode=residual_mode)
         self.es_stepmix: EdgeSet[EntityNode, EntityNode] = EdgeSet[
             EntityNode, EntityNode
-        ](("entity", "stepmix", "entity"))
+        ](("entity", "stepmix", "entity"), residual_mode=residual_mode)
 
         self.es_tapas: EdgeSet[EntityNode, EntityNode] = EdgeSet[
             EntityNode, EntityNode
-        ](("entity", "tapas", "entity"))
+        ](("entity", "tapas", "entity"), residual_mode=residual_mode)
 
         self.start_keys: set[str] = set()
         self.goal_keys: set[str] = set()
@@ -339,11 +345,16 @@ class Graph:
         return set(temp_sources.values())
 
     @classmethod
-    def generate(cls, cfgs: list[ExpertModel.Config], smode: SubgoalMode) -> "Graph":
+    def generate(
+        cls,
+        cfgs: list[ExpertModel.Config],
+        smode: SubgoalMode,
+        residual_mode: ResidualMode = ResidualMode.CONSTANT,
+    ) -> "Graph":
         entities = {}
         for cfg in cfgs:
             entities.update(ExpertModel.get(cfg).entities)
-        graph = cls(entities=entities)
+        graph = cls(entities=entities, residual_mode=residual_mode)
         agents = [ExpertModel.get(cfg) for cfg in cfgs]
         graph._agent_tags = [a.cfg.tag for a in agents]
 

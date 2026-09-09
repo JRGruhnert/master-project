@@ -62,11 +62,6 @@ class OptionReadout(nn.Module):
 
 
 class Network(Configurable, nn.Module):
-    # Rollout bookkeeping, set on every forward (see forward): the per-option
-    # embeddings after summary/interaction and the timeline memory used at
-    # this step. Plain attributes — never buffers — so deepcopy/state_dict
-    # syncs ignore them. Declared here so static checkers treat them as
-    # tensors; they exist after the first forward.
     _last_option_x: torch.Tensor
     _last_mem: torch.Tensor
 

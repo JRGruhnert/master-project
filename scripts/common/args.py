@@ -3,6 +3,7 @@
 import argparse
 from conf.networks import NETWORK_NAMES
 
+from heca.graphs.edge_set import ResidualMode
 from heca.graphs.graph import SubgoalMode
 
 
@@ -121,6 +122,20 @@ def add_network_argument(parser: argparse.ArgumentParser):
     )
 
 
+def add_residual_mode_argument(parser: argparse.ArgumentParser):
+    parser.add_argument(
+        "--residual-mode",
+        type=ResidualMode,
+        choices=list(ResidualMode),
+        default=ResidualMode.CONSTANT,
+        help=(
+            "How summary-edge residuals (entity vs goal) are normalized: "
+            "constant (fixed log-std floor), entity (per-entity fitted "
+            "spread), post (option's own post-condition sigma)."
+        ),
+    )
+
+
 def add_heca_arguments(parser: argparse.ArgumentParser):
     add_network_argument(parser)
     add_federated_argument(parser)
@@ -134,6 +149,7 @@ def add_heca_arguments(parser: argparse.ArgumentParser):
     add_smode_argument(parser)
     add_inference_argument(parser)
     add_reload_argument(parser)
+    add_residual_mode_argument(parser)
 
 
 def subgoal_tag(smode: SubgoalMode) -> str:
@@ -148,6 +164,16 @@ def subgoal_tag(smode: SubgoalMode) -> str:
     raise ValueError
 
 
+def residual_tag(mode: ResidualMode) -> str:
+    if mode == ResidualMode.CONSTANT:
+        return "c"
+    elif mode == ResidualMode.ENTITY:
+        return "e"
+    elif mode == ResidualMode.POST:
+        return "p"
+    raise ValueError
+
+
 def generate_tag(args: argparse.Namespace) -> str:
     final_tag = ""
     final_tag += args.tag
@@ -159,4 +185,5 @@ def generate_tag(args: argparse.Namespace) -> str:
     final_tag += "v" if args.virtual else "_"
     final_tag += "r" if args.rotation else "_"
     final_tag += subgoal_tag(args.smode)
+    final_tag += residual_tag(args.residual_mode)
     return final_tag

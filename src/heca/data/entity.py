@@ -229,6 +229,15 @@ class Entity(Configurable):
         z = float(np.sqrt(np.sum(zd**2)))
         return best_k, z, zd
 
+    def best_component_cov(
+        self, value: np.ndarray, up: dict, eps: float = 1e-15
+    ) -> np.ndarray:
+        sample = self.model_value(value)
+        p = self.secure_mix_parameters(up, add_variance=True)
+        pose = sample[:-1]
+        best_k, _, _ = self._best_component(pose, p, eps=eps)
+        return np.maximum(p["measurement"]["pose"]["covariances"][best_k], eps)
+
     def _ellipsoids_intersect(
         self,
         mu1: np.ndarray,
