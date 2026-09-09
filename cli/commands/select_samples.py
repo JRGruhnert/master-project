@@ -1,9 +1,0 @@
-from heca.scenes.calvin.scene import CalvinScene
-from heca.scenes.ogbench.scene import OGScene
-from heca.guis.scene_sample_selector import SceneRefSelector
-
-selector_cfg = SceneRefSelector.Config(
-    scene=OGScene.Config(),
-)
-selector = SceneRefSelector.get(selector_cfg)
-selector.run()
