@@ -5,7 +5,7 @@ from collections import Counter
 from pathlib import Path
 from typing import cast
 
-from heca.conditions.condition import Condition
+from heca.data.condition import Condition
 from heca.data.entity import Entity
 from heca.scenes.ogbench.scene import OGScene
 from heca.scenes.scene import Scene

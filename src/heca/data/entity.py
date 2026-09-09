@@ -22,6 +22,8 @@ class Entity(Configurable):
     ROT_DIM: int = 3
     ANCHOR_THRESHOLD: float = 0.1
     REG_COVAR = 1e-6
+    LSTD_FLOOR = -2.0
+    Z_CLIP = 10.0
 
     @dataclass(kw_only=True)
     class Config(Configurable.Config):

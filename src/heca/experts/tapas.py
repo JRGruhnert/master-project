@@ -24,7 +24,7 @@ from tapas_gmm_modified.policy.models.tpgmm import (
 )
 
 from heca.experts.expert import ExpertModel
-from heca.conditions.pair import ConPair
+from heca.data.pair import ConPair
 from heca.data.data import DCScene
 from heca.data.prismatic import PrismaticEntity
 from heca.misc import logger

@@ -19,11 +19,11 @@ class Condition:
     def __init__(
         self, label: str, data: dict[str, np.ndarray], entities: dict[str, Entity]
     ):
-        self._data_raw = data
-        self._entities = entities
+        self.data_raw = data
+        self.entities = entities
         self.label = label
 
-        self._models, self._bics = self._fit_model()
+        self.models, self._bics = self._fit_model()
 
     def comp_features(
         self,
@@ -35,25 +35,13 @@ class Condition:
             result[key] = [(feats[i], float(weights[i])) for i in range(len(weights))]
         return result
 
-    @property
-    def data_raw(self) -> dict[str, np.ndarray]:
-        return self._data_raw
-
     @cached_property
     def data_bounds(self) -> dict[str, tuple[np.ndarray, np.ndarray]]:
         bounds: dict[str, tuple[np.ndarray, np.ndarray]] = {}
-        for key, values in self._data_raw.items():
+        for key, values in self.data_raw.items():
             values = np.asarray(values, dtype=np.float64)
             bounds[key] = (values.min(axis=0), values.max(axis=0))
         return bounds
-
-    @property
-    def models(self) -> dict[str, StepMix]:
-        return self._models
-
-    @property
-    def entities(self) -> dict[str, Entity]:
-        return self._entities
 
     def test(self, elabel: str, x: DCScene) -> bool:
         up = self.models[elabel].get_parameters().copy()
@@ -77,7 +65,7 @@ class Condition:
         entity = self.entities[key]
         if entity.cfg.add_rotation:
             return None
-        full = np.asarray(self._data_raw[key], dtype=np.float64)
+        full = np.asarray(self.data_raw[key], dtype=np.float64)
         aas = full[:, Entity.POS_DIM : Entity.POS_DIM + Entity.ROT_DIM]
         if isinstance(entity, RevoluteEntity):
             extras = full[:, Entity.POS_DIM + Entity.ROT_DIM : -1]

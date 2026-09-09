@@ -147,36 +147,52 @@ def main():
         else:
             fails.append((ep, kind, x0, x, y0, n_opts, trunc, chosen, last_fb))
 
-    print(f"[{args.tag} {args.ckp} net={args.network} ep={args.episodes} "
-          f"seed={args.seed}]")
+    print(
+        f"[{args.tag} {args.ckp} net={args.network} ep={args.episodes} "
+        f"seed={args.seed}]"
+    )
     print("=== success by goal kind ===")
     for k in sorted(total):
-        print(f"  {k:<34} {ok[k]:>3}/{total[k]:<3}  "
-              f"({100*ok[k]/total[k]:.0f}%)")
+        print(f"  {k:<34} {ok[k]:>3}/{total[k]:<3}  " f"({100*ok[k]/total[k]:.0f}%)")
     tot = sum(total.values())
     tot_ok = sum(ok.values())
-    print(f"  TOTAL                        {tot_ok}/{tot}  "
-          f"({100*tot_ok/tot:.1f}%)")
+    print(f"  TOTAL                        {tot_ok}/{tot}  " f"({100*tot_ok/tot:.1f}%)")
     print(f"\n=== failures: {len(fails)} ===")
     for ep, kind, x0, xf, y, n_opts, trunc, chosen, fb in fails:
-        print(f"\n--- ep {ep}  kind={kind}  options_used={n_opts}"
-              f"  end={'truncated' if trunc else 'budget/terminal-fail'}")
-        print(f"  goal    cube pos={cube_state(scene, y)['pos']}"
-              f"  value={cube_state(scene, y)['value']}")
-        print(f"  start   cube pos={cube_state(scene, x0)['pos']}"
-              f"  value={cube_state(scene, x0)['value']}")
-        print(f"  final   cube pos={cube_state(scene, xf)['pos']}"
-              f"  value={cube_state(scene, xf)['value']}")
-        print(f"  drawer0 goal={fmt(y.get('drawer0').value)} "
-              f"start={fmt(x0.get('drawer0').value)} "
-              f"final={fmt(xf.get('drawer0').value)}")
-        print(f"  window0 goal={fmt(y.get('window0').value)} "
-              f"start={fmt(x0.get('window0').value)} "
-              f"final={fmt(xf.get('window0').value)}")
-        print(f"  button0 goal={fmt(y.get('button0').value)} "
-              f"start={fmt(x0.get('button0').value)}")
-        print(f"  button1 goal={fmt(y.get('button1').value)} "
-              f"start={fmt(x0.get('button1').value)}")
+        print(
+            f"\n--- ep {ep}  kind={kind}  options_used={n_opts}"
+            f"  end={'truncated' if trunc else 'budget/terminal-fail'}"
+        )
+        print(
+            f"  goal    cube pos={cube_state(scene, y)['pos']}"
+            f"  value={cube_state(scene, y)['value']}"
+        )
+        print(
+            f"  start   cube pos={cube_state(scene, x0)['pos']}"
+            f"  value={cube_state(scene, x0)['value']}"
+        )
+        print(
+            f"  final   cube pos={cube_state(scene, xf)['pos']}"
+            f"  value={cube_state(scene, xf)['value']}"
+        )
+        print(
+            f"  drawer0 goal={fmt(y.get('drawer0').value)} "
+            f"start={fmt(x0.get('drawer0').value)} "
+            f"final={fmt(xf.get('drawer0').value)}"
+        )
+        print(
+            f"  window0 goal={fmt(y.get('window0').value)} "
+            f"start={fmt(x0.get('window0').value)} "
+            f"final={fmt(xf.get('window0').value)}"
+        )
+        print(
+            f"  button0 goal={fmt(y.get('button0').value)} "
+            f"start={fmt(x0.get('button0').value)}"
+        )
+        print(
+            f"  button1 goal={fmt(y.get('button1').value)} "
+            f"start={fmt(x0.get('button1').value)}"
+        )
         # option trace: collapse consecutive repeats
         seq = []
         prev = None

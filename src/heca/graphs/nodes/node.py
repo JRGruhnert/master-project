@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from heca.experts.expert import ExpertModel
-from heca.conditions.condition import Condition
+from heca.data.condition import Condition
 from heca.data.data import DCEntity, DCScene
 
 
@@ -12,15 +12,12 @@ class ValueMode(Enum):
     GOAL = "Goal"
     START = "Start"
     SAMPLE = "Sample"
-    CHECK = "Best"
 
 
 @dataclass(slots=True, kw_only=True)
 class GraphNode(ABC):
     data: DCEntity
-    sources: dict[str, set[str]] = field(
-        default_factory=lambda: defaultdict(set[str])
-    )
+    sources: dict[str, set[str]] = field(default_factory=lambda: defaultdict(set[str]))
 
     def __str__(self) -> str:
         src_str = ", ".join(f"{self.sources}" if self.sources else "∅")

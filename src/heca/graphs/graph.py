@@ -10,49 +10,39 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 
 from heca.experts.expert import ExpertModel
-from heca.graphs.edge_set import EdgeSet, ResidualMode
-from heca.graphs.node import *
-from heca.graphs.node_set import NodeSet
-from heca.graphs.edge_set import EdgeSet, ResidualMode
+from heca.graphs.edges.condition_edges import ConditionEdges
+from heca.graphs.edges.edge_set import EdgeSet
+from heca.graphs.edges.summary_edges import SummaryEdges
+from heca.graphs.edges.translation_edges import TranslationEdges
+from heca.graphs.nodes.entity_nodes import EntityNodes
+from heca.graphs.nodes.node import *
+from heca.graphs.nodes.option_nodes import OptionNodes
 from heca.misc import hardware, logger
 from heca.data.data import DCScene
 from heca.data.entity import Entity
-from heca.conditions.condition import Condition
-from heca.conditions.pair import ConPair
+from heca.data.condition import Condition
+from heca.data.pair import ConPair
 
 
 class SubgoalMode(Enum):
-    NONE = "none"
-    SIMPLE = "simple"
-    CHAIN = "chain"
     BOTH = "both"
+    GOAL = "goal"
+    CHAIN = "chain"
 
     def __str__(self):
         return self.value
 
 
 class Graph:
-    def __init__(
-        self,
-        entities: dict[str, Entity],
-        residual_mode: ResidualMode = ResidualMode.CONSTANT,
-    ):
+    def __init__(self, entities: dict[str, Entity]):
         self.entities: dict[str, Entity] = entities
-        self.residual_mode = residual_mode
-        self.ns_entity: NodeSet[EntityNode] = NodeSet[EntityNode]("entity")
 
-        self.ns_option: NodeSet[OptionNode] = NodeSet[OptionNode]("option")
+        self.ns_entity: EntityNodes = EntityNodes()
+        self.ns_option: OptionNodes = OptionNodes()
 
-        self.es_summary: EdgeSet[EntityNode, OptionNode] = EdgeSet[
-            EntityNode, OptionNode
-        ](("entity", "summary", "option"), residual_mode=residual_mode)
-        self.es_stepmix: EdgeSet[EntityNode, EntityNode] = EdgeSet[
-            EntityNode, EntityNode
-        ](("entity", "stepmix", "entity"), residual_mode=residual_mode)
-
-        self.es_tapas: EdgeSet[EntityNode, EntityNode] = EdgeSet[
-            EntityNode, EntityNode
-        ](("entity", "tapas", "entity"), residual_mode=residual_mode)
+        self.es_summary: SummaryEdges = SummaryEdges()
+        self.es_condition: ConditionEdges = ConditionEdges()
+        self.es_translation: TranslationEdges = TranslationEdges()
 
         self.start_keys: set[str] = set()
         self.goal_keys: set[str] = set()
@@ -116,14 +106,14 @@ class Graph:
                 attrs = torch.empty((0, es.edge_attr.shape[1]))
             return idx, attrs
 
-        si, sa = _compact(self.es_stepmix, e_map, e_map)
-        data[self.es_stepmix.type].edge_index = si
-        data[self.es_stepmix.type].edge_attr = sa
+        si, sa = _compact(self.es_condition, e_map, e_map)
+        data[self.es_condition.type].edge_index = si
+        data[self.es_condition.type].edge_attr = sa
         si, sa = _compact(self.es_summary, e_map, o_map)
         data[self.es_summary.type].edge_index = si
         data[self.es_summary.type].edge_attr = sa
-        si, _ = _compact(self.es_tapas, e_map, e_map)
-        data[self.es_tapas.type].edge_index = si
+        si, _ = _compact(self.es_translation, e_map, e_map)
+        data[self.es_translation.type].edge_index = si
         return data.to(device=hardware.device.type)
 
     def _feasible(self, key: str) -> bool:
@@ -229,9 +219,9 @@ class Graph:
         lines.append(f"Entities: {len(self.entities)}")
         lines.append(str(self.ns_entity))
         lines.append(str(self.ns_option))
-        lines.append(f"StepMix: {self.es_stepmix}")
+        lines.append(f"StepMix: {self.es_condition}")
         lines.append(f"Summary: {self.es_summary}")
-        lines.append(f"Tapas:   {self.es_tapas}")
+        lines.append(f"Tapas:   {self.es_translation}")
         return "\n".join(lines)
 
     def __repr__(self) -> str:
@@ -240,9 +230,9 @@ class Graph:
     def rebuild(self):
         self.ns_entity.build()
         self.ns_option.build()
-        self.es_stepmix.build(self.ns_entity, self.ns_entity)
+        self.es_condition.build(self.ns_entity, self.ns_entity)
         self.es_summary.build(self.ns_entity, self.ns_option)
-        self.es_tapas.build(self.ns_entity, self.ns_entity)
+        self.es_translation.build(self.ns_entity, self.ns_entity)
 
     def set_comps(self, tag: str, con: Condition) -> dict[str, set[str]]:
         keys: dict[str, set[str]] = defaultdict(set[str])
@@ -345,16 +335,11 @@ class Graph:
         return set(temp_sources.values())
 
     @classmethod
-    def generate(
-        cls,
-        cfgs: list[ExpertModel.Config],
-        smode: SubgoalMode,
-        residual_mode: ResidualMode = ResidualMode.CONSTANT,
-    ) -> "Graph":
+    def generate(cls, cfgs: list[ExpertModel.Config], smode: SubgoalMode) -> "Graph":
         entities = {}
         for cfg in cfgs:
             entities.update(ExpertModel.get(cfg).entities)
-        graph = cls(entities=entities, residual_mode=residual_mode)
+        graph = cls(entities=entities)
         agents = [ExpertModel.get(cfg) for cfg in cfgs]
         graph._agent_tags = [a.cfg.tag for a in agents]
 
@@ -370,41 +355,26 @@ class Graph:
                 entities=ac.anchor_entities,
                 vmode=ValueMode.START,
             )
-            if smode == SubgoalMode.NONE:
-                post_check_sources = graph.set_postcon(
+            post_goal_sources = graph.set_postcon(
+                ac.label,
+                ac.post,
+                post_comp_sources,
+                pre_sources,
+                entities=ac.target_entities,
+                vmode=ValueMode.GOAL,
+            )
+            post_sources = post_start_sources | post_goal_sources
+            use_sample_variant = smode in (SubgoalMode.GOAL, SubgoalMode.BOTH)
+            if use_sample_variant:
+                post_sample_sources = graph.set_postcon(
                     ac.label,
                     ac.post,
                     post_comp_sources,
                     pre_sources,
                     entities=ac.target_entities,
-                    vmode=ValueMode.CHECK,
+                    vmode=ValueMode.SAMPLE,
                 )
-                post_sources = post_start_sources | post_check_sources
-                use_sample_variant = False
-                use_chain = False
-            else:  # SIMPLE / CHAIN / BOTH all use goal-pinned targets
-                post_goal_sources = graph.set_postcon(
-                    ac.label,
-                    ac.post,
-                    post_comp_sources,
-                    pre_sources,
-                    entities=ac.target_entities,
-                    vmode=ValueMode.GOAL,
-                )
-                post_sources = post_start_sources | post_goal_sources
-                use_sample_variant = smode in (SubgoalMode.SIMPLE, SubgoalMode.BOTH)
-                if use_sample_variant:
-                    post_sample_sources = graph.set_postcon(
-                        ac.label,
-                        ac.post,
-                        post_comp_sources,
-                        pre_sources,
-                        entities=ac.target_entities,
-                        vmode=ValueMode.SAMPLE,
-                    )
-                    post_sources_alt = post_start_sources | post_sample_sources
-                use_chain = smode in (SubgoalMode.CHAIN, SubgoalMode.BOTH)
-
+                post_sources_alt = post_start_sources | post_sample_sources
             for b in agents:
                 bc = b.conditions
                 if ac.label == bc.label:
@@ -425,7 +395,7 @@ class Graph:
                             ),
                         )
                         graph._option_conditions[ac.label + "s"] = ac
-                if use_chain:
+                if smode in (SubgoalMode.CHAIN, SubgoalMode.BOTH):
                     graph._pair_scores[(a.cfg.tag, b.cfg.tag)] = bc.pre.scores(ac.post)
                     subgoal = bc.pre.make_subgoal(ac.post)
                     if subgoal:
@@ -445,9 +415,9 @@ class Graph:
                         )
                         graph._option_conditions[ac.label + "--" + bc.label] = ac
 
-        graph.es_stepmix.edges_from_sets(graph.ns_entity, graph.ns_entity, "comp")
+        graph.es_condition.edges_from_sets(graph.ns_entity, graph.ns_entity, "comp")
         graph.es_summary.edges_from_sets(graph.ns_entity, graph.ns_option, "entity")
-        graph.es_tapas.edges_from_sets(graph.ns_entity, graph.ns_entity, "entity")
+        graph.es_translation.edges_from_sets(graph.ns_entity, graph.ns_entity, "entity")
 
         return graph
 
@@ -478,11 +448,11 @@ class Graph:
             G.add_node(key, type="option", label=key)
 
         # Add edges with their type (resolve positional indices → keys)
-        for src, dst in self.es_stepmix.edges:
+        for src, dst in self.es_condition.edges:
             G.add_edge(entity_keys[src], entity_keys[dst], type="stepmix")
         for src, dst in self.es_summary.edges:
             G.add_edge(entity_keys[src], option_keys[dst], type="summary")
-        for src, dst in self.es_tapas.edges:
+        for src, dst in self.es_translation.edges:
             G.add_edge(entity_keys[src], entity_keys[dst], type="tapas")
 
         # Separate nodes by type for color coding
@@ -544,9 +514,9 @@ class Graph:
         logger.info(f"Entities: {len(self.entities)}")
         logger.info(f"Entity Nodes: {len(self.ns_entity.items)}")
         logger.info(f"Option Nodes: {len(self.ns_option.items)}")
-        logger.info(f"StepMix Edges: {len(self.es_stepmix.edges)}")
+        logger.info(f"StepMix Edges: {len(self.es_condition.edges)}")
         logger.info(f"Summary Edges: {len(self.es_summary.edges)}")
-        logger.info(f"Tapas Edges: {len(self.es_tapas.edges)}")
+        logger.info(f"Tapas Edges: {len(self.es_translation.edges)}")
 
         # Optionally log node details
         entity_lines = []
@@ -562,12 +532,12 @@ class Graph:
         logger.debug(f"Option Nodes:\n" + "\n".join(option_lines))
 
         stepmix_lines = []
-        for src, dst in list(self.es_stepmix.edges):
+        for src, dst in list(self.es_condition.edges):
             stepmix_lines.append(f"({src}->{dst})")
         logger.info("StepMix edges:\n" + ", ".join(stepmix_lines))
 
         tapas_lines = []
-        for src, dst in list(self.es_tapas.edges):
+        for src, dst in list(self.es_translation.edges):
             tapas_lines.append(f"({src}->{dst})")
         logger.info("Tapas edges:\n" + ", ".join(tapas_lines))
 

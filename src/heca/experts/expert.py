@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from heca.conditions.pair import ConPair
+from heca.data.pair import ConPair
 from heca.data.data import DCEntity, DCScene, TDImage
 from heca.data.entity import Entity
 from heca.misc.base import Persistable

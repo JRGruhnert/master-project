@@ -92,8 +92,10 @@ def goal_kind(y, scene):
     cube_y = float(cube[1])
     kind = "deep" if cube_y < -3.5 else ("out" if cube_y > -2.2 else "shallow")
     tags = []
-    if float(dr[6]) > 0.9: tags.append("dr_closed")
-    if float(win[6]) > 0.9: tags.append("win_closed")
+    if float(dr[6]) > 0.9:
+        tags.append("dr_closed")
+    if float(win[6]) > 0.9:
+        tags.append("win_closed")
     for b in ("button0", "button1"):
         if float(y.get(b).value[-1]) > 0.9:
             tags.append(b)
@@ -138,6 +140,7 @@ def main():
         return int(logits.argmax(dim=-1))
 
     from collections import Counter
+
     by_kind = Counter()
     fail_kind = Counter()
     fail_solvable = Counter()
@@ -175,18 +178,34 @@ def main():
                     break
             if solved:
                 fail_solvable[kind] += 1
-            rows.append((ep, kind, tags, "argmax-ok" if ok_am else (
-                "oracle-solved" if solved else "UNSOLVABLE"), ln_am, ln_or))
+            rows.append(
+                (
+                    ep,
+                    kind,
+                    tags,
+                    (
+                        "argmax-ok"
+                        if ok_am
+                        else ("oracle-solved" if solved else "UNSOLVABLE")
+                    ),
+                    ln_am,
+                    ln_or,
+                )
+            )
 
     tot = args.episodes
     print(f"[{args.tag} {args.ckp} tries={args.tries} ep={tot} seed={args.seed}]")
     print(f"goal mix: {dict(by_kind)}")
     print(f"argmax fails by kind: {dict(fail_kind)}")
     print(f"of those oracle-solved: {dict(fail_solvable)}")
-    print(f"argmax success: {tot - sum(fail_kind.values())}/{tot} = "
-          f"{100*(tot - sum(fail_kind.values()))/tot:.1f}%")
-    print(f"unsolvable (neither argmax nor {args.tries}-try oracle): "
-          f"{sum(fail_kind.values()) - sum(fail_solvable.values())}")
+    print(
+        f"argmax success: {tot - sum(fail_kind.values())}/{tot} = "
+        f"{100*(tot - sum(fail_kind.values()))/tot:.1f}%"
+    )
+    print(
+        f"unsolvable (neither argmax nor {args.tries}-try oracle): "
+        f"{sum(fail_kind.values()) - sum(fail_solvable.values())}"
+    )
     print("detail:")
     for r in rows:
         print("  ", r)

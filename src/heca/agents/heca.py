@@ -5,7 +5,7 @@ import torch
 
 from heca.experts.expert import ExpertModel
 from heca.graphs.graph import Graph, SubgoalMode
-from heca.graphs.edge_set import ResidualMode
+from heca.graphs.edges.edge_set import ResidualMode
 from heca.learning.learner import Learner
 from heca.misc import logger
 from heca.misc.interrupt import stop_requested

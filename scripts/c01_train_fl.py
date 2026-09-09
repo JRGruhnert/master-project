@@ -14,7 +14,7 @@ matplotlib.use("Agg")
 
 from heca.agents.heca import Heca
 from heca.experts.expert import ExpertModel
-from heca.graphs.edge_set import ResidualMode
+from heca.graphs.edges.edge_set import ResidualMode
 from heca.learning.fppo import FPPO
 from heca.learning.ppo import PPO
 from heca.learning.server import FLServer

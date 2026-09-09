@@ -163,12 +163,16 @@ def main():
 
     tot = args.episodes
     print(f"[{args.tag} {args.ckp} tries={args.tries} ep={tot} seed={args.seed}]")
-    print(f"  oracle-solvable (random, <= {args.tries} retries): "
-          f"{n_solv}/{tot} = {100*n_solv/tot:.1f}%")
+    print(
+        f"  oracle-solvable (random, <= {args.tries} retries): "
+        f"{n_solv}/{tot} = {100*n_solv/tot:.1f}%"
+    )
     print(f"  argmax success: {n_argmax}/{tot} = {100*n_argmax/tot:.1f}%")
     if lens:
-        print(f"  oracle solved-chain length: mean={np.mean(lens):.1f} "
-              f"max={max(lens)} (budget={max_opts})")
+        print(
+            f"  oracle solved-chain length: mean={np.mean(lens):.1f} "
+            f"max={max(lens)} (budget={max_opts})"
+        )
 
 
 if __name__ == "__main__":

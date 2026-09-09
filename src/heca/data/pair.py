@@ -4,7 +4,7 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 import numpy as np
 
-from heca.conditions.condition import Condition
+from heca.data.condition import Condition
 from heca.data.entity import Entity
 
 
@@ -14,17 +14,14 @@ class ConPair:
         self.pre = pre
         self.post = post
 
-    def _compute_change_scores(self) -> dict[str, float]:
+    @cached_property
+    def change_scores(self) -> dict[str, float]:
         scores: dict[str, float] = {}
         for key in set(self.pre.data_raw).intersection(set(self.post.data_raw)):
             pre = np.asarray(self.pre.data_raw[key], dtype=np.float64)
             post = np.asarray(self.post.data_raw[key], dtype=np.float64)
             scores[key] = float(np.linalg.norm(post - pre, axis=1).mean())
         return scores
-
-    @cached_property
-    def change_scores(self) -> dict[str, float]:
-        return self._compute_change_scores()
 
     @cached_property
     def target_entities(self) -> list[str]:
@@ -41,33 +38,6 @@ class ConPair:
             if value < Entity.ANCHOR_THRESHOLD:
                 values.add(key)
         return list(values)
-
-    # @classmethod
-    # def merge(
-    #     cls,
-    #     label: str,
-    #     a: "ConPair",
-    #     b: "ConPair",
-    #     n_samples: int,
-    #     threshold: float,
-    # ) -> "ConPair":
-    #     pre_max, post_max = cls.make_max_components(a, b)
-    #     pre_data = cls._merge_data(a.pre, b.pre)
-    #     post_data = cls._merge_data(a.post, b.post)
-    #     pre = Condition(
-    #         "pre",
-    #         pre_data,
-    #         pre_max,
-    #         n_samples,
-    #     )
-    #     post = Condition(
-    #         "post",
-    #         post_data,
-    #         post_max,
-    #         n_samples,
-    #         threshold,
-    #     )
-    #     return cls(label, pre, post, threshold)
 
     @classmethod
     def make(
@@ -177,35 +147,3 @@ class ConPair:
         fig.suptitle(f"{other.label} ↔ {self.label} similarity", fontsize=16)
         plt.savefig(path / "plots" / f"sim_{other.label}_{self.label}.png", dpi=300)
         plt.close(fig)
-
-    # def can_merge(self, other: "ConPair", path: Path | None = None) -> bool:
-    #     sim_rating = self.compute_sim(other)
-    #     if path is not None:
-    #         self.plot_similarity(sim_rating, other, path)
-    #     return self.evaluate_sim(sim_rating)
-
-    # def mcheck(self, mat: np.ndarray):
-    #     return np.all(mat >= self.threshold)
-
-    # def evaluate_sim(self, sim_rating: dict[str, np.ndarray]) -> bool:
-    #     mat = np.stack(list(sim_rating.values()), axis=0)
-    #     mat = np.nan_to_num(mat, nan=1.0)  # nan values should be ignored
-    #     if self.mcheck(mat[:, 0, 0, 1]) and self.mcheck(mat[:, 1, 1, 0]):
-    #         return True  # pre0 ↔ post1 (bidirectional equivalence)
-    #     elif self.mcheck(mat[:, 0, 1, 0]) and self.mcheck(mat[:, 1, 1, 0]):
-    #         return True  # post0 ⊆ pre1 AND post1 ⊆ pre0 (sequential)
-    #     elif self.mcheck(mat[:, 0, 0, 1]) and self.mcheck(mat[:, 1, 0, 1]):
-    #         return True  # pre0 in post1 and pre1 in post0
-    #     elif self.mcheck(mat[:, 0, 0, 0]) and self.mcheck(mat[:, 0, 1, 1]):
-    #         return True  # pre0 in pre1 and post0 in post1
-    #     elif self.mcheck(mat[:, 1, 0, 0]) and self.mcheck(mat[:, 1, 1, 1]):
-    #         return True  # pre1 in pre0 and post1 in post0
-    #     elif self.mcheck(mat[:, 0, 0, 0]) and self.mcheck(mat[:, 0, 0, 1]):
-    #         return True  # pre0 in pre1 and pre0 in post1
-    #     elif self.mcheck(mat[:, 1, 0, 0]) and self.mcheck(mat[:, 1, 0, 1]):
-    #         return True  # pre1 in pre0 and pre1 in post0
-    #     return False
-
-    @property
-    def entities(self) -> dict[str, Entity]:
-        return self.pre.entities

@@ -5,60 +5,14 @@ from torch import nn
 from torch.distributions import Categorical
 from torch_geometric.data import HeteroData
 
-from heca.heca_gnn.layers import StepMixBlock, TapasBlock, SummaryBlock
+from heca.heca_gnn.modules.condition import ConditionBlock
+from heca.heca_gnn.modules.interaction import OptionInteraction
+from heca.heca_gnn.modules.readout import OptionReadout
+from heca.heca_gnn.modules.timeline import TimelineMemory
+from heca.heca_gnn.modules.translation import TranslationBlock
+from heca.heca_gnn.modules.summary import SummaryBlock
 from heca.misc import hardware
 from heca.misc.base import Configurable
-
-
-class TimelineMemory(nn.Module):
-    def __init__(self, dim: int, extra_in: int = 0):
-        super().__init__()
-        self.gru = nn.GRUCell(dim + extra_in, dim)
-
-    def forward(self, u: torch.Tensor, h: torch.Tensor | None) -> torch.Tensor:
-        if h is None:
-            h = u.new_zeros(u.shape[0], self.gru.hidden_size)
-        return self.gru(u, h)
-
-
-class OptionInteraction(nn.Module):
-    def __init__(self, dim: int, num_heads: int = 4):
-        super().__init__()
-        self.attn = nn.MultiheadAttention(dim, num_heads, batch_first=True)
-        self.norm = nn.LayerNorm(dim)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        xs = x.unsqueeze(0)
-        attended, _ = self.attn(xs, xs, xs)
-        return self.norm(xs.squeeze(0) + attended.squeeze(0))
-
-
-class OptionReadout(nn.Module):
-    def __init__(self, dim: int, hidden_ratio: float = 0.5):
-        super().__init__()
-        hidden_dim = max(int(dim * hidden_ratio), 16)
-
-        self.shared = nn.Sequential(
-            nn.LayerNorm(dim),
-            nn.Linear(dim, dim),
-            nn.ReLU(),
-            nn.Linear(dim, hidden_dim),
-            nn.ReLU(),
-        )
-
-        self.actor_head = nn.Linear(hidden_dim, 1)
-        self.critic_head = nn.Linear(hidden_dim, 1)
-
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        shared = self.shared(x)
-
-        actor_out = self.actor_head(shared)
-        logits = actor_out.view(1, -1)
-
-        pooled = shared.mean(dim=0, keepdim=True)
-        value = self.critic_head(pooled).squeeze(-1)
-
-        return logits, value
 
 
 class Network(Configurable, nn.Module):
@@ -101,16 +55,16 @@ class Network(Configurable, nn.Module):
                 for name in self._type_names
             }
         )
-        self.stepmix_layers = nn.ModuleList(
+        self.condition_layers = nn.ModuleList(
             [
-                StepMixBlock(cfg.feature_dim, cfg.gnn_mlp_depth)
+                ConditionBlock(cfg.feature_dim, cfg.gnn_mlp_depth)
                 for _ in range(cfg.num_stepmix_layers)
             ]
         )
 
-        self.tapas_layers = nn.ModuleList(
+        self.translation_layers = nn.ModuleList(
             [
-                TapasBlock(cfg.feature_dim, cfg.gnn_mlp_depth)
+                TranslationBlock(cfg.feature_dim, cfg.gnn_mlp_depth)
                 for _ in range(cfg.num_tapas_layers)
             ]
         )
@@ -184,15 +138,6 @@ class Network(Configurable, nn.Module):
         data: HeteroData,
         memory: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        """Score one transition.
-
-        With the timeline memory enabled, the memory used at this step is
-        either recomputed from the transition's stored ``data.mem_step``
-        (rollout path, ``memory=None``) or taken from ``memory`` — the state
-        threaded in by a training-time unroll (truncated BPTT). Without the
-        timeline, ``memory`` is ignored.
-        """
-
         x = data["entity"].x
         type_ids = data["entity"].type_ids
         type_embeds = self.type_embedding(type_ids)
@@ -206,13 +151,13 @@ class Network(Configurable, nn.Module):
                 inp = torch.cat([x[mask], type_embeds[mask]], dim=-1)
                 entity_x[mask] = self.entity_encoders[name](inp)
 
-        stepmix_idx = data[("entity", "stepmix", "entity")].edge_index
-        stepmix_attr = data[("entity", "stepmix", "entity")].edge_attr
-        for layer in self.stepmix_layers:
+        stepmix_idx = data[("entity", "condition", "entity")].edge_index
+        stepmix_attr = data[("entity", "condition", "entity")].edge_attr
+        for layer in self.condition_layers:
             entity_x = layer(entity_x, stepmix_idx, stepmix_attr)
 
-        tapas_idx = data[("entity", "tapas", "entity")].edge_index
-        for layer in self.tapas_layers:
+        tapas_idx = data[("entity", "translation", "entity")].edge_index
+        for layer in self.translation_layers:
             entity_x = layer(entity_x, tapas_idx)
 
         summary_idx = data[("entity", "summary", "option")].edge_index
@@ -225,9 +170,6 @@ class Network(Configurable, nn.Module):
         if self.interaction_layer is not None:
             option_x = self.interaction_layer(option_x)
 
-        # Expose the per-option embeddings and the memory used at this step to
-        # the rollout loop. Set unconditionally (zeros when the timeline is
-        # disabled and therefore unused) so callers can read them directly.
         self._last_option_x = option_x
         if self.timeline is not None:
             if memory is None:

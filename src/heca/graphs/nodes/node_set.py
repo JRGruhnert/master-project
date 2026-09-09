@@ -1,22 +1,24 @@
 from typing import Generic, TypeVar
 
-import numpy as np
 import torch
 
-from heca.graphs.node import EntityNode, GraphNode
+from heca.graphs.nodes.node import GraphNode
 from heca.data.data import DCEntity
 
 T = TypeVar("T", bound=GraphNode)
 
 
 class NodeSet(Generic[T]):
-    def __init__(self, type: str):
+    def __init__(self):
         self.items: list[T] = []
         self.keys: list[str] = []
         self.index: dict[str, int] = {}
         self.x: torch.Tensor = torch.empty(1)
         self.type_ids: torch.Tensor = torch.empty(0, dtype=torch.long)
-        self.type = type
+
+    @property
+    def type(self) -> str:
+        raise NotImplementedError
 
     def add(self, key: str, value: T):
         assert key not in self.index, f"duplicate node key: {key}"
@@ -50,16 +52,7 @@ class NodeSet(Generic[T]):
         return key in self.index
 
     def build(self):
-        if self.items and isinstance(self.items[0], EntityNode):
-            x_np = np.stack([node.data.feature for node in self.items], axis=0)
-            self.type_ids = torch.tensor(
-                [node.type_id for node in self.items], dtype=torch.long  # type: ignore
-            )
-        else:
-            # Non-entity nodes (options): placeholder features; real features
-            # are produced by the summary message passing.
-            x_np = np.zeros((len(self.items), 128), dtype=np.float32)
-        self.x = torch.from_numpy(x_np).float()
+        raise NotImplementedError
 
     def __str__(self) -> str:
         lines = [f"NodeSet<{self.type}> ({len(self.items)} nodes):"]

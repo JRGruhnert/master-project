@@ -126,7 +126,9 @@ def main():
         f"truncated={stats['trunc']}  terminal-fail={stats['term_fail']}"
     )
     if stats["success"]:
-        print(f"  mean options/successful-ep = {stats['opt_succ'] / stats['success']:.2f}")
+        print(
+            f"  mean options/successful-ep = {stats['opt_succ'] / stats['success']:.2f}"
+        )
     print(f"  mean options/episode = {stats['opt_tot'] / tot:.2f}")
     print(f"  failed episodes: {failed}")
 

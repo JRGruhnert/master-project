@@ -1,8 +1,8 @@
 from torch import nn
 import torch
 
-from torch_geometric.data import HeteroData
-from torch_geometric.nn import GINEConv, GINConv
+from torch_geometric.nn import GINConv
+from heca.heca_gnn.modules.common import _make_gnn_mlp
 
 
 class FreeEncoder(nn.Module):

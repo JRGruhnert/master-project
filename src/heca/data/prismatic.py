@@ -3,7 +3,7 @@ from typing import Any
 
 import numpy as np
 
-from heca.data.data import DCEntity, DCScene
+from heca.data.data import DCScene
 from heca.data.entity import Entity
 
 
@@ -44,8 +44,6 @@ class PrismaticEntity(Entity):
             f"heca_{label}_pos": pos,
             f"heca_{label}_rot": dc.rot,
             f"heca_{label}_ste": dc.ste,
-            # Relative joint position in [-1, 1]; step_scene maps it back to
-            # the raw joint position using the object's pos_range.
             f"heca_{label}_sca": float(dc.ext[0]),
         }
 

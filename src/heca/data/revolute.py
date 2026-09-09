@@ -3,7 +3,7 @@ from typing import Any
 
 import numpy as np
 
-from heca.data.data import DCEntity, DCScene
+from heca.data.data import DCScene
 from heca.data.entity import Entity
 
 
