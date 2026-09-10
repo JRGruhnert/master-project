@@ -8,9 +8,11 @@ from torch_geometric.data import HeteroData
 from heca.heca_gnn.modules.condition import ConditionBlock
 from heca.heca_gnn.modules.interaction import OptionInteraction
 from heca.heca_gnn.modules.readout import OptionReadout
+from heca.heca_gnn.modules.state_critic import StateCritic
+from heca.heca_gnn.modules.summary import SummaryBlock
 from heca.heca_gnn.modules.timeline import TimelineMemory
 from heca.heca_gnn.modules.translation import TranslationBlock
-from heca.heca_gnn.modules.summary import SummaryBlock
+from heca.graphs.roles import ROLE_GOAL
 from heca.misc import hardware
 from heca.misc.base import Configurable
 
@@ -76,17 +78,15 @@ class Network(Configurable, nn.Module):
         else:
             self.interaction_layer = None
 
+        readout_dim = cfg.feature_dim + cfg.feature_dim
         if cfg.use_timeline_memory:
             self.timeline = TimelineMemory(cfg.feature_dim)
-            # The readout consumes [option embedding, memory] concatenated.
-            self.option_readout = OptionReadout(
-                2 * cfg.feature_dim, cfg.readout_hidden_ratio
-            )
+            readout_dim += cfg.feature_dim
         else:
             self.timeline = None
-            self.option_readout = OptionReadout(
-                cfg.feature_dim, cfg.readout_hidden_ratio
-            )
+        self.option_readout = OptionReadout(readout_dim, cfg.readout_hidden_ratio)
+
+        self.state_critic = StateCritic(cfg.feature_dim, cfg.readout_hidden_ratio)
 
     def actor(self, data: HeteroData) -> torch.Tensor:
         logits, _ = self.forward(data)
@@ -133,6 +133,14 @@ class Network(Configurable, nn.Module):
             return self.timeline(u_prev, h_prev)
         return ref.new_zeros(1, self.cfg.feature_dim)
 
+    def _goal_block(self, entity_x: torch.Tensor, data: HeteroData) -> torch.Tensor:
+        role_ids = getattr(data["entity"], "role_ids", None)
+        if role_ids is not None:
+            goal = entity_x[role_ids == ROLE_GOAL]
+            if goal.numel():
+                return goal.mean(dim=0, keepdim=True)
+        return entity_x.new_zeros(1, self.cfg.feature_dim)
+
     def forward(
         self,
         data: HeteroData,
@@ -161,16 +169,23 @@ class Network(Configurable, nn.Module):
             entity_x = layer(entity_x, tapas_idx)
 
         summary_idx = data[("entity", "summary", "option")].edge_index
-        summary_attr = data[("entity", "summary", "option")].edge_attr
         option_x = data["option"].x
         if option_x.shape[-1] != self.cfg.feature_dim:
             option_x = option_x.new_zeros(option_x.shape[0], self.cfg.feature_dim)
-        option_x = self.summary_layer(entity_x, option_x, summary_idx, summary_attr)
+
+        option_x = self.summary_layer(entity_x, option_x, summary_idx)
 
         if self.interaction_layer is not None:
             option_x = self.interaction_layer(option_x)
 
         self._last_option_x = option_x
+
+        goal_block = self._goal_block(entity_x, data)
+        self._last_goal_block = goal_block
+        option_x = torch.cat(
+            [option_x, goal_block.expand(option_x.shape[0], -1)], dim=-1
+        )
+
         if self.timeline is not None:
             if memory is None:
                 memory = self._memory_from(data, option_x)
@@ -179,8 +194,15 @@ class Network(Configurable, nn.Module):
                 [option_x, memory.expand(option_x.shape[0], -1)], dim=-1
             )
         else:
-            self._last_mem = option_x.new_zeros(1, option_x.shape[1])
+            self._last_mem = option_x.new_zeros(1, self.cfg.feature_dim)
 
-        logits, value = self.option_readout(option_x)
+        logits = self.option_readout(option_x)
+
+        role_ids = getattr(data["entity"], "role_ids", None)
+        if role_ids is None:
+            raise ValueError
+        value = self.state_critic(
+            entity_x, role_ids, memory=getattr(self, "_last_mem", None)
+        )
 
         return logits, value

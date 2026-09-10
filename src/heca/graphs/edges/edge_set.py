@@ -13,6 +13,8 @@ D = TypeVar("D", bound=GraphNode)
 
 
 class EdgeSet(Generic[S, D]):
+    has_attrs: bool = True
+
     def __init__(self):
         self.edge_index: torch.Tensor = torch.empty((2, 0), dtype=torch.long)
         self.edge_attr: torch.Tensor = torch.empty((2, 0), dtype=torch.long)
@@ -22,7 +24,8 @@ class EdgeSet(Generic[S, D]):
 
     def add(self, src_idx: int, dst_idx: int):
         self.edges.append((src_idx, dst_idx))
-        self.attrs.append(np.zeros(0))
+        if self.has_attrs:
+            self.attrs.append(np.zeros(0))
         self.rebuild = True
 
     @property
@@ -32,6 +35,9 @@ class EdgeSet(Generic[S, D]):
     def build(self, snset: NodeSet[S], dnset: NodeSet[D]):
         src_list, dst_list = zip(*self.edges)
         self.edge_index = torch.tensor([src_list, dst_list], dtype=torch.long)
+        if not self.has_attrs:
+            self.edge_attr = torch.empty((2, 0), dtype=torch.long)
+            return
         for i, edge in enumerate(self.edges):
             src = snset.idx_get(edge[0])
             dst = dnset.idx_get(edge[1])

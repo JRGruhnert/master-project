@@ -17,6 +17,7 @@ from heca.graphs.edges.translation_edges import TranslationEdges
 from heca.graphs.nodes.entity_nodes import EntityNodes
 from heca.graphs.nodes.node import *
 from heca.graphs.nodes.option_nodes import OptionNodes
+from heca.graphs.roles import ROLE_CURRENT, ROLE_GOAL, ROLE_OTHER, ROLE_POST, ROLE_PRE
 from heca.misc import hardware, logger
 from heca.data.data import DCScene
 from heca.data.entity import Entity
@@ -57,7 +58,7 @@ class Graph:
         self._start_set = False
 
     def export(self) -> HeteroData:
-        option_keys = self.enabled_keys()
+        option_keys = self.feasible_keys()
         self._export_keys = option_keys
         ent_keys = self._entity_closure(option_keys)
 
@@ -79,42 +80,112 @@ class Graph:
             )
 
         def _compact(
-            es: EdgeSet, src_map: dict[int, int], dst_map: dict[int, int]
+            es: EdgeSet,
+            src_map: dict[int, int],
+            dst_map: dict[int, int],
+            want_attrs: bool = True,
         ) -> tuple[torch.Tensor, torch.Tensor]:
             rows = [
                 i for i, (s, d) in enumerate(es.edges) if s in src_map and d in dst_map
             ]
-            if rows:
-                idx = (
-                    torch.tensor(
-                        [
-                            [src_map[es.edges[i][0]], dst_map[es.edges[i][1]]]
-                            for i in rows
-                        ],
-                        dtype=torch.long,
-                    )
-                    .t()
-                    .contiguous()
+            if not rows:
+                return (
+                    torch.empty((2, 0), dtype=torch.long),
+                    torch.empty((0, es.edge_attr.shape[1] if want_attrs else 0)),
                 )
-                attrs = (
-                    es.edge_attr[rows].clone()
-                    if es.edge_attr.ndim == 2
-                    else torch.empty((0, 0))
+            idx = (
+                torch.tensor(
+                    [[src_map[es.edges[i][0]], dst_map[es.edges[i][1]]] for i in rows],
+                    dtype=torch.long,
                 )
-            else:
-                idx = torch.empty((2, 0), dtype=torch.long)
-                attrs = torch.empty((0, es.edge_attr.shape[1]))
+                .t()
+                .contiguous()
+            )
+            if not want_attrs:
+                return idx, torch.empty((0, 0))
+            attrs = (
+                es.edge_attr[rows].clone()
+                if es.edge_attr.ndim == 2
+                else torch.empty((0, 0))
+            )
             return idx, attrs
 
         si, sa = _compact(self.es_condition, e_map, e_map)
         data[self.es_condition.type].edge_index = si
         data[self.es_condition.type].edge_attr = sa
-        si, sa = _compact(self.es_summary, e_map, o_map)
+        si, _ = _compact(self.es_summary, e_map, o_map, want_attrs=False)
         data[self.es_summary.type].edge_index = si
-        data[self.es_summary.type].edge_attr = sa
         si, _ = _compact(self.es_translation, e_map, e_map)
         data[self.es_translation.type].edge_index = si
+        data = self._append_state_rows(data, ent_keys)
         return data.to(device=hardware.device.type)
+
+    def _row_role(self, node: EntityNode) -> int:
+        if isinstance(node, SubgoalNode):
+            return ROLE_POST  # chain shared value == the target it drives to
+        if isinstance(node, ValueNode):
+            return ROLE_PRE if node.vmode == ValueMode.START else ROLE_POST
+        return ROLE_OTHER  # e.g. CompNode
+
+    def _state_labels(self) -> list[str]:
+        if not self._start_set:
+            return []
+        start_keys = {k for k, _ in self.start.entities()}
+        goal_keys = {k for k, _ in self.goal.entities()}
+        return sorted(start_keys & goal_keys & set(self.entities))
+
+    def _append_state_rows(self, data: HeteroData, ent_keys: list[str]) -> HeteroData:
+        ent_type = self.ns_entity.type
+        tran_type = self.es_translation.type
+        x = data[ent_type].x
+        n_actor = len(x)
+        actor_roles = [self._row_role(self.ns_entity.get_by_key(k)) for k in ent_keys]
+        feats: list[np.ndarray] = []
+        tids: list[int] = []
+        roles: list[int] = []
+        for label in self._state_labels():
+            entity = self.entities[label]
+            try:
+                cur = self.start.get(label).value
+                goal = self.goal.get(label).value
+            except KeyError:
+                continue
+            feats.append(entity.gnn_format(cur).astype(np.float32))
+            tids.append(entity.cfg.type_id)
+            roles.append(ROLE_CURRENT)
+            feats.append(entity.gnn_format(goal).astype(np.float32))
+            tids.append(entity.cfg.type_id)
+            roles.append(ROLE_GOAL)
+        if feats:
+            state_x = torch.from_numpy(np.stack(feats))
+            data[ent_type].x = torch.cat([x, state_x], dim=0)
+            data[ent_type].type_ids = torch.cat(
+                [
+                    data[ent_type].type_ids,
+                    torch.tensor(tids, dtype=torch.long),
+                ]
+            )
+        data[ent_type].role_ids = torch.cat(
+            [
+                torch.tensor(actor_roles, dtype=torch.long),
+                torch.tensor(roles, dtype=torch.long),
+            ]
+        )
+
+        n_state = len(feats)
+        if n_state > 1:
+            state_idx = torch.arange(n_actor, n_actor + n_state)
+            src, dst = [], []
+            for i in state_idx.tolist():
+                for j in state_idx.tolist():
+                    if i != j:
+                        src.append(i)
+                        dst.append(j)
+            state_edges = torch.tensor([src, dst], dtype=torch.long)
+            data[tran_type].edge_index = torch.cat(
+                [data[tran_type].edge_index, state_edges], dim=1
+            )
+        return data
 
     def _feasible(self, key: str) -> bool:
         node = self.ns_option.get_by_key(key)
@@ -139,16 +210,12 @@ class Graph:
                 return False
         return True
 
-    def enabled_keys(self) -> list[str]:
-        keys = [k for k in self.ns_option.keys if self._feasible(k)]
-        if not keys:
-            logger.warning(
-                "No option passes the state gate for the current scene; "
-                f"exporting the ungated full set ({len(self.ns_option.keys)} "
-                "options)."
-            )
-            return list(self.ns_option.keys)
-        return keys
+    def feasible_keys(self) -> list[str]:
+        """Options whose state gate holds for the current scene (may be empty)."""
+        values = [k for k in self.ns_option.keys if self._feasible(k)]
+        if not values:
+            raise RuntimeError
+        return values
 
     @property
     def export_keys(self) -> list[str]:

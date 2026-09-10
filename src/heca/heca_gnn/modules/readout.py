@@ -16,15 +16,8 @@ class OptionReadout(nn.Module):
         )
 
         self.actor_head = nn.Linear(hidden_dim, 1)
-        self.critic_head = nn.Linear(hidden_dim, 1)
 
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         shared = self.shared(x)
-
         actor_out = self.actor_head(shared)
-        logits = actor_out.view(1, -1)
-
-        pooled = shared.mean(dim=0, keepdim=True)
-        value = self.critic_head(pooled).squeeze(-1)
-
-        return logits, value
+        return actor_out.view(1, -1)
