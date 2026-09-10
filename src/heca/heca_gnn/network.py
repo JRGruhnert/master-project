@@ -5,7 +5,9 @@ from torch import nn
 from torch.distributions import Categorical
 from torch_geometric.data import HeteroData
 
+from heca.heca_gnn.modules.aggregation import StateAggregation
 from heca.heca_gnn.modules.condition import ConditionBlock
+from heca.heca_gnn.modules.film import FiLM
 from heca.heca_gnn.modules.interaction import OptionInteraction
 from heca.heca_gnn.modules.readout import OptionReadout
 from heca.heca_gnn.modules.state_critic import StateCritic
@@ -24,17 +26,17 @@ class Network(Configurable, nn.Module):
     @dataclass(kw_only=True)
     class Config(Configurable.Config):
         type_embed_dim: int = 8
-        mobility_feat_dim: int = 3
         feature_dim: int = 256
         input_feat_dim: int = 33
+        option_feat_dim: int = 33
         num_stepmix_layers: int = 1
         num_tapas_layers: int = 1
-        encoder_depth: int = 3
         gnn_mlp_depth: int = 3
         attn_heads: int = 4
         readout_hidden_ratio: float = 0.5
         use_option_interaction: bool = False
         use_timeline_memory: bool = False
+        use_film_conditioning: bool = False
 
     def __init__(self, cfg: Config):
         nn.Module.__init__(self)
@@ -73,10 +75,26 @@ class Network(Configurable, nn.Module):
 
         self.summary_layer = SummaryBlock(cfg.feature_dim, cfg.gnn_mlp_depth)
 
+        self.option_encoder = nn.Sequential(
+            nn.LayerNorm(cfg.option_feat_dim),
+            nn.Linear(cfg.option_feat_dim, cfg.feature_dim),
+            nn.ReLU(),
+        )
+
         if cfg.use_option_interaction:
             self.interaction_layer = OptionInteraction(cfg.feature_dim, cfg.attn_heads)
         else:
             self.interaction_layer = None
+
+        self.state_aggregation = StateAggregation(
+            cfg.feature_dim, cfg.readout_hidden_ratio
+        )
+
+        self.film = (
+            FiLM(cfg.feature_dim, cfg.readout_hidden_ratio)
+            if cfg.use_film_conditioning
+            else None
+        )
 
         readout_dim = cfg.feature_dim + cfg.feature_dim
         if cfg.use_timeline_memory:
@@ -126,20 +144,19 @@ class Network(Configurable, nn.Module):
 
     def _memory_from(self, data: HeteroData, ref: torch.Tensor) -> torch.Tensor:
         step = getattr(data, "mem_step", None)
-        if step is not None and self.timeline is not None:
-            u_prev, h_prev = step
-            u_prev = u_prev.clone()
-            h_prev = h_prev.clone()
-            return self.timeline(u_prev, h_prev)
-        return ref.new_zeros(1, self.cfg.feature_dim)
+        if step is None:
+            return ref.new_zeros(1, self.cfg.feature_dim)
+        return self.timeline(*step)
 
-    def _goal_block(self, entity_x: torch.Tensor, data: HeteroData) -> torch.Tensor:
-        role_ids = getattr(data["entity"], "role_ids", None)
-        if role_ids is not None:
-            goal = entity_x[role_ids == ROLE_GOAL]
-            if goal.numel():
-                return goal.mean(dim=0, keepdim=True)
-        return entity_x.new_zeros(1, self.cfg.feature_dim)
+    def _goal_slot(self, entity_x: torch.Tensor, data: HeteroData) -> torch.Tensor:
+        """Pooled goal slot (one state node per role, see ``Graph.export``)."""
+        roles = data["state"].type_ids
+        pooled = self.state_aggregation(
+            entity_x,
+            data[("entity", "aggregation", "state")].edge_index,
+            roles.shape[0],
+        )
+        return pooled[roles == ROLE_GOAL]
 
     def forward(
         self,
@@ -150,59 +167,54 @@ class Network(Configurable, nn.Module):
         type_ids = data["entity"].type_ids
         type_embeds = self.type_embedding(type_ids)
 
-        # Route each row through its type's encoder
-        N = x.shape[0]
-        entity_x = torch.zeros(N, self.cfg.feature_dim, device=x.device, dtype=x.dtype)
+        entity_x = x.new_zeros(x.shape[0], self.cfg.feature_dim)
         for t, name in enumerate(self._type_names):
-            mask = type_ids == t
-            if mask.any():
-                inp = torch.cat([x[mask], type_embeds[mask]], dim=-1)
-                entity_x[mask] = self.entity_encoders[name](inp)
+            rows = type_ids == t
+            if rows.any():
+                inp = torch.cat([x[rows], type_embeds[rows]], dim=-1)
+                entity_x[rows] = self.entity_encoders[name](inp)
 
-        stepmix_idx = data[("entity", "condition", "entity")].edge_index
-        stepmix_attr = data[("entity", "condition", "entity")].edge_attr
+        stepmix = data[("entity", "condition", "entity")]
         for layer in self.condition_layers:
-            entity_x = layer(entity_x, stepmix_idx, stepmix_attr)
+            entity_x = layer(entity_x, stepmix.edge_index, stepmix.edge_attr)
 
         tapas_idx = data[("entity", "translation", "entity")].edge_index
         for layer in self.translation_layers:
             entity_x = layer(entity_x, tapas_idx)
 
-        summary_idx = data[("entity", "summary", "option")].edge_index
-        option_x = data["option"].x
-        if option_x.shape[-1] != self.cfg.feature_dim:
-            option_x = option_x.new_zeros(option_x.shape[0], self.cfg.feature_dim)
+        h_goal = self._goal_slot(entity_x, data)
 
-        option_x = self.summary_layer(entity_x, option_x, summary_idx)
+        if self.film is not None:
+            entity_x = self.film(entity_x, h_goal)
+
+        option_x = self.option_encoder(data["option"].x)
+        option_x = self.summary_layer(
+            entity_x, option_x, data[("entity", "summary", "option")].edge_index
+        )
 
         if self.interaction_layer is not None:
             option_x = self.interaction_layer(option_x)
 
         self._last_option_x = option_x
+        n_option = option_x.shape[0]
+        option_x = torch.cat([option_x, h_goal.expand(n_option, -1)], dim=-1)
 
-        goal_block = self._goal_block(entity_x, data)
-        self._last_goal_block = goal_block
-        option_x = torch.cat(
-            [option_x, goal_block.expand(option_x.shape[0], -1)], dim=-1
-        )
-
-        if self.timeline is not None:
+        if self.timeline is None:
+            memory = option_x.new_zeros(1, self.cfg.feature_dim)
+        else:
             if memory is None:
                 memory = self._memory_from(data, option_x)
-            self._last_mem = memory
-            option_x = torch.cat(
-                [option_x, memory.expand(option_x.shape[0], -1)], dim=-1
-            )
-        else:
-            self._last_mem = option_x.new_zeros(1, self.cfg.feature_dim)
+            option_x = torch.cat([option_x, memory.expand(n_option, -1)], dim=-1)
+        self._last_mem = memory
 
         logits = self.option_readout(option_x)
 
-        role_ids = getattr(data["entity"], "role_ids", None)
-        if role_ids is None:
-            raise ValueError
         value = self.state_critic(
-            entity_x, role_ids, memory=getattr(self, "_last_mem", None)
+            entity_x,
+            data["entity"].role_ids,
+            data["entity"].cur_idx,
+            data["entity"].goal_idx,
+            self._last_mem,
         )
 
         return logits, value

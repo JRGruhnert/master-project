@@ -1,4 +1,5 @@
 from collections import defaultdict
+from contextlib import contextmanager
 from enum import Enum
 from pathlib import Path
 
@@ -12,11 +13,13 @@ from matplotlib.patches import Patch
 from heca.experts.expert import ExpertModel
 from heca.graphs.edges.condition_edges import ConditionEdges
 from heca.graphs.edges.edge_set import EdgeSet
+from heca.graphs.edges.state_edges import StateEdges
 from heca.graphs.edges.summary_edges import SummaryEdges
 from heca.graphs.edges.translation_edges import TranslationEdges
 from heca.graphs.nodes.entity_nodes import EntityNodes
 from heca.graphs.nodes.node import *
 from heca.graphs.nodes.option_nodes import OptionNodes
+from heca.graphs.nodes.state_nodes import StateNodes
 from heca.graphs.roles import ROLE_CURRENT, ROLE_GOAL, ROLE_OTHER, ROLE_POST, ROLE_PRE
 from heca.misc import hardware, logger
 from heca.data.data import DCScene
@@ -40,10 +43,15 @@ class Graph:
 
         self.ns_entity: EntityNodes = EntityNodes()
         self.ns_option: OptionNodes = OptionNodes()
+        self.ns_state: StateNodes = StateNodes()
 
         self.es_summary: SummaryEdges = SummaryEdges()
         self.es_condition: ConditionEdges = ConditionEdges()
         self.es_translation: TranslationEdges = TranslationEdges()
+        self.es_state: StateEdges = StateEdges()
+
+        self.ns_state.add("state_current", StateNode(role=ROLE_CURRENT))
+        self.ns_state.add("state_goal", StateNode(role=ROLE_GOAL))
 
         self.start_keys: set[str] = set()
         self.goal_keys: set[str] = set()
@@ -56,6 +64,12 @@ class Graph:
         self._option_conditions: dict[str, ConPair] = {}
         self._export_keys: list[str] | None = None
         self._start_set = False
+
+        self._start_vals: dict[str, np.ndarray | None] | None = None
+        self._pre_memo: dict[int, bool] = {}
+        self._post_memo: dict[tuple, bool] = {}
+        self._mix_cache: dict[tuple[int, int], tuple[object, dict]] = {}
+        self._subgoal_plan_cache: dict[str, tuple[tuple[str, str | None], ...]] = {}
 
     def export(self) -> HeteroData:
         option_keys = self.feasible_keys()
@@ -118,7 +132,21 @@ class Graph:
         si, _ = _compact(self.es_translation, e_map, e_map)
         data[self.es_translation.type].edge_index = si
         data = self._append_state_rows(data, ent_keys)
+        self._validate_export(data)
         return data.to(device=hardware.device.type)
+
+    def _validate_export(self, data: HeteroData) -> None:
+        ent = data[self.ns_entity.type]
+        roles = data[self.ns_state.type].type_ids
+        agg = data[self.es_state.type].edge_index
+        counts = torch.bincount(ent.role_ids, minlength=ROLE_OTHER + 1)
+
+        assert ent.cur_idx.numel() == ent.goal_idx.numel() > 0
+        assert ent.role_ids.shape[0] == ent.x.shape[0]
+        assert roles.tolist() == [ROLE_CURRENT, ROLE_GOAL]
+        assert agg.shape[1] == int(ent.cur_idx.numel() + ent.goal_idx.numel())
+        assert int(agg[1].max()) < roles.shape[0]
+        assert bool((counts[[ROLE_PRE, ROLE_POST]] > 0).all())
 
     def _row_role(self, node: EntityNode) -> int:
         if isinstance(node, SubgoalNode):
@@ -143,6 +171,8 @@ class Graph:
         feats: list[np.ndarray] = []
         tids: list[int] = []
         roles: list[int] = []
+        cur_rows: list[int] = []
+        goal_rows: list[int] = []
         for label in self._state_labels():
             entity = self.entities[label]
             try:
@@ -150,9 +180,11 @@ class Graph:
                 goal = self.goal.get(label).value
             except KeyError:
                 continue
+            cur_rows.append(n_actor + len(feats))
             feats.append(entity.gnn_format(cur).astype(np.float32))
             tids.append(entity.cfg.type_id)
             roles.append(ROLE_CURRENT)
+            goal_rows.append(n_actor + len(feats))
             feats.append(entity.gnn_format(goal).astype(np.float32))
             tids.append(entity.cfg.type_id)
             roles.append(ROLE_GOAL)
@@ -172,6 +204,21 @@ class Graph:
             ]
         )
 
+        data[ent_type].cur_idx = torch.tensor(cur_rows, dtype=torch.long)
+        data[ent_type].goal_idx = torch.tensor(goal_rows, dtype=torch.long)
+
+        cur_state = self.ns_state.get_index("state_current")
+        goal_state = self.ns_state.get_index("state_goal")
+        agg_src = list(cur_rows) + list(goal_rows)
+        agg_dst = [cur_state] * len(cur_rows) + [goal_state] * len(goal_rows)
+        self.es_state.set_index(agg_src, agg_dst)
+        data[self.es_state.type].edge_index = self.es_state.edge_index
+        data[self.es_state.type].edge_attr = self.es_state.edge_attr
+        data[self.ns_state.type].x = self.ns_state.x
+        data[self.ns_state.type].type_ids = torch.tensor(
+            [node.role for node in self.ns_state.items], dtype=torch.long
+        )
+
         n_state = len(feats)
         if n_state > 1:
             state_idx = torch.arange(n_actor, n_actor + n_state)
@@ -187,32 +234,101 @@ class Graph:
             )
         return data
 
-    def _feasible(self, key: str) -> bool:
-        node = self.ns_option.get_by_key(key)
-        con = self._option_conditions.get(key)
-        if con is None or not self._start_set:
-            return True  # no gate info / no current scene -> never disable
+    def _prepared_params(self, model, entity: Entity) -> dict:
+        hit = self._mix_cache.get((id(model), id(entity)))
+        if hit is not None and hit[0] is model:
+            return hit[1]
+        params = entity.prepare_single(model.get_parameters().copy())
+        self._mix_cache[(id(model), id(entity))] = (model, params)
+        return params
+
+    def _start_values(self) -> dict[str, np.ndarray | None]:
+        return {label: self._start_value(label) for label in self.entities}
+
+    def _start_value(self, label: str) -> np.ndarray | None:
         try:
-            subgoal = self.assemble_subgoal(node)
+            return self.start.get(label).value
         except KeyError:
+            return None
+
+    @contextmanager
+    def _gate_pass(self):
+        """Per-step memo state shared by all options of one ``feasible_keys``."""
+        self._pre_memo = {}
+        self._post_memo = {}
+        self._start_vals = self._start_values()
+        try:
+            yield
+        finally:
+            self._start_vals = None
+
+    def _gate(self, con: Condition, values: dict[str, np.ndarray | None]) -> bool:
+        """AND over ``con``'s entities of the per-entity state gate."""
+        hit = self._pre_memo.get(id(con))
+        if hit is not None:
+            return hit
+        ok = True
+        for label in con.models:
+            value = values[label]
+            if value is None:
+                ok = False
+                break
+            params = self._prepared_params(con.models[label], self.entities[label])
+            if not self.entities[label].score_prepared(value, params):
+                ok = False
+                break
+        self._pre_memo[id(con)] = ok
+        return ok
+
+    def _subgoal_plan(self, key: str) -> tuple[tuple[str, str | None], ...]:
+        hit = self._subgoal_plan_cache.get(key)
+        if hit is not None:
+            return hit
+        source_of = {
+            self.ns_entity.get_by_key(skey).entity: skey
+            for skey in self.ns_option.get_by_key(key).sources.get("entity", set())
+        }
+        plan = tuple(
+            (label, source_of.get(label))
+            for label in self._option_conditions[key].post.models
+        )
+        self._subgoal_plan_cache[key] = plan
+        return plan
+
+    def _gated(self, key: str) -> bool:
+        """Gate check for one option during an active :meth:`_gate_pass`."""
+        if not self._start_set:
+            return True
+        con = self._option_conditions[key]
+        if not self._gate(con.pre, self._start_vals):
             return False
-        for label in con.pre.models:
-            up = con.pre.models[label].get_parameters().copy()
-            try:
-                value = self.start.get(label).value
-            except KeyError:
+        for label, src_key in self._subgoal_plan(key):
+            value = (
+                self._start_vals[label]
+                if src_key is None
+                else self.ns_entity.get_by_key(src_key).data.value
+            )
+            if value is None:
                 return False
-            if not self.entities[label].score_single(value, up):
-                return False
-        for label in con.post.models:
-            up = con.post.models[label].get_parameters().copy()
-            if not self.entities[label].score_single(subgoal.get(label).value, up):
+            params = self._prepared_params(con.post.models[label], self.entities[label])
+            memo_key = (id(con.post), label, np.asarray(value).tobytes())
+            hit = self._post_memo.get(memo_key)
+            if hit is None:
+                hit = self.entities[label].score_prepared(value, params)
+                self._post_memo[memo_key] = hit
+            if not hit:
                 return False
         return True
 
+    def _feasible(self, key: str) -> bool:
+        if self._start_vals is None:
+            with self._gate_pass():
+                return self._gated(key)
+        return self._gated(key)
+
     def feasible_keys(self) -> list[str]:
-        """Options whose state gate holds for the current scene (may be empty)."""
-        values = [k for k in self.ns_option.keys if self._feasible(k)]
+        with self._gate_pass():
+            values = [k for k in self.ns_option.keys if self._gated(k)]
         if not values:
             raise RuntimeError
         return values
@@ -297,6 +413,7 @@ class Graph:
     def rebuild(self):
         self.ns_entity.build()
         self.ns_option.build()
+        self.ns_state.build()
         self.es_condition.build(self.ns_entity, self.ns_entity)
         self.es_summary.build(self.ns_entity, self.ns_option)
         self.es_translation.build(self.ns_entity, self.ns_entity)
@@ -401,6 +518,34 @@ class Graph:
             temp_sources[entity] = key
         return set(temp_sources.values())
 
+    @staticmethod
+    def _mean_component_feature(
+        comps: list[tuple[np.ndarray, float]],
+    ) -> np.ndarray | None:
+        """Weighted mean of a condition's fitted component features."""
+        if not comps:
+            return None
+        feats = np.stack([f for f, _ in comps]).astype(np.float64)
+        weights = np.asarray([w for _, w in comps], dtype=np.float64)
+        total = float(weights.sum())
+        if total <= 0.0:
+            return feats.mean(axis=0)
+        return (feats * (weights / total)[:, None]).sum(axis=0)
+
+    @classmethod
+    def _option_effect(cls, pair: ConPair) -> np.ndarray:
+        pre_feats = pair.pre.comp_features()
+        post_feats = pair.post.comp_features()
+        deltas = []
+        for entity in sorted(set(pre_feats) & set(post_feats)):
+            pre = cls._mean_component_feature(pre_feats[entity])
+            post = cls._mean_component_feature(post_feats[entity])
+            if pre is not None and post is not None:
+                deltas.append(post - pre)
+        if not deltas:
+            return np.zeros(Entity.FEATURE_DIM, dtype=np.float32)
+        return np.mean(np.stack(deltas), axis=0).astype(np.float32)
+
     @classmethod
     def generate(cls, cfgs: list[ExpertModel.Config], smode: SubgoalMode) -> "Graph":
         entities = {}
@@ -412,6 +557,7 @@ class Graph:
 
         for a in agents:
             ac = a.conditions
+            effect = graph._option_effect(ac)
             pre_sources = graph.set_precon(ac.label, ac.pre)
             post_comp_sources = graph.set_comps(ac.label, ac.post)
             post_start_sources = graph.set_postcon(
@@ -450,6 +596,7 @@ class Graph:
                         OptionNode(
                             model=a.cfg,
                             sources={"entity": set(post_sources.values())},
+                            effect=effect,
                         ),
                     )
                     graph._option_conditions[ac.label] = ac
@@ -459,6 +606,7 @@ class Graph:
                             OptionNode(
                                 model=a.cfg,
                                 sources={"entity": set(post_sources_alt.values())},
+                                effect=effect,
                             ),
                         )
                         graph._option_conditions[ac.label + "s"] = ac
@@ -478,6 +626,7 @@ class Graph:
                             OptionNode(
                                 model=a.cfg,
                                 sources={"entity": sources},
+                                effect=effect,
                             ),
                         )
                         graph._option_conditions[ac.label + "--" + bc.label] = ac
@@ -485,8 +634,23 @@ class Graph:
         graph.es_condition.edges_from_sets(graph.ns_entity, graph.ns_entity, "comp")
         graph.es_summary.edges_from_sets(graph.ns_entity, graph.ns_option, "entity")
         graph.es_translation.edges_from_sets(graph.ns_entity, graph.ns_entity, "entity")
+        graph._validate_structure()
 
         return graph
+
+    def _validate_structure(self) -> None:
+        for key in self.ns_option.keys:
+            seen: set[str] = set()
+            for skey in self.ns_option.get_by_key(key).sources.get("entity", set()):
+                entity = self.ns_entity.get_by_key(skey).entity
+                assert entity not in seen, f"{key}: two value nodes for {entity}"
+                seen.add(entity)
+        assert [node.role for node in self.ns_state.items] == [
+            ROLE_CURRENT,
+            ROLE_GOAL,
+        ]
+        assert self.es_condition.size > 0
+        assert self.es_summary.size > 0
 
     def select(self, option: int) -> tuple[ExpertModel.Config, DCScene]:
         option_key = self.export_keys[option]

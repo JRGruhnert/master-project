@@ -1,5 +1,6 @@
 import math
 import warnings
+from functools import lru_cache
 from typing import Any
 
 import numpy as np
@@ -11,6 +12,21 @@ from heca.misc.base import Configurable
 from heca.data.data import DCEntity, DCScene
 from heca.utils.quaternion import Quaternion
 from heca.misc import logger
+
+
+@lru_cache(maxsize=256)
+def _chi2_ppf(q: float, df: int) -> float:
+    return float(chi2.ppf(q, df))
+
+
+@lru_cache(maxsize=256)
+def _chi_sqrt(q: float, df: int) -> float:
+    return float(math.sqrt(chi2.ppf(q, df)))
+
+
+@lru_cache(maxsize=8)
+def _z_dim_sigma(z_quantile_dim: float) -> float:
+    return float(norm.ppf(0.5 + z_quantile_dim / 2.0))
 
 
 class Entity(Configurable):
@@ -186,19 +202,28 @@ class Entity(Configurable):
         return p
 
     def score_single(self, sample: np.ndarray, up: dict, eps: float = 1e-15) -> bool:
+        return self.score_prepared(
+            sample, self.secure_mix_parameters(up, add_variance=True), eps=eps
+        )
+
+    def prepare_single(self, up: dict) -> dict:
+        return self.secure_mix_parameters(up, add_variance=True)
+
+    def score_prepared(self, sample: np.ndarray, p: dict, eps: float = 1e-15) -> bool:
+        """Same test as :meth:`score_single`, on already prepared parameters."""
         sample = self.model_value(sample)
-        p = self.secure_mix_parameters(up, add_variance=True)
         pose = sample[:-1]
         state = int(sample[-1])
         pis = p["measurement"]["state"]["pis"]
 
         best_k, z, zd = self._best_component(pose, p, eps=eps)
-        chi_sqrt = float(math.sqrt(chi2.ppf(self.cfg.z_quantile_joint, len(pose))))
+        chi_sqrt = _chi_sqrt(self.cfg.z_quantile_joint, len(pose))
 
-        valid_pose = z <= chi_sqrt and bool(np.all(zd <= self._z_dim_sigma))
-        valid_state = bool(pis[best_k][state] > 1e-6)
-
-        return valid_pose and valid_state
+        # NOTE: keep the short-circuit -- the original ``valid_pose and
+        # valid_state`` never indexed ``pis`` when the pose test failed.
+        if not (z <= chi_sqrt and bool(np.all(zd <= self._z_dim_sigma))):
+            return False
+        return bool(pis[best_k][state] > 1e-6)
 
     def score_state(self, sample: np.ndarray, up: dict, eps: float = 1e-15) -> bool:
         sample = self.model_value(sample)
@@ -211,22 +236,21 @@ class Entity(Configurable):
 
     @property
     def _z_dim_sigma(self) -> float:
-        return float(norm.ppf(0.5 + self.cfg.z_quantile_dim / 2.0))
+        return _z_dim_sigma(self.cfg.z_quantile_dim)
 
     def _best_component(
         self, pose: np.ndarray, p: dict, eps: float = 1e-15
     ) -> tuple[int, float, np.ndarray]:
-        weights = p["weights"]
-        means = p["measurement"]["pose"]["means"]
-        vars_ = p["measurement"]["pose"]["covariances"]
-        best_k, best_post = -1, -np.inf
-        for k in range(len(weights)):
-            var = np.maximum(vars_[k], eps)
-            post = np.log(weights[k]) - 0.5 * np.sum(
-                np.log(2 * np.pi * var) + (pose - means[k]) ** 2 / var
-            )
-            if post > best_post:
-                best_k, best_post = k, post
+        weights = np.asarray(p["weights"])
+        means = np.asarray(p["measurement"]["pose"]["means"])
+        vars_ = np.asarray(p["measurement"]["pose"]["covariances"])
+        # Component-wise posterior (up to a common constant, which cancels in
+        # the argmax) evaluated for all components at once.
+        var = np.maximum(vars_, eps)
+        post = np.log(weights) - 0.5 * np.sum(
+            np.log(2 * np.pi * var) + (pose - means) ** 2 / var, axis=-1
+        )
+        best_k = int(np.argmax(post))
         zd = np.abs(pose - means[best_k]) / np.sqrt(np.maximum(vars_[best_k], eps))
         z = float(np.sqrt(np.sum(zd**2)))
         return best_k, z, zd
@@ -305,14 +329,11 @@ class Entity(Configurable):
         pis2 = p2["measurement"]["state"]["pis"]
 
         d = means1.shape[1]
-        chi = float(chi2.ppf(self.cfg.z_quantile_joint, d))
+        chi = _chi2_ppf(self.cfg.z_quantile_joint, d)
 
         def agrees(i: int, j: int) -> bool:
             var1 = np.maximum(vars1[i], eps)
             var2 = np.maximum(vars2[j], eps)
-            # Exact ellipsoid-intersection test (instead of checking only the
-            # posterior-mean agreement value, which is conservative when the
-            # two variances differ a lot).
             if not self._ellipsoids_intersect(
                 means1[i],
                 var1,
@@ -322,8 +343,6 @@ class Entity(Configurable):
                 self._z_dim_sigma,
             ):
                 return False
-            # Hard state gate: most likely states must be equal (aligned to the
-            # union of observed states so the indices are comparable).
             n = max(len(pis1[i]), len(pis2[j]))
             c1 = np.pad(pis1[i], (0, n - len(pis1[i]))) if len(pis1[i]) < n else pis1[i]
             c2 = np.pad(pis2[j], (0, n - len(pis2[j]))) if len(pis2[j]) < n else pis2[j]
@@ -340,9 +359,7 @@ class Entity(Configurable):
         return float(min(covered1, covered2))
 
     def containment_score(self, up1: dict, up2: dict) -> bool:
-        """Decision wrapper: does a value exist that can occur under *both*
-        conditions? Returns ``True`` iff ``containment`` is ``> 0`` and logs
-        the actual float value for diagnostics."""
+
         value = self.containment(up1, up2)
         logger.debug(f"containment={value:.4f}")
         return value > 0.0
@@ -458,84 +475,3 @@ class Entity(Configurable):
             )
 
         return feat, p["weights"]
-
-    # def kl_variational_paper(self, other: "Condition", key: str):
-    #     m1, s1 = Condition.mix_with_states(self, key)
-    #     m2, s2 = Condition.mix_with_states(other, key)
-    #     p1 = m1.get_parameters()
-    #     p2 = m2.get_parameters()
-
-    #     # Align categorical distributions to a common state space
-    #     if s1 is not None and s2 is not None:
-    #         target = sorted(s1 | s2)  # union
-    #         padded_cat1 = self._pad_cat_probs(
-    #             p1["measurement"]["state"]["pis"], s1, target
-    #         )
-    #         padded_cat2 = self._pad_cat_probs(
-    #             p2["measurement"]["state"]["pis"], s2, target
-    #         )
-    #     else:
-    #         padded_cat1 = p1["measurement"]["state"]["pis"]
-    #         padded_cat2 = p2["measurement"]["state"]["pis"]
-
-    #     kl = 0.0
-    #     for i in range(len(p1["weights"])):
-    #         w_i = p1["weights"][i]
-    #         mu1 = p1["measurement"]["pose"]["means"][i]
-    #         var1 = p1["measurement"]["pose"]["covariances"][i]
-    #         cat1 = padded_cat1[i]
-
-    #         # Numerator: self-overlap of component i with its OWN model
-    #         log_sum_m1 = 0.0
-    #         for k in range(len(p1["weights"])):
-    #             w_k = p1["weights"][k]
-    #             mu_k = p1["measurement"]["pose"]["means"][k]
-    #             var_k = p1["measurement"]["pose"]["covariances"][k]
-    #             cat_k = padded_cat1[k]
-
-    #             kl_self = 0.5 * np.sum(
-    #                 np.log(var1)
-    #                 - np.log(var_k)
-    #                 + var_k / var1
-    #                 + (mu_k - mu1) ** 2 / var1
-    #                 - 1
-    #             )
-    #             cat1_safe = np.clip(cat1, 1e-12, 1)
-    #             cat_k_safe = np.clip(cat_k, 1e-12, 1)
-    #             kl_cat_self = np.sum(
-    #                 cat1_safe * (np.log(cat1_safe) - np.log(cat_k_safe))
-    #             )
-    #             log_sum_m1 += w_k * np.exp(-(kl_self + kl_cat_self))
-
-    #         # Denominator: cross-overlap with model 2
-    #         log_sum_m2 = 0.0
-    #         for j in range(len(p2["weights"])):
-    #             w_j = p2["weights"][j]
-    #             mu2 = p2["measurement"]["pose"]["means"][j]
-    #             var2 = p2["measurement"]["pose"]["covariances"][j]
-    #             cat2 = padded_cat2[j]
-
-    #             kl_gauss = 0.5 * np.sum(
-    #                 np.log(var2)
-    #                 - np.log(var1)
-    #                 + var1 / var2
-    #                 + (mu1 - mu2) ** 2 / var2
-    #                 - 1
-    #             )
-    #             cat2_safe = np.clip(cat2, 1e-12, 1)
-    #             kl_cat = np.sum(cat1_safe * (np.log(cat1_safe) - np.log(cat2_safe)))
-    #             log_sum_m2 += w_j * np.exp(-(kl_gauss + kl_cat))
-
-    #         kl += w_i * np.log(log_sum_m1 / log_sum_m2)
-    #         if key == "window_handle":
-    #             print(f"Component {i}:")
-    #             print(f"mu1={mu1}")
-    #             print(f"mu2={mu2}")
-    #             print(f"var1={var1}")
-    #             print(f"var2={var2}")
-    #             print(f"cat1={cat1}, cat2={cat2}")
-    #             print(f"log_sum_m1={log_sum_m1:.4f}")
-    #             print(f"log_sum_m2={log_sum_m2:.4f}")
-    #     if key == "window_handle":
-    #         print(f"Total KL={kl:.4f}, score={np.exp(-kl):.4f}")
-    #     return np.exp(-kl)

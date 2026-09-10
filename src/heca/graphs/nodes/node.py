@@ -3,6 +3,8 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
 
+import numpy as np
+
 from heca.experts.expert import ExpertModel
 from heca.data.condition import Condition
 from heca.data.data import DCEntity, DCScene
@@ -72,9 +74,16 @@ class CompNode(EntityNode):
 
 
 @dataclass(slots=True, kw_only=True)
+class StateNode(GraphNode):
+    role: int = 0
+    data: DCEntity = field(default_factory=DCEntity.empty)
+
+
+@dataclass(slots=True, kw_only=True)
 class OptionNode(GraphNode):
     model: ExpertModel.Config
     data: DCScene = DCScene.empty()
+    effect: np.ndarray | None = None
 
     # OptionNode __str__:
     def __str__(self) -> str:
