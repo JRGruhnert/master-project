@@ -66,7 +66,9 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--mode", choices=["argmax", "sample"], default="argmax")
     ap.add_argument("--memory", choices=["on", "off"], default="auto")
-    ap.add_argument("--legacy-goal-pool", action=argparse.BooleanOptionalAction, default=True)
+    ap.add_argument(
+        "--legacy-goal-pool", action=argparse.BooleanOptionalAction, default=True
+    )
     args = ap.parse_args()
 
     scene = Scene.get(find_scene_config(args.scene), auto_load=False)
@@ -85,14 +87,18 @@ def main():
         weights_only=False,
     )
     network.upgrade(ckp["network"])
-    if args.legacy_goal_pool and "state_aggregation" not in " ".join(ckp["network"].keys()):
+    if args.legacy_goal_pool and "state_aggregation" not in " ".join(
+        ckp["network"].keys()
+    ):
         # Pre-aggregation checkpoints saw the mean of the canonical goal rows.
-        network._goal_slot = lambda entity_x, data: (  # type: ignore[method-assign]
-            entity_x[data["entity"].goal_idx].mean(dim=0, keepdim=True)
+        from heca.graphs.graph import CANONICAL
+
+        network._goal_slot = lambda canonical_x, data: (  # type: ignore[method-assign]
+            canonical_x[data[CANONICAL].goal_idx].mean(dim=0, keepdim=True)
         )
     network.eval()
     block = network.interaction_layer
-    use_mem = network.timeline is not None
+    use_mem = network.timeline_layer is not None
     if args.memory == "on":
         use_mem = True
     elif args.memory == "off":

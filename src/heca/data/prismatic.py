@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import ClassVar, Any
 
 import numpy as np
 
@@ -8,6 +8,7 @@ from heca.data.entity import Entity
 
 
 class PrismaticEntity(Entity):
+    BLOCKS: ClassVar[tuple[str, ...]] = ("state", "pos", "rot", "extra")
 
     @dataclass(kw_only=True)
     class Config(Entity.Config):
@@ -34,6 +35,10 @@ class PrismaticEntity(Entity):
         relative = (current_pos - min_pos) / (max_pos - min_pos)
         relative = 2 * relative - 1
         return np.array([relative])
+
+    @property
+    def extra_sigma(self) -> np.ndarray:
+        return np.full(1, self.cfg.sca_sigma)
 
     def env_state_value(
         self, label: str, x: DCScene, unnormalize_pos=None

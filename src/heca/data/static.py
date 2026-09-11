@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import ClassVar, Any
 
 import numpy as np
 
@@ -8,6 +8,7 @@ from heca.data.entity import Entity
 
 
 class StaticEntity(Entity):
+    BLOCKS: ClassVar[tuple[str, ...]] = ("state", "pos", "rot")
 
     @dataclass(kw_only=True)
     class Config(Entity.Config):

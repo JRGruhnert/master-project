@@ -74,6 +74,18 @@ class CompNode(EntityNode):
 
 
 @dataclass(slots=True, kw_only=True)
+class CanonicalNode(EntityNode):
+    """A per-entity current or goal value (the critic's side of the fork)."""
+
+    entity: str
+    type_id: int
+    n_states: int
+    #
+    role: int = 0
+    data: DCEntity = field(default_factory=DCEntity.empty)
+
+
+@dataclass(slots=True, kw_only=True)
 class StateNode(GraphNode):
     role: int = 0
     data: DCEntity = field(default_factory=DCEntity.empty)

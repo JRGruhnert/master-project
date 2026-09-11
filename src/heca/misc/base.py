@@ -1,7 +1,7 @@
 import abc
 from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar, Type, TypeVar, cast
+from typing import ClassVar, TypeVar, cast
 
 from heca.misc import logger
 
@@ -44,7 +44,7 @@ class Configurable(abc.ABC):
         self.cfg = cfg
 
     @classmethod
-    def get(cls: Type[C], cfg: "Configurable.Config") -> C:
+    def get(cls: type[C], cfg: "Configurable.Config") -> C:
         target_cls = cls._config_registry.get(type(cfg), cls)
         return target_cls(cfg)
 
@@ -70,11 +70,11 @@ class Registerable(Configurable):
         self.cfg = cfg
 
     @classmethod
-    def _key(cls: Type[R], cfg: "Registerable.Config") -> tuple[Type, str]:
+    def _key(cls: type[R], cfg: "Registerable.Config") -> tuple[type, str]:
         return (type(cfg), cfg.label)
 
     @classmethod
-    def get(cls: Type[R], cfg: "Registerable.Config") -> R:
+    def get(cls: type[R], cfg: "Registerable.Config") -> R:
         # Resolve the concrete subclass from the config type; fall back to cls
         # itself if this is already a concrete class being called directly.
         target_cls = cls._config_registry.get(type(cfg), cls)
@@ -111,11 +111,11 @@ class Persistable(Registerable, abc.ABC):
         self.cfg = cfg
 
     @classmethod
-    def _key(cls: Type[R], cfg: "Persistable.Config") -> tuple[Type, str]:
+    def _key(cls: type[R], cfg: "Persistable.Config") -> tuple[type, str]:
         return (type(cfg), cfg.label + cfg.tag)
 
     @classmethod
-    def get(cls: Type[P], cfg: "Persistable.Config", auto_load: bool = True) -> P:
+    def get(cls: type[P], cfg: "Persistable.Config", auto_load: bool = True) -> P:
         target_cls = cls._config_registry.get(type(cfg), cls)
         key = cls._key(cfg)
         # print(key)

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import ClassVar, Any
 
 import numpy as np
 
@@ -8,6 +8,7 @@ from heca.data.entity import Entity
 
 
 class RevoluteEntity(Entity):
+    BLOCKS: ClassVar[tuple[str, ...]] = ("state", "pos", "rot", "extra")
 
     @dataclass(kw_only=True)
     class Config(Entity.Config):
@@ -31,15 +32,14 @@ class RevoluteEntity(Entity):
         ang = obs[f"heca_{label}_ang"]
         return np.array([np.sin(ang), np.cos(ang)])
 
-        relative = (current - min_angle) / (max_angle - min_angle)  # Already [0,1]
-        range_size = max_angle - min_angle  # Scale info
-        midpoint = (max_angle + min_angle) / 2  # Offset info
+    @property
+    def extra_sigma(self) -> np.ndarray:
+        return np.full(2, self.cfg.ang_sigma)
 
-        # Normalize range_size and midpoint using pre-computed dataset statistics (Z-score)
-        range_norm = (range_size - range_mean) / range_std
-        midpoint_norm = (midpoint - midpoint_mean) / midpoint_std
-
-        network_input = [relative, range_norm, midpoint_norm]
+    @property
+    def pose_dof_groups(self) -> list[np.ndarray]:
+        n = self.pose_dim
+        return [np.array([i]) for i in range(n - 2)] + [np.array([n - 2, n - 1])]
 
     def sanitize_value(
         self,

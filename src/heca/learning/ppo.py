@@ -45,8 +45,8 @@ def score_chunks(
                 nxt = getattr(data[seg[pos + 1]], "mem_step", None)
                 if nxt is not None:
                     u, _ = nxt
-                    assert net.timeline is not None, "Shouldn't happen."
-                    h = net.timeline(u.clone(), net._last_mem)
+                    assert net.timeline_layer is not None, "Shouldn't happen."
+                    h = net.timeline_layer(u.clone(), net._last_mem)
                 else:
                     h = None
     return torch.cat(logprobs), torch.cat(values), torch.cat(entropies)
@@ -278,6 +278,6 @@ class PPO(Learner):
         self._grad_norm_updates += 1
         if self._grad_norm_updates >= self.cfg.grad_norm_log_freq:
             for key_short, (total, count) in window.items():
-                self.metrics[f"network/grad_norm/{key_short}"] = total / count
+                self.metrics[f"network/{key_short}"] = total / count
             self._grad_norm_window = {}
             self._grad_norm_updates = 0

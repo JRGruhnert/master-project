@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import ClassVar, Any
 
 import numpy as np
 
@@ -14,6 +14,7 @@ def _clean(value) -> str:
 
 
 class FreeEntity(Entity):
+    BLOCKS: ClassVar[tuple[str, ...]] = ("state", "pos", "rot")
     @dataclass(kw_only=True)
     class Config(Entity.Config):
         type_id: int = 0

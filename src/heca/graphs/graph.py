@@ -16,6 +16,7 @@ from heca.graphs.edges.edge_set import EdgeSet
 from heca.graphs.edges.state_edges import StateEdges
 from heca.graphs.edges.summary_edges import SummaryEdges
 from heca.graphs.edges.translation_edges import TranslationEdges
+from heca.graphs.nodes.canonical_nodes import CanonicalNodes
 from heca.graphs.nodes.entity_nodes import EntityNodes
 from heca.graphs.nodes.node import *
 from heca.graphs.nodes.option_nodes import OptionNodes
@@ -37,12 +38,14 @@ class SubgoalMode(Enum):
         return self.value
 
 
+
 class Graph:
     def __init__(self, entities: dict[str, Entity]):
         self.entities: dict[str, Entity] = entities
 
         self.ns_entity: EntityNodes = EntityNodes()
         self.ns_option: OptionNodes = OptionNodes()
+        self.ns_canonical: CanonicalNodes = CanonicalNodes()
         self.ns_state: StateNodes = StateNodes()
 
         self.es_summary: SummaryEdges = SummaryEdges()
@@ -52,6 +55,18 @@ class Graph:
 
         self.ns_state.add("state_current", StateNode(role=ROLE_CURRENT))
         self.ns_state.add("state_goal", StateNode(role=ROLE_GOAL))
+
+        for label, entity in self.entities.items():
+            for role, tag in ((ROLE_CURRENT, "cur"), (ROLE_GOAL, "goal")):
+                self.ns_canonical.add(
+                    f"state_{tag}_{label}",
+                    CanonicalNode(
+                        entity=label,
+                        type_id=entity.cfg.type_id,
+                        n_states=entity.cfg.n_states,
+                        role=role,
+                    ),
+                )
 
         self.start_keys: set[str] = set()
         self.goal_keys: set[str] = set()
@@ -131,21 +146,28 @@ class Graph:
         data[self.es_summary.type].edge_index = si
         si, _ = _compact(self.es_translation, e_map, e_map)
         data[self.es_translation.type].edge_index = si
-        data = self._append_state_rows(data, ent_keys)
+        data = self._export_state_rows(data, ent_keys)
         self._validate_export(data)
         return data.to(device=hardware.device.type)
 
     def _validate_export(self, data: HeteroData) -> None:
         ent = data[self.ns_entity.type]
-        roles = data[self.ns_state.type].type_ids
+        can = data[self.ns_canonical.type]
+        slots = data[self.ns_state.type]
         agg = data[self.es_state.type].edge_index
         counts = torch.bincount(ent.role_ids, minlength=ROLE_OTHER + 1)
 
-        assert ent.cur_idx.numel() == ent.goal_idx.numel() > 0
+        assert can.cur_idx.numel() == can.goal_idx.numel() > 0
+        assert can.role_ids.shape[0] == can.x.shape[0] == can.type_ids.shape[0]
+        # canonical rows never enter the entity set
         assert ent.role_ids.shape[0] == ent.x.shape[0]
-        assert roles.tolist() == [ROLE_CURRENT, ROLE_GOAL]
-        assert agg.shape[1] == int(ent.cur_idx.numel() + ent.goal_idx.numel())
-        assert int(agg[1].max()) < roles.shape[0]
+        assert can.x.shape[0] == can.cur_idx.numel() + can.goal_idx.numel()
+        assert can.role_ids[can.cur_idx].eq(ROLE_CURRENT).all()
+        assert can.role_ids[can.goal_idx].eq(ROLE_GOAL).all()
+        assert slots.type_ids.tolist() == [ROLE_CURRENT, ROLE_GOAL]
+        assert agg.shape[1] == can.x.shape[0]
+        assert int(agg[0].max()) < can.x.shape[0]
+        assert int(agg[1].max()) < slots.type_ids.shape[0]
         assert bool((counts[[ROLE_PRE, ROLE_POST]] > 0).all())
 
     def _row_role(self, node: EntityNode) -> int:
@@ -162,50 +184,43 @@ class Graph:
         goal_keys = {k for k, _ in self.goal.entities()}
         return sorted(start_keys & goal_keys & set(self.entities))
 
-    def _append_state_rows(self, data: HeteroData, ent_keys: list[str]) -> HeteroData:
-        ent_type = self.ns_entity.type
-        tran_type = self.es_translation.type
-        x = data[ent_type].x
-        n_actor = len(x)
-        actor_roles = [self._row_role(self.ns_entity.get_by_key(k)) for k in ent_keys]
-        feats: list[np.ndarray] = []
-        tids: list[int] = []
-        roles: list[int] = []
-        cur_rows: list[int] = []
-        goal_rows: list[int] = []
-        for label in self._state_labels():
-            entity = self.entities[label]
-            try:
-                cur = self.start.get(label).value
-                goal = self.goal.get(label).value
-            except KeyError:
-                continue
-            cur_rows.append(n_actor + len(feats))
-            feats.append(entity.gnn_format(cur).astype(np.float32))
-            tids.append(entity.cfg.type_id)
-            roles.append(ROLE_CURRENT)
-            goal_rows.append(n_actor + len(feats))
-            feats.append(entity.gnn_format(goal).astype(np.float32))
-            tids.append(entity.cfg.type_id)
-            roles.append(ROLE_GOAL)
-        if feats:
-            state_x = torch.from_numpy(np.stack(feats))
-            data[ent_type].x = torch.cat([x, state_x], dim=0)
-            data[ent_type].type_ids = torch.cat(
-                [
-                    data[ent_type].type_ids,
-                    torch.tensor(tids, dtype=torch.long),
-                ]
-            )
-        data[ent_type].role_ids = torch.cat(
-            [
-                torch.tensor(actor_roles, dtype=torch.long),
-                torch.tensor(roles, dtype=torch.long),
-            ]
-        )
+    def _export_state_rows(self, data: HeteroData, ent_keys: list[str]) -> HeteroData:
+        """Export the canonical rows and the aggregation edges.
 
-        data[ent_type].cur_idx = torch.tensor(cur_rows, dtype=torch.long)
-        data[ent_type].goal_idx = torch.tensor(goal_rows, dtype=torch.long)
+        One current and one goal row per entity that appears in both the start
+        and the goal, interleaved so that ``cur_idx[i]`` and ``goal_idx[i]`` are
+        the same entity. They are not part of the entity node set: the relational
+        layers are about conditions and translations between entities, and these
+        rows are neither.
+        """
+        ent_type = self.ns_entity.type
+        can_type = self.ns_canonical.type
+        actor_roles = [self._row_role(self.ns_entity.get_by_key(k)) for k in ent_keys]
+        data[ent_type].role_ids = torch.tensor(actor_roles, dtype=torch.long)
+
+        cur_keys: list[str] = []
+        goal_keys: list[str] = []
+        for label in self._state_labels():
+            cur, goal = f"state_cur_{label}", f"state_goal_{label}"
+            if self.ns_canonical.has_key(cur) and self.ns_canonical.has_key(goal):
+                cur_keys.append(cur)
+                goal_keys.append(goal)
+
+        can_keys: list[str] = []
+        for cur, goal in zip(cur_keys, goal_keys):
+            can_keys += [cur, goal]
+        can_old = self.ns_canonical.get_indices(can_keys)
+        c_map = {old: new for new, old in enumerate(can_old)}
+
+        data[can_type].x = self.ns_canonical.x[can_old]
+        data[can_type].type_ids = self.ns_canonical.type_ids[can_old]
+        data[can_type].role_ids = torch.tensor(
+            [self.ns_canonical.idx_get(i).role for i in can_old], dtype=torch.long
+        )
+        cur_rows = [c_map[self.ns_canonical.get_index(k)] for k in cur_keys]
+        goal_rows = [c_map[self.ns_canonical.get_index(k)] for k in goal_keys]
+        data[can_type].cur_idx = torch.tensor(cur_rows, dtype=torch.long)
+        data[can_type].goal_idx = torch.tensor(goal_rows, dtype=torch.long)
 
         cur_state = self.ns_state.get_index("state_current")
         goal_state = self.ns_state.get_index("state_goal")
@@ -218,20 +233,6 @@ class Graph:
         data[self.ns_state.type].type_ids = torch.tensor(
             [node.role for node in self.ns_state.items], dtype=torch.long
         )
-
-        n_state = len(feats)
-        if n_state > 1:
-            state_idx = torch.arange(n_actor, n_actor + n_state)
-            src, dst = [], []
-            for i in state_idx.tolist():
-                for j in state_idx.tolist():
-                    if i != j:
-                        src.append(i)
-                        dst.append(j)
-            state_edges = torch.tensor([src, dst], dtype=torch.long)
-            data[tran_type].edge_index = torch.cat(
-                [data[tran_type].edge_index, state_edges], dim=1
-            )
         return data
 
     def _prepared_params(self, model, entity: Entity) -> dict:
@@ -372,6 +373,14 @@ class Graph:
             node.data = goal.copy()
 
     def update_nodes(self):
+        for key, node in zip(self.ns_canonical.keys, self.ns_canonical.items):
+            scene = self.start if node.role == ROLE_CURRENT else self.goal
+            try:
+                value = scene.get(node.entity)
+            except KeyError:
+                continue
+            self.ns_canonical.key_update(key, value)
+
         for key in self.goal_keys:
             node = self.ns_entity.get_by_key(key)
             assert isinstance(node, ValueNode)
@@ -402,6 +411,7 @@ class Graph:
         lines.append(f"Entities: {len(self.entities)}")
         lines.append(str(self.ns_entity))
         lines.append(str(self.ns_option))
+        lines.append(str(self.ns_canonical))
         lines.append(f"StepMix: {self.es_condition}")
         lines.append(f"Summary: {self.es_summary}")
         lines.append(f"Tapas:   {self.es_translation}")
@@ -413,6 +423,7 @@ class Graph:
     def rebuild(self):
         self.ns_entity.build()
         self.ns_option.build()
+        self.ns_canonical.build()
         self.ns_state.build()
         self.es_condition.build(self.ns_entity, self.ns_entity)
         self.es_summary.build(self.ns_entity, self.ns_option)

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Sequence
 import torch
 from torch import nn
@@ -7,7 +7,15 @@ from torch_geometric.data import HeteroData
 
 from heca.heca_gnn.modules.aggregation import StateAggregation
 from heca.heca_gnn.modules.condition import ConditionBlock
-from heca.heca_gnn.modules.film import FiLM
+from heca.heca_gnn.modules.encoder import (
+    FreeEncoder,
+    OptionEncoder,
+    PrismaticEncoder,
+    RevoluteEncoder,
+    StaticEncoder,
+    _EntityEncoder,
+)
+from heca.heca_gnn.modules.film import FiLMStack
 from heca.heca_gnn.modules.interaction import OptionInteraction
 from heca.heca_gnn.modules.readout import OptionReadout
 from heca.heca_gnn.modules.state_critic import StateCritic
@@ -15,6 +23,7 @@ from heca.heca_gnn.modules.summary import SummaryBlock
 from heca.heca_gnn.modules.timeline import TimelineMemory
 from heca.heca_gnn.modules.translation import TranslationBlock
 from heca.graphs.roles import ROLE_GOAL
+from heca.data.entity import Entity
 from heca.misc import hardware
 from heca.misc.base import Configurable
 
@@ -25,86 +34,60 @@ class Network(Configurable, nn.Module):
 
     @dataclass(kw_only=True)
     class Config(Configurable.Config):
-        type_embed_dim: int = 8
         feature_dim: int = 256
-        input_feat_dim: int = 33
-        option_feat_dim: int = 33
-        num_stepmix_layers: int = 1
-        num_tapas_layers: int = 1
-        gnn_mlp_depth: int = 3
         attn_heads: int = 4
-        readout_hidden_ratio: float = 0.5
+        use_option_effects: bool = True
         use_option_interaction: bool = False
         use_timeline_memory: bool = False
-        use_film_conditioning: bool = False
+
+    @property
+    def condenser_names(self) -> tuple[str, ...]:
+        """Conditioning inputs, in the order they modulate a site."""
+        return ("goal", "memory") if self.cfg.use_timeline_memory else ("goal",)
+
+    @property
+    def encoder_map(self) -> dict[str, type[_EntityEncoder]]:
+        return {
+            "free": FreeEncoder,
+            "static": StaticEncoder,
+            "prismatic": PrismaticEncoder,
+            "revolute": RevoluteEncoder,
+        }
 
     def __init__(self, cfg: Config):
         nn.Module.__init__(self)
         self.cfg = cfg
 
-        # Maps TYPE_ID → encoder name
-        self._type_names = ["free", "static", "prismatic", "revolute"]
-
-        self.type_embedding = nn.Embedding(len(self._type_names), cfg.type_embed_dim)
-
-        encoder_in = cfg.input_feat_dim + cfg.type_embed_dim
+        if tuple(self.encoder_map) != Entity.TYPE_NAMES:
+            raise ValueError(
+                f"encoder_map order {tuple(self.encoder_map)} does not match "
+                f"Entity.TYPE_NAMES {Entity.TYPE_NAMES}"
+            )
         self.entity_encoders = nn.ModuleDict(
-            {
-                name: nn.Sequential(
-                    nn.LayerNorm(encoder_in),
-                    nn.Linear(encoder_in, cfg.feature_dim),
-                    nn.LayerNorm(cfg.feature_dim),
-                    nn.ReLU(),
-                )
-                for name in self._type_names
-            }
+            {name: cls(cfg.feature_dim) for name, cls in self.encoder_map.items()}
         )
-        self.condition_layers = nn.ModuleList(
-            [
-                ConditionBlock(cfg.feature_dim, cfg.gnn_mlp_depth)
-                for _ in range(cfg.num_stepmix_layers)
-            ]
-        )
+        self.option_encoder = OptionEncoder(cfg.feature_dim)
 
-        self.translation_layers = nn.ModuleList(
-            [
-                TranslationBlock(cfg.feature_dim, cfg.gnn_mlp_depth)
-                for _ in range(cfg.num_tapas_layers)
-            ]
-        )
-
-        self.summary_layer = SummaryBlock(cfg.feature_dim, cfg.gnn_mlp_depth)
-
-        self.option_encoder = nn.Sequential(
-            nn.LayerNorm(cfg.option_feat_dim),
-            nn.Linear(cfg.option_feat_dim, cfg.feature_dim),
-            nn.ReLU(),
-        )
+        self.condition_layer = ConditionBlock(cfg.feature_dim)
+        self.translation_layer = TranslationBlock(cfg.feature_dim)
+        self.summary_layer = SummaryBlock(cfg.feature_dim)
+        self.state_aggregation = StateAggregation(cfg.feature_dim)
 
         if cfg.use_option_interaction:
             self.interaction_layer = OptionInteraction(cfg.feature_dim, cfg.attn_heads)
         else:
             self.interaction_layer = None
 
-        self.state_aggregation = StateAggregation(
-            cfg.feature_dim, cfg.readout_hidden_ratio
-        )
-
-        self.film = (
-            FiLM(cfg.feature_dim, cfg.readout_hidden_ratio)
-            if cfg.use_film_conditioning
-            else None
-        )
-
-        readout_dim = cfg.feature_dim + cfg.feature_dim
         if cfg.use_timeline_memory:
-            self.timeline = TimelineMemory(cfg.feature_dim)
-            readout_dim += cfg.feature_dim
+            self.timeline_layer = TimelineMemory(cfg.feature_dim)
         else:
-            self.timeline = None
-        self.option_readout = OptionReadout(readout_dim, cfg.readout_hidden_ratio)
+            self.timeline_layer = None
 
-        self.state_critic = StateCritic(cfg.feature_dim, cfg.readout_hidden_ratio)
+        self.films = FiLMStack(
+            cfg.feature_dim, self.condenser_names, ("actor", "critic")
+        )
+        self.option_readout = OptionReadout(cfg.feature_dim)
+        self.state_critic = StateCritic(cfg.feature_dim)
 
     def actor(self, data: HeteroData) -> torch.Tensor:
         logits, _ = self.forward(data)
@@ -144,16 +127,27 @@ class Network(Configurable, nn.Module):
 
     def _memory_from(self, data: HeteroData, ref: torch.Tensor) -> torch.Tensor:
         step = getattr(data, "mem_step", None)
-        if step is None:
+        if step is None or self.timeline_layer is None:
             return ref.new_zeros(1, self.cfg.feature_dim)
-        return self.timeline(*step)
+        return self.timeline_layer(*step)
 
-    def _goal_slot(self, entity_x: torch.Tensor, data: HeteroData) -> torch.Tensor:
-        """Pooled goal slot (one state node per role, see ``Graph.export``)."""
+    def _encode(self, node_type: str, data: HeteroData) -> torch.Tensor:
+        """Per-type encoder pass over one node set's rows."""
+        x = data[node_type].x
+        type_ids = data[node_type].type_ids
+        out = x.new_zeros(x.shape[0], self.cfg.feature_dim)
+        for t, name in enumerate(self.encoder_map):
+            rows = type_ids == t
+            if rows.any():
+                out[rows] = self.entity_encoders[name](x[rows])
+        return out
+
+    def _goal_slot(self, canonical_x: torch.Tensor, data: HeteroData) -> torch.Tensor:
+        """Pooled goal slot over the canonical rows (see ``Graph.export``)."""
         roles = data["state"].type_ids
         pooled = self.state_aggregation(
-            entity_x,
-            data[("entity", "aggregation", "state")].edge_index,
+            canonical_x,
+            data[("canonical", "aggregation", "state")].edge_index,
             roles.shape[0],
         )
         return pooled[roles == ROLE_GOAL]
@@ -163,31 +157,20 @@ class Network(Configurable, nn.Module):
         data: HeteroData,
         memory: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        x = data["entity"].x
-        type_ids = data["entity"].type_ids
-        type_embeds = self.type_embedding(type_ids)
-
-        entity_x = x.new_zeros(x.shape[0], self.cfg.feature_dim)
-        for t, name in enumerate(self._type_names):
-            rows = type_ids == t
-            if rows.any():
-                inp = torch.cat([x[rows], type_embeds[rows]], dim=-1)
-                entity_x[rows] = self.entity_encoders[name](inp)
-
+        entity_x = self._encode("entity", data)
         stepmix = data[("entity", "condition", "entity")]
-        for layer in self.condition_layers:
-            entity_x = layer(entity_x, stepmix.edge_index, stepmix.edge_attr)
+        entity_x = self.condition_layer(entity_x, stepmix.edge_index, stepmix.edge_attr)
 
         tapas_idx = data[("entity", "translation", "entity")].edge_index
-        for layer in self.translation_layers:
-            entity_x = layer(entity_x, tapas_idx)
+        entity_x = self.translation_layer(entity_x, tapas_idx)
 
-        h_goal = self._goal_slot(entity_x, data)
+        canonical_x = self._encode("canonical", data)
+        h_goal = self._goal_slot(canonical_x, data)
 
-        if self.film is not None:
-            entity_x = self.film(entity_x, h_goal)
-
-        option_x = self.option_encoder(data["option"].x)
+        effects = data["option"].x
+        if not self.cfg.use_option_effects:
+            effects = torch.zeros_like(effects)
+        option_x = self.option_encoder(effects)
         option_x = self.summary_layer(
             entity_x, option_x, data[("entity", "summary", "option")].edge_index
         )
@@ -196,25 +179,28 @@ class Network(Configurable, nn.Module):
             option_x = self.interaction_layer(option_x)
 
         self._last_option_x = option_x
-        n_option = option_x.shape[0]
-        option_x = torch.cat([option_x, h_goal.expand(n_option, -1)], dim=-1)
 
-        if self.timeline is None:
-            memory = option_x.new_zeros(1, self.cfg.feature_dim)
-        else:
-            if memory is None:
-                memory = self._memory_from(data, option_x)
-            option_x = torch.cat([option_x, memory.expand(n_option, -1)], dim=-1)
-        self._last_mem = memory
+        if self.timeline_layer is None:
+            memory = None
+        elif memory is None:
+            memory = self._memory_from(data, option_x)
+        self._last_mem = (
+            memory
+            if memory is not None
+            else option_x.new_zeros(1, self.cfg.feature_dim)
+        )
 
-        logits = self.option_readout(option_x)
+        conds = {"goal": h_goal}
+        if memory is not None:
+            conds["memory"] = memory
 
+        logits = self.option_readout(option_x, self.films, conds)
         value = self.state_critic(
-            entity_x,
-            data["entity"].role_ids,
-            data["entity"].cur_idx,
-            data["entity"].goal_idx,
-            self._last_mem,
+            canonical_x,
+            data["canonical"].cur_idx,
+            data["canonical"].goal_idx,
+            self.films,
+            conds,
         )
 
         return logits, value

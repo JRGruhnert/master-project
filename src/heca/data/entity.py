@@ -1,7 +1,7 @@
 import math
 import warnings
 from functools import lru_cache
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 from dataclasses import dataclass, field
@@ -29,17 +29,83 @@ def _z_dim_sigma(z_quantile_dim: float) -> float:
     return float(norm.ppf(0.5 + z_quantile_dim / 2.0))
 
 
+@dataclass(frozen=True)
+class FeatureBlock:
+    start: int
+    mean_dim: int
+    logstd_dim: int = 0
+
+    @property
+    def dim(self) -> int:
+        return self.mean_dim + self.logstd_dim
+
+    def _live(self, offset: int, width: int, live: int | None) -> slice:
+        return slice(
+            self.start + offset, self.start + offset + (width if live is None else live)
+        )
+
+    def mean(self, live: int | None = None) -> slice:
+        """The mean slots; ``live`` narrows to the dims an entity actually uses."""
+        return self._live(0, self.mean_dim, live)
+
+    def logstd(self, live: int | None = None) -> slice:
+        return self._live(self.mean_dim, self.logstd_dim, live)
+
+
+def _layout(
+    max_state: int, max_extra: int, pos_dim: int, rot_dim: int
+) -> dict[str, FeatureBlock]:
+    blocks: dict[str, FeatureBlock] = {}
+    offset = 0
+    for name, mean_dim, logstd_dim in (
+        ("state", max_state, 0),
+        ("pos", pos_dim, rot_dim),
+        ("rot", 4, rot_dim),
+        ("extra", max_extra, max_extra),
+    ):
+        blocks[name] = FeatureBlock(offset, mean_dim, logstd_dim)
+        offset += mean_dim + logstd_dim
+    return blocks
+
+
+def _feature_dim(layout: dict[str, FeatureBlock]) -> int:
+    """Total width of a layout, and a check that its blocks are contiguous."""
+    end = 0
+    for name, block in layout.items():
+        if block.start != end:
+            raise ValueError(
+                f"layout block '{name}' starts at {block.start}, expected {end} "
+                "— the blocks must tile the feature vector"
+            )
+        end += block.dim
+    return end
+
+
 class Entity(Configurable):
-    FEATURE_DIM: int = 33  # 16 (logits) + 13 (pose) + 2*2 (max extra for revolute)
-    MAX_STATE_DIM: int = 16
+    TYPE_NAMES: ClassVar[tuple[str, ...]] = (
+        "free",
+        "static",
+        "prismatic",
+        "revolute",
+    )
+
+    # Which measurement blocks a type has, in feature order. Each subclass sets
+    # it and that type's encoder reads it from here, so it is written down once.
+    BLOCKS: ClassVar[tuple[str, ...]] = ("state", "pos")
+
+    MAX_STATE_DIM: int = 8
+    MAX_EXTRA_DIM: int = 2
     BASE_LOGSTD = -10.0
-    LOGIT_CONFIDENCE = 10.0
     POS_DIM: int = 3
     ROT_DIM: int = 3
     ANCHOR_THRESHOLD: float = 0.1
     REG_COVAR = 1e-6
-    LSTD_FLOOR = -2.0
     Z_CLIP = 10.0
+
+    LAYOUT: ClassVar[dict[str, FeatureBlock]] = _layout(
+        MAX_STATE_DIM, MAX_EXTRA_DIM, POS_DIM, ROT_DIM
+    )
+    FEATURE_DIM: ClassVar[int] = _feature_dim(LAYOUT)
 
     @dataclass(kw_only=True)
     class Config(Configurable.Config):
@@ -51,17 +117,53 @@ class Entity(Configurable):
         max_fit_components: int = 10
         z_quantile_joint: float = 0.999
         z_quantile_dim: float = 0.999
-        pos_sigma: float = 0.01
-        rot_sigma: float = 0.01
-        ext_sigma: float = 0.01
+        pos_sigma: float = 0.01  # metres
+        rot_sigma: float = 0.05  # radians of tangent-space rotation (~2.9 deg)
+        sca_sigma: float = 0.05  # prismatic: fraction of the slide range
+        ang_sigma: float = 0.05  # revolute: radians, as a chord on the unit circle
+        ext_sigma: float = 0.05  # fallback for any other extra dims
         canonicalize_rot: bool = False
 
     def __init__(self, cfg: Config):
         self.cfg = cfg
+        unknown = set(self.BLOCKS) - set(Entity.LAYOUT)
+        if unknown:
+            raise ValueError(
+                f"{type(self).__name__}.BLOCKS names unknown blocks "
+                f"{sorted(unknown)}; the layout has {sorted(Entity.LAYOUT)}"
+            )
+
+        expected = Entity.TYPE_NAMES[cfg.type_id]
+        actual = type(self).__name__.removesuffix("Entity").lower()
+        if actual != expected:
+            raise ValueError(
+                f"{type(self).__name__} carries type_id={cfg.type_id}, which "
+                f"Entity.TYPE_NAMES maps to '{expected}'"
+            )
 
     @property
     def rot_dim(self) -> int:
         return Entity.ROT_DIM if self.cfg.add_rotation else 0
+
+    @property
+    def pose_dim(self) -> int:
+        return int(self.measurement["pose"]["n_columns"])
+
+    @property
+    def extra_sigma(self) -> np.ndarray:
+        n = self.pose_dim - Entity.POS_DIM - self.rot_dim
+        return np.full(n, self.cfg.ext_sigma)
+
+    @property
+    def pose_dof_groups(self) -> list[np.ndarray]:
+        return [np.array([i]) for i in range(self.pose_dim)]
+
+    @property
+    def pose_dof(self) -> int:
+        return len(self.pose_dof_groups)
+
+    def group_squared(self, values: np.ndarray) -> np.ndarray:
+        return np.array([float(np.sum(values[g] ** 2)) for g in self.pose_dof_groups])
 
     def model_value(self, value: np.ndarray) -> np.ndarray:
         value = np.asarray(value)
@@ -127,27 +229,49 @@ class Entity(Configurable):
     def value_from_image(self, obs: dict) -> DCEntity:
         raise NotImplementedError
 
-    def gnn_format(self, value: np.ndarray) -> np.ndarray:
-        M = Entity.MAX_STATE_DIM
-        D = len(value) - 7  # pos(3) + aa(3) + ste(1) = 7 base, extra is rest
+    @staticmethod
+    def _check_state_width(n_states: int) -> None:
+        if n_states > Entity.MAX_STATE_DIM:
+            raise ValueError(
+                f"n_states={n_states} exceeds Entity.MAX_STATE_DIM="
+                f"{Entity.MAX_STATE_DIM}; the state block would overwrite the "
+                "pose blocks. Raise MAX_STATE_DIM (and "
+                "Network.Config.max_state) to widen the layout."
+            )
 
+    def gnn_format(self, value: np.ndarray) -> np.ndarray:
+        D = len(value) - 7  # pos(3) + aa(3) + ste(1) = 7 base, extra is rest
+        if D > Entity.MAX_EXTRA_DIM:
+            raise ValueError(
+                f"value has {D} extra dims but the feature layout reserves "
+                f"Entity.MAX_EXTRA_DIM={Entity.MAX_EXTRA_DIM}; raise that (the "
+                "layout and feature width follow) to widen the graph features"
+            )
+
+        L = Entity.LAYOUT
         feat = np.zeros(Entity.FEATURE_DIM, dtype=np.float32)
 
+        self._check_state_width(self.cfg.n_states)
         state_id = value[6 + D].astype(int)
-        feat[: self.cfg.n_states] = -self.LOGIT_CONFIDENCE
-        if state_id < self.cfg.n_states:
-            feat[state_id] = self.LOGIT_CONFIDENCE
+        state = feat[L["state"].mean(self.cfg.n_states)]  # a view, writes through
+        state[:] = 1.0 / self.cfg.n_states
+        if 0 <= state_id < self.cfg.n_states:
+            state[:] = 0.0
+            state[state_id] = 1.0
 
-        feat[M : M + 3] = value[0:3]
-        feat[M + 3 : M + 6] = self.BASE_LOGSTD
+        feat[L["pos"].mean()] = value[0:3]
+        feat[L["pos"].logstd()] = self.BASE_LOGSTD
 
-        quat = Quaternion.exp(value[3:6])
-        feat[M + 6 : M + 10] = Quaternion.normalize(quat)
-        feat[M + 10 : M + 13] = self.BASE_LOGSTD
+        if self.cfg.add_rotation:
+            quat = Quaternion.exp(value[3:6])
+            feat[L["rot"].mean()] = Quaternion.normalize(quat)
+        else:
+            feat[L["rot"].mean()] = Quaternion.identity()
+        feat[L["rot"].logstd()] = self.BASE_LOGSTD
 
         if D > 0:
-            feat[M + 13 : M + 13 + D] = value[6 : 6 + D]
-            feat[M + 13 + D : M + 13 + 2 * D] = self.BASE_LOGSTD
+            feat[L["extra"].mean(D)] = value[6 : 6 + D]
+            feat[L["extra"].logstd(D)] = self.BASE_LOGSTD
 
         return feat
 
@@ -166,16 +290,17 @@ class Entity(Configurable):
         return value
 
     def pose_sigma_variance(self) -> np.ndarray:
-        n = int(self.measurement["pose"]["n_columns"])
-        n_rot = self.rot_dim
-        n_extra = n - Entity.POS_DIM - n_rot
         sigmas = np.concatenate(
             [
                 np.full(Entity.POS_DIM, self.cfg.pos_sigma),
-                np.full(n_rot, self.cfg.rot_sigma),
-                np.full(n_extra, self.cfg.ext_sigma),
+                np.full(self.rot_dim, self.cfg.rot_sigma),
+                self.extra_sigma,
             ],
             dtype=float,
+        )
+        assert len(sigmas) == self.pose_dim, (
+            f"tolerance block ({len(sigmas)}) does not match the fitted pose "
+            f"width ({self.pose_dim})"
         )
         return sigmas**2
 
@@ -188,7 +313,6 @@ class Entity(Configurable):
         padded[:, : pis.shape[1]] = pis
         # Renormalize so probabilities sum to 1
         padded /= padded.sum(axis=1, keepdims=True)
-        p["measurement"]["state"]["pis"] = padded
         if pis.shape[1] > self.cfg.n_states:
             warnings.warn(
                 f"Fitted categorical has {pis.shape[1]} outcomes but "
@@ -196,10 +320,16 @@ class Entity(Configurable):
                 "entity config so the GNN features do not silently drop states.",
                 stacklevel=2,
             )
+
+        measurement = dict(p["measurement"])
+        measurement["state"] = {**measurement["state"], "pis": padded}
         if add_variance:
-            cov = p["measurement"]["pose"]["covariances"]
-            p["measurement"]["pose"]["covariances"] = cov + self.pose_sigma_variance()
-        return p
+            pose = dict(measurement["pose"])
+            pose["covariances"] = (
+                np.asarray(pose["covariances"]) + self.pose_sigma_variance()
+            )
+            measurement["pose"] = pose
+        return {**p, "measurement": measurement}
 
     def score_single(self, sample: np.ndarray, up: dict, eps: float = 1e-15) -> bool:
         return self.score_prepared(
@@ -217,11 +347,10 @@ class Entity(Configurable):
         pis = p["measurement"]["state"]["pis"]
 
         best_k, z, zd = self._best_component(pose, p, eps=eps)
-        chi_sqrt = _chi_sqrt(self.cfg.z_quantile_joint, len(pose))
+        chi_sqrt = _chi_sqrt(self.cfg.z_quantile_joint, self.pose_dof)
+        capped = bool(np.all(self.group_squared(zd) <= self._z_dim_sigma**2))
 
-        # NOTE: keep the short-circuit -- the original ``valid_pose and
-        # valid_state`` never indexed ``pis`` when the pose test failed.
-        if not (z <= chi_sqrt and bool(np.all(zd <= self._z_dim_sigma))):
+        if not (z <= chi_sqrt and capped):
             return False
         return bool(pis[best_k][state] > 1e-6)
 
@@ -244,8 +373,6 @@ class Entity(Configurable):
         weights = np.asarray(p["weights"])
         means = np.asarray(p["measurement"]["pose"]["means"])
         vars_ = np.asarray(p["measurement"]["pose"]["covariances"])
-        # Component-wise posterior (up to a common constant, which cancels in
-        # the argmax) evaluated for all components at once.
         var = np.maximum(vars_, eps)
         post = np.log(weights) - 0.5 * np.sum(
             np.log(2 * np.pi * var) + (pose - means) ** 2 / var, axis=-1
@@ -280,24 +407,20 @@ class Entity(Configurable):
         if z_max is not None:
             r = min(r, z_max)
 
-        # Fast accept: a component center inside the other ellipsoid (and caps)
-        # is itself a common value.
-        if np.sum((mu2 - mu1) ** 2 / np.maximum(var1, eps)) <= c and (
-            z_max is None or bool(np.all(np.abs(mu2 - mu1) <= z_max * s1))
+        if np.sum((mu2 - mu1) ** 2 / np.maximum(var1, eps)) <= c and self._within_caps(
+            mu2 - mu1, s1, z_max
         ):
             return True
-        if np.sum((mu1 - mu2) ** 2 / np.maximum(var2, eps)) <= c and (
-            z_max is None or bool(np.all(np.abs(mu1 - mu2) <= z_max * s2))
+        if np.sum((mu1 - mu2) ** 2 / np.maximum(var2, eps)) <= c and self._within_caps(
+            mu1 - mu2, s2, z_max
         ):
             return True
 
-        # Fast reject: per-dimension projections (and caps) are disjoint.
         lo = np.maximum(mu1 - r * s1, mu2 - r * s2)
         hi = np.minimum(mu1 + r * s1, mu2 + r * s2)
         if np.any(lo > hi):
             return False
 
-        # Exact decider: convex min-max over the box.
         var1c = np.maximum(var1, eps)
         var2c = np.maximum(var2, eps)
 
@@ -316,9 +439,17 @@ class Entity(Configurable):
         )
         return float(res.fun) <= 1.0
 
+    def _within_caps(
+        self, delta: np.ndarray, sigma: np.ndarray, z_max: float | None
+    ) -> bool:
+        if z_max is None:
+            return True
+        zd = np.abs(delta) / np.maximum(sigma, 1e-15)
+        return bool(np.all(np.sqrt(self.group_squared(zd)) <= z_max))
+
     def containment(self, up1: dict, up2: dict, eps: float = 1e-15):
-        p1 = self.secure_mix_parameters(up1)
-        p2 = self.secure_mix_parameters(up2)
+        p1 = self.secure_mix_parameters(up1, add_variance=True)
+        p2 = self.secure_mix_parameters(up2, add_variance=True)
         w1 = p1["weights"]
         means1 = p1["measurement"]["pose"]["means"]
         vars1 = p1["measurement"]["pose"]["covariances"]
@@ -328,8 +459,7 @@ class Entity(Configurable):
         vars2 = p2["measurement"]["pose"]["covariances"]
         pis2 = p2["measurement"]["state"]["pis"]
 
-        d = means1.shape[1]
-        chi = _chi2_ppf(self.cfg.z_quantile_joint, d)
+        chi = _chi2_ppf(self.cfg.z_quantile_joint, self.pose_dof)
 
         def agrees(i: int, j: int) -> bool:
             var1 = np.maximum(vars1[i], eps)
@@ -425,17 +555,14 @@ class Entity(Configurable):
         """
         NOTE: ASSUMES MODELS USE DIAG MODE
         Returns:
-            np.ndarray of shape (N, FEATURE_DIM) with layout:
-                - [0:MAX_STATE_DIM]             = state scores on the same
-                  [-LOGIT_CONFIDENCE, +LOGIT_CONFIDENCE] scale as gnn_format
-                  (2*p - 1) * LOGIT_CONFIDENCE; impossible states stay at -10
-                - [M:M+3]                       = μ_pos
-                - [M+3:M+6]                     = log(σ_pos)
-                - [M+6:M+10]                    = quaternion [w, x, y, z]
-                - [M+10:M+13]                   = log(σ_rot, tangent space)
-                - [M+13:M+13+D]                 = μ_extra
-                - [M+13+D:M+13+2D]              = log(σ_extra)
-            where M = MAX_STATE_DIM, D = n_columns - 6
+            np.ndarray of shape (N, FEATURE_DIM), filled block by block per
+            :data:`Entity.LAYOUT`: the fitted state posterior over the live
+            slots (summing to 1, unseen states at 0), then μ and log(σ) for
+            position, orientation and the extra joint dims.
+
+            Unlike :meth:`gnn_format`, which fills the log-std blocks with the
+            ``BASE_LOGSTD`` sentinel, this writes the fitted log-stds, so both
+            producers have to be scaled alike before they reach the encoder.
         """
 
         p = self.secure_mix_parameters(up)
@@ -443,35 +570,42 @@ class Entity(Configurable):
         covariances = p["measurement"]["pose"]["covariances"]  # (N, n_columns)
         pis = p["measurement"]["state"]["pis"]  # (N, K)
         N = len(p["weights"])
-        M = Entity.MAX_STATE_DIM
+        L = Entity.LAYOUT
         base = Entity.POS_DIM + (Entity.ROT_DIM if self.cfg.add_rotation else 0)
         D = means.shape[1] - base  # extra continuous dims beyond pos (+rot)
+        if D > Entity.MAX_EXTRA_DIM:
+            raise ValueError(
+                f"fitted components have {D} extra dims but the feature layout "
+                f"reserves Entity.MAX_EXTRA_DIM={Entity.MAX_EXTRA_DIM}"
+            )
+        self._check_state_width(self.cfg.n_states)
 
         feat = np.zeros((N, Entity.FEATURE_DIM), dtype=np.float32)
 
-        # State scores — same convention and scale as gnn_format.
-        feat[:, : self.cfg.n_states] = -self.LOGIT_CONFIDENCE
         n_logit = min(pis.shape[1], self.cfg.n_states)
-        feat[:, :n_logit] = self.LOGIT_CONFIDENCE * (2.0 * pis[:, :n_logit] - 1.0)
+        post = np.asarray(pis[:, :n_logit], dtype=np.float64)
+        total = post.sum(axis=1, keepdims=True)
+        post = np.divide(
+            post, total, out=np.full_like(post, 1.0 / n_logit), where=total > 0.0
+        )
+        feat[:, L["state"].mean(n_logit)] = post
 
-        # Pose: position mean + logstd
-        feat[:, M : M + 3] = means[:, 0:3]
-        feat[:, M + 3 : M + 6] = 0.5 * np.log(covariances[:, 0:3] + eps)
+        # Position mean + logstd
+        feat[:, L["pos"].mean()] = means[:, 0:3]
+        feat[:, L["pos"].logstd()] = 0.5 * np.log(covariances[:, 0:3] + eps)
 
-        # Pose: axis-angle -> quaternion + rotation logstd (3 dof in tangent space)
+        # Axis-angle -> quaternion + rotation logstd (3 dof in tangent space)
         if self.cfg.add_rotation:
             quat = Quaternion.exp(means[:, 3:6])
-            feat[:, M + 6 : M + 10] = Quaternion.normalize(quat)
-            feat[:, M + 10 : M + 13] = 0.5 * np.log(covariances[:, 3:6] + eps)
+            feat[:, L["rot"].mean()] = Quaternion.normalize(quat)
+            feat[:, L["rot"].logstd()] = 0.5 * np.log(covariances[:, 3:6] + eps)
         else:
-            feat[:, M + 6 : M + 10] = Quaternion.identity()
-            feat[:, M + 10 : M + 13] = self.BASE_LOGSTD
+            feat[:, L["rot"].mean()] = Quaternion.identity()
+            feat[:, L["rot"].logstd()] = self.BASE_LOGSTD
 
         # Extra continuous dims: mean + logstd
         if D > 0:
-            feat[:, M + 13 : M + 13 + D] = means[:, base:]
-            feat[:, M + 13 + D : M + 13 + 2 * D] = 0.5 * np.log(
-                covariances[:, base:] + eps
-            )
+            feat[:, L["extra"].mean(D)] = means[:, base:]
+            feat[:, L["extra"].logstd(D)] = 0.5 * np.log(covariances[:, base:] + eps)
 
         return feat, p["weights"]

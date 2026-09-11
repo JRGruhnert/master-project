@@ -2,15 +2,15 @@ import numpy as np
 import torch
 
 from heca.graphs.edges.edge_set import EdgeSet
-from heca.graphs.nodes.node import EntityNode, StateNode
+from heca.graphs.nodes.node import GraphNode, StateNode
 
 
-class StateEdges(EdgeSet[EntityNode, StateNode]):
+class StateEdges(EdgeSet[GraphNode, StateNode]):
     @property
     def type(self) -> tuple[str, str, str]:
-        return ("entity", "aggregation", "state")
+        return ("canonical", "aggregation", "state")
 
-    def update_attr(self, src: EntityNode, dst: StateNode, index: int):
+    def update_attr(self, src: GraphNode, dst: StateNode, index: int):
         self.attrs[index] = np.empty(1)
 
     def set_index(self, src_indices: list[int], dst_indices: list[int]) -> None:

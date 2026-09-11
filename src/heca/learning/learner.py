@@ -14,6 +14,7 @@ from heca.learning.buffers.fair_buffer import FairBuffer
 from heca.learning.reward_normalizer import RewardNormalizer
 from heca.misc import hardware, logger
 from heca.misc.base import Persistable
+from heca.data.entity import Entity
 from heca.heca_gnn.network import Network
 from heca.learning.buffers.buffer import Buffer, BufferData
 from heca.scenes.scene import SceneFeedback
@@ -184,14 +185,12 @@ class Learner(Persistable):
             "buffer/capacity": self.cfg.buffer.capacity,
             "buffer/label": str(type(self.cfg.buffer)),
             # Network config
-            "network/input_dim": self.cfg.network.input_feat_dim,
+            "network/input_dim": Entity.FEATURE_DIM,
             "network/feature_dim": self.cfg.network.feature_dim,
-            "network/num_stepmix_layers": self.cfg.network.num_stepmix_layers,
-            "network/num_tapas_layers": self.cfg.network.num_tapas_layers,
-            # Architecture toggles
+            "network/max_state": Entity.MAX_STATE_DIM,
+            "network/use_option_effects": self.cfg.network.use_option_effects,
             "network/use_option_interaction": self.cfg.network.use_option_interaction,
             "network/use_timeline_memory": self.cfg.network.use_timeline_memory,
-            "network/use_film_conditioning": self.cfg.network.use_film_conditioning,
         }
 
         self._wandb_run = wandb.init(
